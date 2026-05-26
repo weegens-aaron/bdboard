@@ -1,0 +1,841 @@
+/* ============================================================
+   bdboard — editorial dashboard, Walmart LD-token palette.
+   Sourced from docs/diagrams/dashboard-mockup.html and trimmed
+   to what bdboard actually renders. Keep design tokens in :root;
+   keep visual decisions semantic (no raw hex outside :root).
+   ============================================================ */
+
+:root {
+  /* Greys (LD canonical scale) */
+  --gray-5:   #f8f8f8;
+  --gray-10:  #f1f1f2;
+  --gray-20:  #e3e4e5;
+  --gray-30:  #d5d6d8;
+  --gray-70:  #9e9fa3;
+  --gray-100: #74767c;
+  --gray-140: #46474a;
+  --gray-160: #2e2f32;
+
+  /* Semantic aliases */
+  --ink:      var(--gray-160);
+  --ink-2:    var(--gray-140);
+  --muted:    var(--gray-100);
+  --muted-2:  var(--gray-70);
+  --rule:     var(--gray-20);
+  --rule-2:   var(--gray-30);
+  --paper:    var(--gray-5);
+  --paper-2:  var(--gray-10);
+  --paper-3:  #ffffff;
+
+  /* Brand */
+  --brand-blue:   #0071dc;
+  --brand-blue-d: #004f9a;
+  --brand-blue-l: #e6f1fc;
+  --brand-green:  #2a8703;
+  --brand-red:    #de1c24;
+  --brand-yellow: #ffc220;
+  --warning-text: #b36a16;
+  --violet:       #63327e;
+
+  --accent:    var(--brand-red);
+  --accent-2:  var(--warning-text);
+  --ok:        var(--brand-green);
+  --info:      var(--brand-blue);
+
+  /* Typography */
+  --serif:   "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --display: "Crimson Pro", "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --sans:    "Bogle", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --mono:    "BogleMono", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  /* Full-viewport flex column so masthead + footer stay put and the
+     middle region claims the rest. Nothing on body scrolls; scrolling
+     belongs to individual lanes / sidebar / modal. */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+a { color: var(--brand-blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre { font-family: var(--mono); }
+pre { margin: 0; }
+
+.muted { color: var(--muted); }
+.kicker {
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  color: var(--brand-blue);
+  font-weight: 700;
+}
+
+/* ============================================================
+   Masthead — newspaper-style top. Stays put at top of viewport.
+   ============================================================ */
+.masthead {
+  background: var(--paper-3);
+  border-bottom: 3px double var(--ink);
+  padding: 18px 28px 12px;
+  flex: 0 0 auto;
+}
+.masthead-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+}
+.masthead-brand .title {
+  font-family: var(--display);
+  font-weight: 600;
+  margin: 4px 0 0;
+  font-size: 38px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.masthead-brand .dateline {
+  font-family: var(--mono);
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.counts {
+  display: flex;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+}
+.counts-cell {
+  text-align: center;
+  border-left: 1px solid var(--rule);
+  padding-left: 14px;
+  min-width: 64px;
+}
+.counts-cell:first-child { border-left: none; padding-left: 0; }
+.counts-label {
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  color: var(--muted);
+}
+.counts-value {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* ============================================================
+   Layout — single full-width lanes region. Claims all remaining
+   height between masthead and footer; nothing here scrolls —
+   children (the lanes) do.
+
+   Was a two-column grid (lanes + sidebar) until Fleet/Activity
+   were collapsed into the lanes row itself; sidebar is gone.
+   ============================================================ */
+.layout {
+  display: flex;
+  padding: 20px 28px;
+  flex: 1 1 auto;
+  min-height: 0;  /* critical: lets nested overflow:auto actually work */
+  overflow: hidden;
+}
+
+/* ============================================================
+   Lanes. Each lane is a flex column so the title stays put and the
+   bead list scrolls inside it — canonical kanban behavior.
+   ============================================================ */
+.lanes-region {
+  min-height: 0;
+  overflow: hidden;
+}
+.lanes {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+  height: 100%;
+  width: 100%;
+}
+@media (max-width: 1600px) {
+  .lanes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.lane {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+.lane-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+  flex: 0 0 auto;
+}
+.lane-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.lane-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px 2px 0;  /* room for scrollbar without overlap */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;  /* never scroll horizontally — trackpad-wobble killer */
+  /* Subtle scrollbar that doesn't compete with content. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
+}
+.lane-list::-webkit-scrollbar { width: 6px; }
+.lane-list::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
+.lane-list::-webkit-scrollbar-track { background: transparent; }
+/* Children of .lane-list are flex items inside a flex-column with
+   bounded height. Without explicit flex-shrink: 0 they collapse to
+   zero height and `overflow-y: auto` has nothing to scroll. Apply
+   universally so any new row type (bead-card, activity-row, future
+   X-row) Just Works. */
+.lane-list > * { flex-shrink: 0; }
+.lane-empty { padding: 12px 4px; font-size: 13px; }
+
+/* Lane accents */
+.lane-ready     .lane-title { color: var(--ok); }
+.lane-in_progress .lane-title { color: var(--brand-blue); }
+.lane-blocked   .lane-title { color: var(--accent); }
+.lane-backlog   .lane-title { color: var(--muted); }
+.lane-activity  .lane-title { color: var(--violet); }
+
+/* ============================================================
+   Bead cards.
+   ============================================================ */
+.bead-card {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+.bead-card:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 1px 3px rgba(0, 113, 220, 0.15);
+}
+.bead-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.bead-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+.bead-priority {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+.bead-priority.p0 { background: var(--accent); color: white; }
+.bead-priority.p1 { background: var(--accent-2); color: white; }
+.bead-priority.p2 { background: var(--paper-2); color: var(--ink-2); border: 1px solid var(--rule-2); }
+.bead-priority.p3, .bead-priority.p4 { background: transparent; color: var(--muted); border: 1px solid var(--rule); }
+
+.bead-title {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 2px 0 6px;
+}
+.bead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+}
+.bead-assignee, .bead-type, .bead-dep {
+  display: inline-block;
+}
+.bead-type {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* ============================================================
+   Activity — the right-most swim lane. Same .lane / .lane-list
+   chrome as the bead lanes; rows have their own grid layout because
+   activity events carry different metadata than bead cards
+   (when / verb / actor / title vs id / priority / assignee).
+
+   Was a sidebar pane (.pane-activity) until the sidebar was removed.
+   ============================================================ */
+.activity-row {
+  /* Two-row layout: meta line (when / verb / actor) on top,
+     title spanning full width below. Keeps the title legible at any
+     lane width without forcing title wrap to fight the meta line. */
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-areas:
+    "when verb actor"
+    "title title title";
+  gap: 2px 8px;
+  font-size: 12px;
+  align-items: baseline;
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: 3px;
+}
+.activity-row:hover { background: var(--paper-2); }
+.activity-when  { grid-area: when;  font-family: var(--mono); color: var(--muted); font-size: 11px; }
+.activity-verb  {
+  grid-area: verb;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  font-weight: 700;
+}
+.verb-closed     { color: var(--ok); }
+.verb-in-progress{ color: var(--brand-blue); }
+.verb-blocked    { color: var(--accent); }
+.verb-created    { color: var(--violet); }
+.verb-updated    { color: var(--muted); }
+
+.activity-actor { grid-area: actor; justify-self: end; font-family: var(--mono); font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-title { grid-area: title; color: var(--ink); line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
+
+/* ============================================================
+   Modal — bead detail.
+   ============================================================ */
+.modal-host {
+  position: fixed; inset: 0;
+  pointer-events: none;
+}
+.modal-host:not(:empty) {
+  pointer-events: auto;
+}
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(46, 47, 50, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 20px;
+  /* Backdrop does NOT scroll — the modal caps its own height and scrolls
+     internally. Otherwise large beads push the header off-screen. */
+  overflow: hidden;
+}
+.modal {
+  background: var(--paper-3);
+  border-radius: 8px;
+  max-width: 880px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.modal-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--rule);
+  flex: 0 0 auto;  /* pinned: never scrolls */
+}
+/* Wraps all .modal-body sections so they scroll as one continuous flow
+   while the header stays put at the top. */
+.modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
+}
+.modal-scroll::-webkit-scrollbar { width: 6px; }
+.modal-scroll::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
+.modal-scroll::-webkit-scrollbar-track { background: transparent; }
+.modal-head-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.modal-close {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  color: var(--ink-2);
+  font-size: 14px;
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-close:hover { background: var(--paper-2); }
+
+.modal-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 24px;
+  margin: 6px 0 4px;
+  line-height: 1.25;
+}
+.modal-warning {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: #fff7e0;
+  border-left: 3px solid var(--brand-yellow);
+  color: var(--warning-text);
+  font-size: 12px;
+  font-family: var(--sans);
+}
+.modal-source {
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.modal-body {
+  padding: 16px 22px;
+  border-top: 1px solid var(--rule);
+}
+.modal-body:first-of-type { border-top: none; }
+.modal-section-title {
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+/* Status badges in modal head */
+.bead-status {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.status-open        { background: var(--brand-blue-l); color: var(--brand-blue-d); }
+.status-in_progress { background: var(--brand-blue); color: white; }
+.status-blocked     { background: #fde6e7; color: var(--accent); }
+.status-closed,
+.status-resolved,
+.status-done        { background: #e6f3e0; color: var(--brand-green); }
+
+/* Field grid in modal */
+.field-grid {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  row-gap: 8px;
+  column-gap: 18px;
+  margin: 0;
+}
+.field {
+  display: contents;
+}
+.field-key {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.field-val {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 14px;
+  word-break: break-word;
+}
+.field-json {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--paper-2);
+  padding: 8px 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+/* Field renderers — chips for labels, dep-list for deps, para for prose. */
+.chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chip-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--brand-blue-l);
+  color: var(--brand-blue-d);
+  border: 1px solid rgba(0, 113, 220, 0.2);
+}
+.dep-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dep-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 6px;
+  border-left: 2px solid var(--rule-2);
+  background: var(--paper-2);
+  border-radius: 0 3px 3px 0;
+}
+.dep-rel {
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 700;
+  min-width: 90px;
+}
+.dep-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+}
+.dep-id:hover { text-decoration: underline; }
+.dep-status {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  /* color comes from the .status-X class added alongside */
+}
+.dep-title {
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.field-para {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Audit trail */
+.audit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.audit-row {
+  display: grid;
+  grid-template-columns: 90px 120px 1fr 70px;
+  gap: 10px;
+  font-size: 12px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.audit-when { font-family: var(--mono); color: var(--muted); }
+.audit-who  { font-family: var(--sans); font-weight: 600; }
+.audit-what { color: var(--ink); }
+.audit-commit { font-family: var(--mono); font-size: 10px; color: var(--muted-2); text-align: right; }
+
+.audit-error {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: #fde6e7;
+  font-size: 13px;
+  color: var(--ink);
+}
+.audit-error code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.modal-error {
+  background: var(--paper-3);
+  border-radius: 6px;
+  padding: 20px;
+  margin: 60px auto;
+  max-width: 480px;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: 15px;
+}
+.error-text {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  background: #fde6e7;
+  padding: 10px 12px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Footer — editorial baseline strip with live polling indicator.
+   Sticks to bottom via body flex-column; doesn't scroll with content.
+   ============================================================ */
+.footer {
+  flex: 0 0 auto;
+  background: var(--paper-3);
+  border-top: 1px solid var(--rule);
+  padding: 8px 28px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+}
+.footer-cell { display: flex; align-items: center; gap: 8px; }
+.footer-left   { justify-content: flex-start; }
+.footer-center { justify-content: center; }
+.footer-right  { justify-content: flex-end; }
+
+.footer-brand {
+  font-weight: 700;
+  color: var(--brand-blue);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.footer-version {
+  font-family: var(--mono);
+  color: var(--ink-2);
+}
+.footer-workspace {
+  font-family: var(--mono);
+  color: var(--ink-2);
+}
+.footer-sep { color: var(--muted-2); }
+.footer-link {
+  color: var(--muted);
+  text-decoration: none;
+}
+.footer-link:hover { color: var(--brand-blue); text-decoration: underline; }
+.footer-tip {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted-2);
+}
+
+/* Live indicator — small pulsing dot proves polling is alive. */
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-green);
+  box-shadow: 0 0 0 0 rgba(42, 135, 3, 0.5);
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(42, 135, 3, 0.6); opacity: 1; }
+  70%  { box-shadow: 0 0 0 6px rgba(42, 135, 3, 0);   opacity: 0.6; }
+  100% { box-shadow: 0 0 0 0   rgba(42, 135, 3, 0);   opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
+}
+
+/* ============================================================
+   Comments — formatted card stack inside the bead-detail modal.
+   Each comment is {author, created_at, text} from bd. Author +
+   timestamp form a meta header; text renders as a prose paragraph
+   with preserved whitespace so multi-paragraph notes stay readable.
+   ============================================================ */
+.comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-card {
+  background: var(--paper-2);
+  border-left: 3px solid var(--brand-blue);
+  border-radius: 0 4px 4px 0;
+  padding: 8px 12px 10px;
+}
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-family: var(--sans);
+}
+.comment-author {
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.comment-when {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.comment-body {
+  font-family: var(--serif);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   Closed lane — visually receded so active work draws the eye first.
+   The lane chrome stays (people need to find their wins), but the
+   card backgrounds, text, and lane title shift to muted-paper tones.
+   Hover restores full contrast so clicking-to-inspect feels normal.
+   ============================================================ */
+.lane-closed .lane-title    { color: var(--muted); }
+.lane-closed .bead-card     {
+  background: var(--paper-2);
+  opacity: 0.78;
+  transition: opacity 120ms ease;
+}
+.lane-closed .bead-card:hover { opacity: 1; }
+.lane-closed .bead-title    { color: var(--ink-2); }
+.lane-closed .bead-id       { color: var(--muted); }
+
+/* ============================================================
+   Prose — rendered-markdown content inside the bead detail modal
+   (description, notes, close_reason, acceptance_criteria). Goal:
+   read like a doc, not like a debug dump. Tight vertical rhythm,
+   readable line-length, code is mono and chip-like, no shouty H1.
+   Scope all rules under .prose so we don't pollute global headings.
+   ============================================================ */
+.prose {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.prose > :first-child { margin-top: 0; }
+.prose > :last-child  { margin-bottom: 0; }
+.prose p              { margin: 0 0 10px; }
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  font-family: var(--sans);
+  font-weight: 700;
+  margin: 14px 0 6px;
+  line-height: 1.25;
+}
+.prose h1 { font-size: 17px; }
+.prose h2 { font-size: 15px; }
+.prose h3 { font-size: 14px; color: var(--ink-2); }
+.prose h4 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.prose ul, .prose ol { margin: 0 0 10px; padding-left: 22px; }
+.prose li             { margin: 2px 0; }
+.prose li > p         { margin: 0; }
+.prose strong         { font-weight: 700; color: var(--ink-2); }
+.prose em             { font-style: italic; }
+.prose a {
+  color: var(--brand-blue);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.prose a:hover        { text-decoration-thickness: 2px; }
+.prose code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--paper-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+}
+.prose pre {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+  overflow-x: auto;
+  line-height: 1.4;
+}
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+}
+.prose blockquote {
+  margin: 0 0 10px;
+  padding: 4px 10px;
+  border-left: 3px solid var(--rule-2);
+  color: var(--ink-2);
+}
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 14px 0;
+}
+.prose table {
+  border-collapse: collapse;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.prose th, .prose td {
+  border: 1px solid var(--rule);
+  padding: 4px 8px;
+  text-align: left;
+}
+.prose th { background: var(--paper-2); font-family: var(--sans); }
+
+/* Live status dot — green when SSE connected, amber when reconnecting. */
+.live-dot.live-on  { background: var(--ok); box-shadow: 0 0 0 2px rgba(42, 135, 3, 0.18); }
+.live-dot.live-off { background: var(--spark, #ffc220); box-shadow: 0 0 0 2px rgba(255, 194, 32, 0.22); }

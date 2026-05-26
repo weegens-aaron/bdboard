@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}error{% endblock %}
+{% block body %}
+<header class="masthead">
+  <div class="masthead-row">
+    <div class="masthead-brand">
+      <span class="kicker">bdboard</span>
+      <h1 class="title">workspace not ready</h1>
+      <div class="dateline">{{ workspace }}</div>
+    </div>
+  </div>
+</header>
+<main class="layout">
+  <section class="card" style="grid-column: 1 / -1;">
+    <h2 class="card-title">can't start</h2>
+    <p class="error-text">{{ error }}</p>
+    <p class="muted">
+      <code>cd</code> into a directory containing <code>.beads/</code>, or pass <code>--dir &lt;path&gt;</code>.
+    </p>
+  </section>
+</main>
+{% endblock %}

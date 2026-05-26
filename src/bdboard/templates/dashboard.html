@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ workspace }}{% endblock %}
+{% block body %}
+<header class="masthead">
+  <div class="masthead-row">
+    <div class="masthead-brand">
+      <span class="kicker">bdboard</span>
+      <h1 class="title">{{ workspace }}</h1>
+      <div class="dateline">{{ workspace_path }}</div>
+    </div>
+    <div class="masthead-counts" id="counts"
+         hx-get="/api/counts" hx-trigger="refresh from:body" hx-swap="innerHTML">
+      {% include "partials/counts.html" %}
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="lanes-region"
+           hx-get="/api/lanes" hx-trigger="refresh from:body" hx-swap="innerHTML">
+    {% include "partials/lanes.html" %}
+  </section>
+</main>
+{% endblock %}

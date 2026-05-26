@@ -1,0 +1,20 @@
+<h3 class="modal-section-title">Audit trail</h3>
+{% if error %}
+<div class="audit-error">
+  ⚠ audit unavailable: <code>{{ error }}</code>
+  <div class="muted">(this doesn't break the rest of the modal; bcc's old failure mode would have killed the whole detail view)</div>
+</div>
+{% elif not entries %}
+<p class="muted">no recorded history yet</p>
+{% else %}
+<ol class="audit-list">
+  {% for row in entries %}
+  <li class="audit-row">
+    <span class="audit-when">{{ row.when | humanize_ts }}</span>
+    <span class="audit-who">{{ row.who }}</span>
+    <span class="audit-what">{{ row.what }}</span>
+    <span class="audit-commit muted">{{ row.commit }}</span>
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}

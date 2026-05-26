@@ -1,0 +1,8 @@
+<dl class="counts">
+  {% for status, n in counts.items() %}
+  <div class="counts-cell">
+    <dt class="counts-label">{{ status }}</dt>
+    <dd class="counts-value">{{ n }}</dd>
+  </div>
+  {% endfor %}
+</dl>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{% block title %}bdboard{% endblock %} · {{ workspace or "bd" }}</title>
+    <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    {% block body %}{% endblock %}
+    {% block footer %}
+    <footer class="footer">
+      <div class="footer-cell footer-left">
+        <span class="footer-brand">bdboard</span>
+        <span class="footer-sep">·</span>
+        <span class="footer-version">v{{ version or "?" }}</span>
+        {% if workspace %}
+        <span class="footer-sep">·</span>
+        <span class="footer-workspace">{{ workspace }}</span>
+        {% endif %}
+      </div>
+      <div class="footer-cell footer-center">
+        <span class="live-dot" id="live-dot" aria-hidden="true"></span>
+        <span id="live-status">connecting…</span>
+      </div>
+      <div class="footer-cell footer-right">
+        <a href="/docs" class="footer-link">API</a>
+        <span class="footer-sep">·</span>
+        <span class="footer-tip">esc to close modal</span>
+      </div>
+    </footer>
+    {% endblock %}
+    <div id="bead-modal" class="modal-host" onclick="if(event.target===this)this.innerHTML=''"></div>
+    <script>
+      // Esc closes the bead modal.
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          document.getElementById('bead-modal').innerHTML = '';
+        }
+      });
+
+      // SSE live-update wiring. Server pushes a 'beads_changed' event
+      // whenever .beads/issues.jsonl changes. We fire a synthetic
+      // 'refresh' DOM event on body; every region that wants live data
+      // listens via hx-trigger="load, refresh from:body".
+      //
+      // EventSource has built-in auto-reconnect with exponential backoff,
+      // so a transient server restart heals itself within a few seconds.
+      (function () {
+        const dot = document.getElementById('live-dot');
+        const status = document.getElementById('live-status');
+        const setStatus = (text, cls) => {
+          if (status) status.textContent = text;
+          if (dot) dot.className = 'live-dot ' + cls;
+        };
+        const es = new EventSource('/api/events');
+        es.addEventListener('open', () => setStatus('live · push', 'live-on'));
+        es.addEventListener('error', () => setStatus('reconnecting…', 'live-off'));
+        es.addEventListener('beads_changed', () => {
+          // Fire a 'refresh' event that bubbles; all hx-trigger="refresh from:body"
+          // regions will re-fetch their HTML partials.
+          document.body.dispatchEvent(new CustomEvent('refresh'));
+        });
+      })();
+    </script>
+  </body>
+</html>

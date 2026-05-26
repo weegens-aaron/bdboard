@@ -1,0 +1,80 @@
+<div class="modal-backdrop"
+     onclick="if(event.target===this)document.getElementById('bead-modal').innerHTML=''">
+  <article class="modal">
+    <header class="modal-head">
+      <div class="modal-head-row">
+        <span class="bead-id">{{ bead.id }}</span>
+        {% if bead.priority is not none %}<span class="bead-priority p{{ bead.priority }}">P{{ bead.priority }}</span>{% endif %}
+        {% if bead.status %}<span class="bead-status status-{{ bead.status }}">{{ bead.status }}</span>{% endif %}
+        <button class="modal-close" onclick="document.getElementById('bead-modal').innerHTML=''">✕</button>
+      </div>
+      <h2 class="modal-title">{{ bead.title }}</h2>
+      {% if warning %}<div class="modal-warning">⚠ {{ warning }}</div>{% endif %}
+      <div class="modal-source muted">source: {{ source }} · <a href="/api/bead/{{ bead.id }}/raw" target="_blank">raw JSON</a></div>
+    </header>
+
+    <div class="modal-scroll">
+    <section class="modal-body">
+      <h3 class="modal-section-title">All fields</h3>
+      <dl class="field-grid">
+        {% for f in fields %}
+        <div class="field field-kind-{{ f.kind }}">
+          <dt class="field-key">{{ f.key }}</dt>
+          <dd class="field-val">
+            {% if f.kind == "empty" %}
+              <span class="muted">—</span>
+            {% elif f.kind == "chips" %}
+              <ul class="chip-list">
+                {% for item in f.val %}<li class="chip chip-label">{{ item }}</li>{% endfor %}
+              </ul>
+            {% elif f.kind == "deps" %}
+              <ul class="dep-list">
+                {% for d in f.val %}
+                <li class="dep-row">
+                  <span class="dep-rel">{{ d.dependency_type or d.type or d.rel or "related" }}</span>
+                  <a class="dep-id"
+                     hx-get="/api/bead/{{ d.depends_on_id or d.target or d.id }}"
+                     hx-target="#bead-modal" hx-swap="innerHTML"
+                     style="cursor:pointer">{{ d.depends_on_id or d.target or d.id }}</a>
+                  {% if d.status %}<span class="dep-status status-{{ d.status }}">{{ d.status }}</span>{% endif %}
+                  {% if d.title %}<span class="dep-title">{{ d.title }}</span>{% endif %}
+                </li>
+                {% endfor %}
+              </ul>
+            {% elif f.kind == "comments" %}
+              <ul class="comment-list">
+                {% for c in f.val %}
+                <li class="comment-card">
+                  <header class="comment-meta">
+                    <span class="comment-author">{{ c.author or "—" }}</span>
+                    <span class="comment-when">{{ c.created_at | humanize_ts }}</span>
+                  </header>
+                  <div class="comment-body">{{ c.text or c.body or "" }}</div>
+                </li>
+                {% endfor %}
+              </ul>
+            {% elif f.kind == "markdown" %}
+              <div class="prose">{{ f.val | md | safe }}</div>
+            {% elif f.kind == "para" %}
+              <div class="field-para">{{ f.val }}</div>
+            {% elif f.kind == "json" %}
+              <pre class="field-json">{{ f.val | tojson(indent=2) }}</pre>
+            {% else %}
+              {{ f.val }}
+            {% endif %}
+          </dd>
+        </div>
+        {% endfor %}
+      </dl>
+    </section>
+
+    <section class="modal-body"
+             hx-get="/api/bead/{{ bead.id }}/audit"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+      <h3 class="modal-section-title">Audit trail</h3>
+      <p class="muted">loading history…</p>
+    </section>
+    </div>
+  </article>
+</div>
