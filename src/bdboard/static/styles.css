@@ -66,7 +66,7 @@
   --status-deferred-border: #edcf86;
   
   --status-closed-bg: #e6f3e0;
-  --status-closed-fg: var(--brand-green);
+  --status-closed-fg: #1f5e00;
   --status-closed-border: #c5e5ba;
   
   --status-unknown-bg: var(--paper-2);
