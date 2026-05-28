@@ -48,6 +48,31 @@
   --ok:        var(--brand-green);
   --info:      var(--brand-blue);
 
+  /* Status badge colors — consolidated for epic-status and bead-status */
+  --status-open-bg: var(--brand-blue-l);
+  --status-open-fg: var(--brand-blue-d);
+  --status-open-border: #9ab8ff;
+  
+  --status-in-progress-bg: var(--brand-blue);
+  --status-in-progress-fg: #ffffff;
+  --status-in-progress-border: var(--brand-blue);
+  
+  --status-blocked-bg: #ffeceb;
+  --status-blocked-fg: #7f0d00;
+  --status-blocked-border: #f2a79f;
+  
+  --status-deferred-bg: var(--spark-10);
+  --status-deferred-fg: var(--spark-140);
+  --status-deferred-border: #edcf86;
+  
+  --status-closed-bg: #e6f3e0;
+  --status-closed-fg: var(--brand-green);
+  --status-closed-border: #c5e5ba;
+  
+  --status-unknown-bg: var(--paper-2);
+  --status-unknown-fg: var(--ink-2);
+  --status-unknown-border: var(--rule-2);
+
   /* Typography */
   --serif:   "Source Serif 4", "Iowan Old Style", Georgia, serif;
   --display: "Crimson Pro", "Source Serif 4", "Iowan Old Style", Georgia, serif;
@@ -253,29 +278,29 @@ pre { margin: 0; }
 }
 .epic-status-icon { font-size: 12px; line-height: 1; }
 .epic-status.status-open {
-  background: #eaf1ff;
-  color: #00358f;
-  border-color: #9ab8ff;
+  background: var(--status-open-bg);
+  color: var(--status-open-fg);
+  border-color: var(--status-open-border);
 }
 .epic-status.status-in_progress {
-  background: var(--blue-100);
-  color: #ffffff;
-  border-color: var(--blue-100);
+  background: var(--status-in-progress-bg);
+  color: var(--status-in-progress-fg);
+  border-color: var(--status-in-progress-border);
 }
 .epic-status.status-blocked {
-  background: #ffeceb;
-  color: #7f0d00;
-  border-color: #f2a79f;
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  border-color: var(--status-blocked-border);
 }
 .epic-status.status-deferred {
-  background: var(--spark-10);
-  color: var(--spark-140);
-  border-color: #edcf86;
+  background: var(--status-deferred-bg);
+  color: var(--status-deferred-fg);
+  border-color: var(--status-deferred-border);
 }
 .epic-status.status-unknown {
-  background: var(--paper-2);
-  color: var(--ink-2);
-  border-color: var(--rule-2);
+  background: var(--status-unknown-bg);
+  color: var(--status-unknown-fg);
+  border-color: var(--status-unknown-border);
 }
 
 .lanes {
@@ -615,12 +640,24 @@ pre { margin: 0; }
   background: var(--paper-2);
   color: var(--ink-2);
 }
-.status-open        { background: var(--brand-blue-l); color: var(--brand-blue-d); }
-.status-in_progress { background: var(--brand-blue); color: white; }
-.status-blocked     { background: #fde6e7; color: var(--accent); }
+.status-open {
+  background: var(--status-open-bg);
+  color: var(--status-open-fg);
+}
+.status-in_progress {
+  background: var(--status-in-progress-bg);
+  color: var(--status-in-progress-fg);
+}
+.status-blocked {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+}
 .status-closed,
 .status-resolved,
-.status-done        { background: #e6f3e0; color: var(--brand-green); }
+.status-done {
+  background: var(--status-closed-bg);
+  color: var(--status-closed-fg);
+}
 
 /* Field grid in modal
    - Short metadata rows render 2-up (field-short)
