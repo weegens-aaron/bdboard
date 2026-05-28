@@ -42,12 +42,55 @@ def _safe_cwd() -> str:
 # ----- module-level singletons (one per process) -----
 
 _PKG_DIR = Path(__file__).parent
+
+
+def _dep_label(dep_type: str | None, direction: str) -> str:
+    """Return the correct dependency label based on type and direction.
+
+    Args:
+        dep_type: The dependency type (blocks, related, parent-child, etc.)
+        direction: Either 'dependencies' (inbound) or 'dependents' (outbound)
+
+    Returns:
+        Human-readable label for the relationship from this bead's perspective.
+
+    Examples:
+        _dep_label('blocks', 'dependencies') → 'blocked by'
+        _dep_label('blocks', 'dependents') → 'blocks'
+        _dep_label('related', 'dependencies') → 'related'
+        _dep_label('parent-child', 'dependents') → 'parent of'
+    """
+    dep_type = (dep_type or "related").lower()
+    is_inbound = direction == "dependencies"
+
+    # Map each type to (inbound_label, outbound_label)
+    label_map = {
+        "blocks": ("blocked by", "blocks"),
+        "related": ("related", "related"),
+        "relates-to": ("related", "related"),
+        "parent-child": ("child of", "parent of"),
+        "discovered-from": ("discovered from", "discovered"),
+        "validates": ("validated by", "validates"),
+        "caused-by": ("caused by", "causes"),
+        "tracks": ("tracked by", "tracks"),
+        "supersedes": ("superseded by", "supersedes"),
+        "until": ("until", "until"),
+    }
+
+    inbound_label, outbound_label = label_map.get(
+        dep_type,
+        (dep_type, dep_type),  # fallback: show raw type
+    )
+    return inbound_label if is_inbound else outbound_label
+
+
 TEMPLATES = Jinja2Templates(directory=str(_PKG_DIR / "templates"))
 TEMPLATES.env.filters["humanize_ts"] = derive.humanize_ts
 # md filter: renders markdown to HTML. Marked safe via Jinja's |safe in the
 # template so we don't double-escape. Source content is bd-authored prose
 # and the renderer has html=False, so script-injection is not possible.
 TEMPLATES.env.filters["md"] = md.render
+TEMPLATES.env.filters["dep_label"] = _dep_label
 # Footer + masthead always have access to these.
 TEMPLATES.env.globals["version"] = __version__
 # Cache-bust query param for /static assets. Every server restart gets a

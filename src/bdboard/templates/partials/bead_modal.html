@@ -32,13 +32,7 @@
                 {% for d in f.val %}
                 <li class="dep-row">
                   <span class="dep-rel">
-                    {%- if f.key == "dependencies" -%}
-                      blocked by
-                    {%- elif f.key == "dependents" -%}
-                      blocks
-                    {%- else -%}
-                      {{ d.dependency_type or d.type or d.rel or "related" }}
-                    {%- endif -%}
+                    {{ (d.dependency_type or d.type or d.rel) | dep_label(f.key) }}
                   </span>
                   <a class="dep-id"
                      hx-get="/api/bead/{{ d.depends_on_id or d.target or d.id }}"
