@@ -25,6 +25,9 @@ from typing import Any
 # Order here is informational only — the template controls render order.
 LANES = ("deferred", "ready", "in_progress", "blocked", "closed")
 
+# Statuses that represent closed/completed work
+CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
+
 # Cap the closed lane so a project with thousands of closed beads doesn't
 # tank page render. Recently-closed is what people actually want to see;
 # anything older is best reached via search.
@@ -46,7 +49,7 @@ def _is_epic(bead: dict[str, Any]) -> bool:
 
 
 def _is_closed(status: str) -> bool:
-    return status in ("closed", "resolved", "done")
+    return status in CLOSED_STATUSES
 
 
 def _has_unmet_blocking_dep(bead: dict[str, Any], by_id: dict[str, dict]) -> bool:
@@ -307,7 +310,7 @@ def activity(beads: list[dict[str, Any]], limit: int = 25) -> list[dict[str, Any
         if not ts_str:
             continue
         status = (b.get("status") or "").lower()
-        if status in {"closed", "resolved", "done"}:
+        if status in CLOSED_STATUSES:
             verb = "closed"
         elif status == "in_progress":
             verb = "in progress"
