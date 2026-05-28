@@ -8,6 +8,12 @@ from __future__ import annotations
 
 import re
 
+from wcag_utils import (
+    contrast_ratio as _contrast_ratio,
+    hex_to_rgb as _hex_to_rgb,
+    relative_luminance as _relative_luminance,
+)
+
 
 def parse_css_variables(css: str) -> dict[str, str]:
     """Extract :root custom properties from CSS.
@@ -118,10 +124,7 @@ def hex_to_rgb(color: str) -> tuple[int, int, int]:
     Returns:
         RGB tuple with values 0-255
     """
-    color = color.strip().lstrip("#")
-    if len(color) != 6:
-        raise ValueError(f"Expected #RRGGBB color, got: {color!r}")
-    return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
+    return _hex_to_rgb(color)
 
 
 def relative_luminance(color: str) -> float:
@@ -133,18 +136,8 @@ def relative_luminance(color: str) -> float:
     Returns:
         Relative luminance value (0.0 to 1.0)
     """
-    r, g, b = (c / 255.0 for c in hex_to_rgb(color))
-
-    def _linearize(channel: float) -> float:
-        if channel <= 0.03928:
-            return channel / 12.92
-        return ((channel + 0.055) / 1.055) ** 2.4
-
-    r_lin = _linearize(r)
-    g_lin = _linearize(g)
-    b_lin = _linearize(b)
-
-    return 0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
+    rgb = _hex_to_rgb(color)
+    return _relative_luminance(rgb)
 
 
 def contrast_ratio(foreground: str, background: str) -> float:
@@ -157,8 +150,4 @@ def contrast_ratio(foreground: str, background: str) -> float:
     Returns:
         Contrast ratio (1.0 to 21.0)
     """
-    l1 = relative_luminance(foreground)
-    l2 = relative_luminance(background)
-    lighter = max(l1, l2)
-    darker = min(l1, l2)
-    return (lighter + 0.05) / (darker + 0.05)
+    return _contrast_ratio(foreground, background)
