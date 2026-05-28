@@ -15,9 +15,9 @@
         <span class="footer-brand">bdboard</span>
         <span class="footer-sep">·</span>
         <span class="footer-version">v{{ version or "?" }}</span>
-        {% if workspace %}
+        {% if workspace_path %}
         <span class="footer-sep">·</span>
-        <span class="footer-workspace">{{ workspace }}</span>
+        <span class="footer-workspace">{{ workspace_path }}</span>
         {% endif %}
       </div>
       <div class="footer-cell footer-center">
