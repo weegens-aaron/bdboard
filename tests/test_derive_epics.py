@@ -35,7 +35,7 @@ def test_lanes_excludes_epics_from_main_columns():
     assert "epic-2" not in all_ids
 
 
-def test_epic_lane_orders_wired_chains_before_unwired_and_omits_closed():
+def test_epic_lane_promotes_active_or_next_ready_to_front_and_omits_closed():
     beads = [
         _bead(
             "single",
@@ -94,8 +94,8 @@ def test_epic_lane_orders_wired_chains_before_unwired_and_omits_closed():
     ids = [b["id"] for b in lane]
 
     assert ids == [
-        "pair-a",
         "pair-b",
+        "pair-a",
         "chain-a",
         "chain-b",
         "chain-c",
@@ -108,3 +108,31 @@ def test_epic_lane_orders_wired_chains_before_unwired_and_omits_closed():
     assert status["pair-b"] == ("▶", "In Progress")
     assert status["chain-b"] == ("⛔", "Blocked")
     assert status["chain-c"] == ("⏸", "Deferred")
+
+
+def test_epic_lane_promotes_ready_when_no_active_epic():
+    beads = [
+        _bead(
+            "blocked-epic",
+            issue_type="epic",
+            status="open",
+            created_at="2026-05-28T10:00:01Z",
+            dependencies=[{"id": "missing", "dependency_type": "blocks"}],
+        ),
+        _bead(
+            "ready-epic",
+            issue_type="epic",
+            status="open",
+            created_at="2026-05-28T10:00:03Z",
+            dependencies=[],
+        ),
+        _bead(
+            "deferred-epic",
+            issue_type="epic",
+            status="deferred",
+            created_at="2026-05-28T10:00:02Z",
+        ),
+    ]
+
+    lane = derive.epic_lane(beads)
+    assert lane[0]["id"] == "ready-epic"

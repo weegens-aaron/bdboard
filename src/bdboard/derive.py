@@ -76,6 +76,28 @@ def _stable_key(bead: dict[str, Any]) -> tuple[float, str]:
     return (_epoch(bead.get("created_at")), bead.get("id") or "")
 
 
+def _epic_lane_rank(bead: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> int:
+    """Priority rank for which epic should lead the strip.
+
+    Lower is better:
+      0: actively in progress
+      1: next-ready (open with no unmet blocking dependency)
+      2: blocked (explicit blocked status or open with unmet blocker)
+      3: deferred/backlog-ish
+      4: anything else
+    """
+    status = (bead.get("status") or "").lower()
+    if status == "in_progress":
+        return 0
+    if status == "open":
+        return 2 if _has_unmet_blocking_dep(bead, by_id) else 1
+    if status == "blocked":
+        return 2
+    if status in {"deferred", "backlog"}:
+        return 3
+    return 4
+
+
 def _topo_component_order(
     nodes: set[str],
     succ: dict[str, set[str]],
@@ -196,6 +218,16 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     unwired.sort(key=_stable_key)
     ordered.extend(unwired)
+
+    # Ensure position 0 is the active epic, or the next-ready epic if no
+    # epic is currently in progress. Keep relative order stable for all
+    # remaining epics.
+    if ordered:
+        anchor = min(
+            ordered,
+            key=lambda b: (_epic_lane_rank(b, by_id), *_stable_key(b)),
+        )
+        ordered = [anchor] + [b for b in ordered if b is not anchor]
 
     out: list[dict[str, Any]] = []
     for b in ordered:
