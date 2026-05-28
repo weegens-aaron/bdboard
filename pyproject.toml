@@ -10,10 +10,12 @@ dependencies = [
     "jinja2>=3.1",
     "typer>=0.12",
     "markdown-it-py>=3.0",
+    "pytest>=8.0",
 ]
 
 [project.scripts]
 bdboard = "bdboard.cli:main"
+pytest = "bdboard.pytest_shim:main"
 
 [build-system]
 requires = ["hatchling"]
