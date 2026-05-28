@@ -41,7 +41,7 @@
       });
 
       // SSE live-update wiring. Server pushes a 'beads_changed' event
-      // whenever .beads/issues.jsonl changes. We fire a synthetic
+      // whenever watched workspace data changes under .beads/. We fire a synthetic
       // 'refresh' DOM event on body; every region that wants live data
       // listens via hx-trigger="load, refresh from:body".
       //

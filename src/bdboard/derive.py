@@ -3,7 +3,7 @@
 All derivations are pure functions over the snapshot list — no I/O, no
 caching. The Store handles freshness; this module just shapes data.
 
-Lane assignment (mirrors bcc's lanes.go):
+Lane assignment rules:
     - In-Progress : status == 'in_progress'
     - Blocked     : status == 'blocked' OR (status == 'open' AND has unmet
                     blocking dependency)

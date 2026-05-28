@@ -111,8 +111,12 @@ def _pick_port(host: str, start_port: int, strict: bool) -> int:
         )
     else:
         typer.echo(
-            f"no free port in range {start_port}..{end - 1} — "
-            "is something hoarding ports? try `lsof -iTCP -sTCP:LISTEN`",
+            f"no free port in range {start_port}..{end - 1}. "
+            "Close another local server or pick a different --addr port.",
+            err=True,
+        )
+        typer.echo(
+            "Advanced check: list listeners with `lsof -iTCP -sTCP:LISTEN`.",
             err=True,
         )
     raise SystemExit(1)

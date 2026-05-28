@@ -1,22 +1,17 @@
 """bd subprocess client.
 
-bdboard talks to bd EXCLUSIVELY through the bd CLI (bd list / bd show /
-bd history with --json). The legacy .beads/issues.jsonl path is a
-throttled, deprecated export — per COMMUNITY_TOOLS.md, "Tools that read
-the old .beads/issues.jsonl format directly are not compatible with
-current versions." We follow that guidance.
+bdboard talks to bd through the bd CLI (`bd list`, `bd show`, `bd history`
+with `--json`). The JSONL export is not used as a runtime source of truth.
 
 Design notes:
-- list_all is the BREAD-AND-BUTTER call: returns every non-infra issue
-  (open + closed), no limit, --json. Powers Store.refresh, which is the
-  upstream of every lane/count/activity render. ~700ms on a ~50-bead
-  workspace, ~150ms warm.
-- show_long / history are the BEAD-DETAIL calls, kept cached with the
-  same TTL + in-flight dedup the bcc/bdboard v0 used.
-- All three share _subprocess_gate, an asyncio.Semaphore(1). bd's
-  embedded dolt server is single-writer and will lock up under
-  concurrent CLI invocations (same gotcha beads-ui documents). One
-  process-wide queue keeps us safe.
+- list_all is the primary call: returns every non-infra issue (open + closed),
+  no limit, JSON output. Powers Store.refresh and therefore all lane/count/
+  activity renders.
+- show_long / history power bead-detail views and are cached with TTL +
+  in-flight dedup.
+- All three share _subprocess_gate, an asyncio.Semaphore(1). bd's embedded
+  dolt server is single-writer and can lock under concurrent CLI invocations,
+  so process-wide serialization keeps requests reliable.
 """
 
 from __future__ import annotations
@@ -61,16 +56,13 @@ class BdClient:
         self.workspace = (workspace or Path.cwd()).resolve()
         self._history_cache: dict[str, CacheEntry] = {}
         self._show_cache: dict[str, CacheEntry] = {}
-        # bd's embedded dolt server doesn't tolerate concurrent CLI invocations
-        # well — you can get into a lock-wait situation where one slow call
-        # makes a second call hang. Serialize ourselves to be a good neighbor.
-        # (Same gotcha documented in mantoni/beads-ui server/bd.js
-        # withBdRunQueue.)
+        # bd's embedded dolt server can lock-wait under concurrent CLI calls;
+        # serialize requests so one slow command cannot deadlock peers.
         self._subprocess_gate = asyncio.Semaphore(1)
         # In-flight dedup: if a request for bead X arrives while another
         # request for bead X is already running its subprocess, the second
         # request awaits the first's Future instead of starting a new
-        # subprocess. Kills the bcc-style "clicked too fast = 404" failure.
+        # subprocess. Prevents duplicate requests from racing each other.
         self._inflight: dict[tuple[str, str], asyncio.Future] = {}
 
     # ----- workspace discovery -----
@@ -93,7 +85,7 @@ class BdClient:
         """
         if not self.beads_dir.is_dir():
             raise RuntimeError(
-                f"no .beads/ directory in {self.workspace} — "
+                "workspace is missing a .beads/ directory — "
                 "cd into a bd workspace first, or pass --dir"
             )
         if not shutil.which(self.bd_bin):
@@ -156,15 +148,19 @@ class BdClient:
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
-                raise RuntimeError(f"bd {' '.join(args)} timed out after {timeout}s")
+                raise RuntimeError(
+                    "Request timed out while loading bead data. Please try again."
+                )
             if proc.returncode != 0:
-                msg = stderr.decode("utf-8", errors="replace").strip().splitlines()
-                first = msg[0] if msg else "(no stderr)"
-                raise RuntimeError(f"bd {' '.join(args)} failed: {first}")
+                raise RuntimeError(
+                    f"Could not load bead data right now ({args[0]}). Please try again."
+                )
             try:
                 return json.loads(stdout)
-            except json.JSONDecodeError as e:
-                raise RuntimeError(f"bd {' '.join(args)} returned invalid JSON: {e}")
+            except json.JSONDecodeError:
+                raise RuntimeError(
+                    "Received an unexpected response while loading bead data."
+                )
 
     async def _cached(
         self,
@@ -176,9 +172,8 @@ class BdClient:
         """TTL-cache + in-flight dedup around _run_json.
 
         Returns (value, error_msg). Caches failures (with shorter TTL) to
-        avoid hammering a flaky bd. If a request for the same key is
-        already in flight, awaits its result instead of starting a parallel
-        subprocess — this is the fix for bcc's 'clicked too fast = error'.
+        avoid hammering a flaky bd. If a request for the same key is already
+        in flight, await its result instead of spawning a duplicate subprocess.
         """
         now = time.monotonic()
         cached = cache.get(key)

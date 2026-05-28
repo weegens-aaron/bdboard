@@ -1,8 +1,8 @@
 <h3 class="modal-section-title">Audit trail</h3>
 {% if error %}
 <div class="audit-error">
-  ⚠ audit unavailable: <code>{{ error }}</code>
-  <div class="muted">(this doesn't break the rest of the modal; bcc's old failure mode would have killed the whole detail view)</div>
+  ⚠ Audit history is temporarily unavailable.
+  <div class="muted">You can still review bead details and try loading history again in a moment.</div>
 </div>
 {% elif not entries %}
 <p class="muted">no recorded history yet</p>

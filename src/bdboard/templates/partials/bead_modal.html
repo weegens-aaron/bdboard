@@ -10,12 +10,12 @@
       </div>
       <h2 class="modal-title">{{ bead.title }}</h2>
       {% if warning %}<div class="modal-warning">⚠ {{ warning }}</div>{% endif %}
-      <div class="modal-source muted">source: {{ source }} · <a href="/api/bead/{{ bead.id }}/raw" target="_blank">raw JSON</a></div>
+      <div class="modal-source muted">view: {{ source }} · <a href="/api/bead/{{ bead.id }}/raw" target="_blank">raw JSON</a></div>
     </header>
 
     <div class="modal-scroll">
     <section class="modal-body">
-      <h3 class="modal-section-title">All fields</h3>
+      <h3 class="modal-section-title">Bead details</h3>
       <dl class="field-grid">
         {% for f in fields %}
         <div class="field field-kind-{{ f.kind }} {% if f.short_meta %}field-short{% else %}field-wide{% endif %}">

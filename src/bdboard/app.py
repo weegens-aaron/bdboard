@@ -293,26 +293,33 @@ async def api_counts(request: Request) -> HTMLResponse:
     )
 
 
-# ----- bead detail (the bug fix the user actually asked for) -----
+# ----- bead detail -----
 
 
 @app.get("/api/bead/{bead_id}", response_class=HTMLResponse)
 async def api_bead(request: Request, bead_id: str) -> HTMLResponse:
-    """Synchronous bead-detail render. Tries `bd show --long --json` for the
-    full field set; falls back to the cached bd-list snapshot if the show
-    call fails or times out, so the modal *always* renders something
-    useful — that's the whole point of this rewrite."""
+    """Render bead detail.
+
+    Prefer `bd show --long --json` for full fields. If that call fails,
+    fall back to the cached list snapshot so the modal still renders useful
+    content instead of hard-failing.
+    """
     full, err = await bd.show_long(bead_id)
     bead: dict[str, Any] | None = full
-    source = "bd show --long"
+    source = "Live details"
     if bead is None:
         # Ensure the snapshot is populated for the fallback lookup.
         await store.snapshot()
         bead = store.bead(bead_id)
-        source = "bd list (fallback — bd show failed)"
+        source = "Cached snapshot"
     if bead is None:
         return HTMLResponse(
-            f"<div class='modal-error'>bead <code>{bead_id}</code> not found</div>",
+            (
+                "<div class='modal-error'>"
+                "We couldn’t find that bead. "
+                "Please refresh the board and try again."
+                "</div>"
+            ),
             status_code=404,
         )
     return TEMPLATES.TemplateResponse(
@@ -322,7 +329,11 @@ async def api_bead(request: Request, bead_id: str) -> HTMLResponse:
             "bead": bead,
             "fields": _ordered_fields(bead),
             "source": source,
-            "warning": err if full is None and err else None,
+            "warning": (
+                "Showing cached details while live data is temporarily unavailable."
+                if full is None and err
+                else None
+            ),
         },
     )
 
@@ -395,19 +406,15 @@ async def _hydrate_epic_dependencies(
     return enriched
 
 
-# Field display order in the modal: identity first, then state, then
-# everything else. Anything not in this list gets appended alphabetically
-# so we never silently hide a new bd field.
-# Field display order in the modal: identity anchors first, then the
-# CONTENT (what does this work entail? — description, acceptance criteria,
-# dependencies), then meta/state info, then bulk/diagnostic at the bottom.
-# Anything not in this list gets appended alphabetically so we never
-# silently hide a new bd field.
+# Field display order in the modal: identity anchors first, then
+# content (what does this work entail?), then state/meta, then bulk
+# diagnostic fields at the bottom. Anything not listed is appended
+# alphabetically so we never silently hide new bd fields.
 _FIELD_ORDER = [
     # ─ identity anchors ─
     "id",
     "title",
-    # ─ content: what is this work? (Aaron's preferred top-of-modal) ─
+    # ─ content: what is this work? ─
     "description",
     "acceptance_criteria",
     "deps",
@@ -502,9 +509,10 @@ def _is_short_meta_field(key: str, kind: str) -> bool:
 
 
 def _ordered_fields(bead: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return field rows in display order, exposing every non-hidden bd field
-    so v0 ships with zero 'oh that's not shown' surprises. Each row carries
-    render hints so the template can stay mostly declarative."""
+    """Return field rows in display order, exposing every non-hidden bd field.
+
+    Each row carries render hints so the template can stay mostly declarative.
+    """
     seen: set[str] = set()
     out: list[dict[str, Any]] = []
     for k in _FIELD_ORDER:
@@ -539,8 +547,8 @@ def _shape_audit(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     bd's underlying dolt commits include no-op rewrites (auto-export re-
     serializing the same content); those produce empty diffs and would
-    otherwise spam the audit panel with N identical '(initial)' rows.
-    We skip them — same trick bcc uses in its audit handler.
+    otherwise spam the audit panel with repeated no-op rows.
+    We skip them for signal-to-noise quality.
 
     The oldest entry (last in the list, since bd history returns descending)
     is always shown as 'created' regardless of diff, so the audit has a

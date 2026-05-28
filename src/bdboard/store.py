@@ -20,13 +20,11 @@ Two access patterns:
     leaves issue state unchanged (e.g. a `bd remember` adding a
     memory) doesn't spam SSE.
 
-Why structural equality (==) instead of sorted-line sha256:
+Why structural equality (==):
 bd list --json returns a deterministically-sorted list of dicts.
-Python's == compares lists/dicts structurally, so prev == new is
-exactly the question "did any issue field change". O(n) but n is
-tiny (~50 beads on this workspace; would still be cheap at 10k).
-The old sorted-line hash was a workaround for the JSONL exporter's
-non-deterministic ordering, which we no longer touch.
+Python's == compares lists/dicts structurally, so prev == new directly
+answers "did any issue field change". O(n) and cheap for expected
+workspace sizes.
 """
 
 from __future__ import annotations
