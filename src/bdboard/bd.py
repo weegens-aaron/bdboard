@@ -156,9 +156,7 @@ class BdClient:
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
-                raise RuntimeError(
-                    f"bd {' '.join(args)} timed out after {timeout}s"
-                )
+                raise RuntimeError(f"bd {' '.join(args)} timed out after {timeout}s")
             if proc.returncode != 0:
                 msg = stderr.decode("utf-8", errors="replace").strip().splitlines()
                 first = msg[0] if msg else "(no stderr)"
@@ -166,9 +164,7 @@ class BdClient:
             try:
                 return json.loads(stdout)
             except json.JSONDecodeError as e:
-                raise RuntimeError(
-                    f"bd {' '.join(args)} returned invalid JSON: {e}"
-                )
+                raise RuntimeError(f"bd {' '.join(args)} returned invalid JSON: {e}")
 
     async def _cached(
         self,

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import socket
-import sys
 import threading
 import time
 import webbrowser
@@ -23,9 +22,7 @@ def _run(
     addr: str = typer.Option("127.0.0.1:7332", help="HTTP listen address"),
     no_browser: bool = typer.Option(False, "--no-browser", help="don't auto-launch"),
     bd_bin: str = typer.Option("bd", "--bd", help="path to bd binary"),
-    workspace: Path = typer.Option(
-        None, "--dir", help="workspace dir (default: cwd)"
-    ),
+    workspace: Path = typer.Option(None, "--dir", help="workspace dir (default: cwd)"),
     strict_port: bool = typer.Option(
         False,
         "--strict-port",
