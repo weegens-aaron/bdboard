@@ -136,3 +136,51 @@ def test_epic_lane_promotes_ready_when_no_active_epic():
 
     lane = derive.epic_lane(beads)
     assert lane[0]["id"] == "ready-epic"
+
+
+def test_epic_lane_displays_blocked_badge_for_open_epics_with_unmet_blockers():
+    """Epics with status=open but unmet blocking dependencies must show Blocked badge.
+
+    Regression test for bdboard-vja: blocked epics were rendering as Open.
+    """
+    beads = [
+        _bead(
+            "ready-epic",
+            issue_type="epic",
+            status="open",
+            dependencies=[],
+        ),
+        _bead(
+            "blocked-by-open-epic",
+            issue_type="epic",
+            status="open",
+            dependencies=[{"id": "ready-epic", "dependency_type": "blocks"}],
+        ),
+        _bead(
+            "blocked-by-closed-epic",
+            issue_type="epic",
+            status="open",
+            dependencies=[{"id": "closed-epic", "dependency_type": "blocks"}],
+        ),
+        _bead(
+            "closed-epic",
+            issue_type="epic",
+            status="closed",
+        ),
+    ]
+
+    lane = derive.epic_lane(beads)
+    status_map = {b["id"]: b["status_key"] for b in lane}
+    badge_map = {b["id"]: (b["status_icon"], b["status_label"]) for b in lane}
+
+    # ready-epic has no blockers → should be "open"
+    assert status_map["ready-epic"] == "open"
+    assert badge_map["ready-epic"] == ("○", "Open")
+
+    # blocked-by-open-epic depends on ready-epic (which is open) → should be "blocked"
+    assert status_map["blocked-by-open-epic"] == "blocked"
+    assert badge_map["blocked-by-open-epic"] == ("⛔", "Blocked")
+
+    # blocked-by-closed-epic depends on closed-epic (which is closed) → no longer blocked, should be "open"
+    assert status_map["blocked-by-closed-epic"] == "open"
+    assert badge_map["blocked-by-closed-epic"] == ("○", "Open")

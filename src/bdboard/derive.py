@@ -157,9 +157,13 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not active_epics:
         return []
 
-    by_id = {b.get("id"): b for b in active_epics if b.get("id")}
-    succ: dict[str, set[str]] = {bid: set() for bid in by_id}
-    indegree: dict[str, int] = {bid: 0 for bid in by_id}
+    # Build by_id from all beads (not just active epics) so closed dependencies
+    # can be correctly identified when checking _has_unmet_blocking_dep.
+    by_id = {b.get("id"): b for b in beads if b.get("id")}
+    # Build dependency graph structures only for active epics.
+    active_ids = {b.get("id") for b in active_epics if b.get("id")}
+    succ: dict[str, set[str]] = {bid: set() for bid in active_ids}
+    indegree: dict[str, int] = {bid: 0 for bid in active_ids}
 
     for b in active_epics:
         dep_list = b.get("deps") or b.get("dependencies") or []
@@ -176,14 +180,17 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 or dep.get("id")
                 or dep.get("dependsOnId")
             )
-            if predecessor_id not in by_id:
+            # Only wire up dependencies between active epics. We keep by_id
+            # comprehensive for _has_unmet_blocking_dep checks, but the
+            # topology graph only includes active epics.
+            if predecessor_id not in active_ids:
                 continue
             # Current issue depends on predecessor: predecessor -> current.
             if this_id not in succ[predecessor_id]:
                 succ[predecessor_id].add(this_id)
                 indegree[this_id] += 1
 
-    undirected: dict[str, set[str]] = {bid: set() for bid in by_id}
+    undirected: dict[str, set[str]] = {bid: set() for bid in active_ids}
     for u, vs in succ.items():
         for v in vs:
             undirected[u].add(v)
@@ -192,7 +199,7 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     wired_components: list[set[str]] = []
     unwired: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for bid in sorted(by_id, key=lambda k: _stable_key(by_id[k])):
+    for bid in sorted(active_ids, key=lambda k: _stable_key(by_id[k])):
         if bid in seen:
             continue
         stack = [bid]
@@ -231,7 +238,14 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     out: list[dict[str, Any]] = []
     for b in ordered:
-        status_key = (b.get("status") or "unknown").lower()
+        raw_status = (b.get("status") or "unknown").lower()
+        # Derive effective status: if status is open (not yet started) but has
+        # unmet blocking dependencies, display as blocked. Don't override
+        # in_progress — if work is already underway, show it as such.
+        if raw_status == "open" and _has_unmet_blocking_dep(b, by_id):
+            status_key = "blocked"
+        else:
+            status_key = raw_status
         icon, label = _STATUS_META.get(
             status_key, ("?", status_key.replace("_", " ").title())
         )
