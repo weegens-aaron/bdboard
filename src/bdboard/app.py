@@ -38,6 +38,7 @@ def _safe_cwd() -> str:
     except (PermissionError, OSError):
         return os.environ.get("PWD") or "/"
 
+
 # ----- module-level singletons (one per process) -----
 
 _PKG_DIR = Path(__file__).parent
@@ -413,6 +414,28 @@ _KIND_COMMENTS = {"comments"}
 # are short prose that still benefit from inline link / emphasis support.
 _KIND_MARKDOWN = {"description", "notes", "close_reason", "acceptance_criteria"}
 
+# Short scalar-ish metadata fields that benefit from a compact two-column
+# layout in the modal (less vertical churn, faster scanning).
+_SHORT_META_FIELDS = {
+    "issue_type",
+    "status",
+    "priority",
+    "assignee",
+    "owner",
+    "created_by",
+    "created_at",
+    "started_at",
+    "updated_at",
+    "closed_at",
+    "parent",
+    "external_ref",
+    "estimate",
+    "story_points",
+    "dependency_count",
+    "dependent_count",
+    "comment_count",
+}
+
 
 def _classify_field(key: str, val: Any) -> str:
     """Pick a render kind for a (key, value) pair. The template uses this
@@ -432,20 +455,43 @@ def _classify_field(key: str, val: Any) -> str:
     return "scalar"
 
 
+def _is_short_meta_field(key: str, kind: str) -> bool:
+    """Whether this field should render in the compact half-width metadata grid."""
+    if key not in _SHORT_META_FIELDS:
+        return False
+    return kind in {"scalar", "empty", "chips"}
+
+
 def _ordered_fields(bead: dict[str, Any]) -> list[dict[str, Any]]:
     """Return field rows in display order, exposing every non-hidden bd field
     so v0 ships with zero 'oh that's not shown' surprises. Each row carries
-    a 'kind' so the template can dispatch on render style."""
+    render hints so the template can stay mostly declarative."""
     seen: set[str] = set()
     out: list[dict[str, Any]] = []
     for k in _FIELD_ORDER:
         if k in bead and k not in _HIDDEN:
-            out.append({"key": k, "val": bead[k], "kind": _classify_field(k, bead[k])})
+            kind = _classify_field(k, bead[k])
+            out.append(
+                {
+                    "key": k,
+                    "val": bead[k],
+                    "kind": kind,
+                    "short_meta": _is_short_meta_field(k, kind),
+                }
+            )
             seen.add(k)
     for k in sorted(bead.keys()):
         if k in seen or k in _HIDDEN:
             continue
-        out.append({"key": k, "val": bead[k], "kind": _classify_field(k, bead[k])})
+        kind = _classify_field(k, bead[k])
+        out.append(
+            {
+                "key": k,
+                "val": bead[k],
+                "kind": kind,
+                "short_meta": _is_short_meta_field(k, kind),
+            }
+        )
     return out
 
 
@@ -465,7 +511,7 @@ def _shape_audit(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     n = len(entries)
     for i, hist in enumerate(entries):
         issue = hist.get("Issue") or {}
-        is_oldest = (i == n - 1)
+        is_oldest = i == n - 1
         if is_oldest:
             what = "created"
         else:

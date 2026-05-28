@@ -162,6 +162,13 @@ pre { margin: 0; }
    bead list scrolls inside it — canonical kanban behavior.
    ============================================================ */
 .lanes-region {
+  /* Fill all horizontal space regardless of content density.
+     Without explicit flex growth, this flex child can size to
+     intrinsic content width, which makes empty-lane states look
+     collapsed on wide viewports. */
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
@@ -465,28 +472,47 @@ pre { margin: 0; }
 .status-resolved,
 .status-done        { background: #e6f3e0; color: var(--brand-green); }
 
-/* Field grid in modal */
+/* Field grid in modal
+   - Short metadata rows render 2-up (field-short)
+   - Long/prose/structured fields span full width (field-wide)
+*/
 .field-grid {
   display: grid;
-  grid-template-columns: 160px 1fr;
-  row-gap: 8px;
-  column-gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
   margin: 0;
 }
 .field {
-  display: contents;
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper-3);
+  padding: 8px 10px;
+  min-width: 0;
 }
+.field-short { grid-column: span 1; }
+.field-wide { grid-column: 1 / -1; }
 .field-key {
+  margin: 0 0 4px;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
-  padding-top: 2px;
 }
 .field-val {
   margin: 0;
   font-family: var(--serif);
   font-size: 14px;
   word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+  .field-short,
+  .field-wide {
+    grid-column: 1 / -1;
+  }
 }
 .field-json {
   font-family: var(--mono);

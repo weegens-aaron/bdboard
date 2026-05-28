@@ -18,7 +18,7 @@
       <h3 class="modal-section-title">All fields</h3>
       <dl class="field-grid">
         {% for f in fields %}
-        <div class="field field-kind-{{ f.kind }}">
+        <div class="field field-kind-{{ f.kind }} {% if f.short_meta %}field-short{% else %}field-wide{% endif %}">
           <dt class="field-key">{{ f.key }}</dt>
           <dd class="field-val">
             {% if f.kind == "empty" %}
