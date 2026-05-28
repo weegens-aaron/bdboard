@@ -79,11 +79,22 @@ Then continue with your original bead.
 
 **BLOCKING — file with triage marker, fix inline, finish work:**
 ```bash
-bd create --type=bug --priority=1 --blocks=<current-bead-id> \
+# 1. File the bug with a discovered-from edge (NOT blocks).
+#    Use discovered-from because after you fix inline the current bead
+#    is no longer waiting on it — the bug bead exists for separate
+#    verification later. A `blocks` edge here creates a self-deadlock:
+#    the current bead can't close because the (intentionally) still-open
+#    bug remains a blocker. discovered-from preserves traceability without
+#    blocking close. (Learned the hard way via bdboard-lng ↔ bdboard-3y7.)
+bd create --type=bug --priority=1 \
   --title="<short title>" \
   --description="[bead-chain:triaged] <what you saw, what you fixed inline, why it blocked>"
+# Capture the returned id as <new-bug-id>, then:
+bd dep add <current-bead-id> <new-bug-id> -t discovered-from
 ```
 Then fix the bug as part of this bead's work (scope expansion), finish the original goal, and present both in your summary so the judges see the expanded scope. The filed bug stays open for a future iteration's proper verification — that's intentional, not a defect.
+
+> **DO NOT** use `--blocks=<current-bead-id>` for triaged-and-fixed-inline bugs. That edge persists after you finish, and `bd close` will refuse to close your bead because the (intentionally) still-open bug remains a blocker. Use `discovered-from` instead.
 
 **The bug-discovery protocol is about *filing*, not closing.** Do NOT close any bead yourself (see Critical Don'ts).
 
