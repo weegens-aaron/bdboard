@@ -41,7 +41,7 @@ uv pip install -e .
 
 ## Behavior highlights
 
-- **Lanes** — Backlog / Ready / In-Progress / Blocked / Closed are derived in-process from `bd list --json` snapshots
+- **Lanes** — Deferred / Ready / In-Progress / Blocked / Closed are derived in-process from `bd list --json` snapshots
 - **Activity** — derived from `updated_at` / `closed_at` / `created_at` because bd doesn't expose a global audit feed; rendered as a swim lane alongside the bead lanes
 - **JSONL freshness** — bdboard reads bead state via `bd list --all --no-pager --limit 0 --json` (the dolt-native, always-fresh path). We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher walks `.beads/` recursively so any dolt write inside `.beads/embeddeddolt/` triggers a refresh within ~250ms (debounced) + ~1s cooldown. SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
 

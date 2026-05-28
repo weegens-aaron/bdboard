@@ -1,4 +1,4 @@
-{% set lane_titles = {"backlog": "Backlog", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked", "closed": "Closed"} %}
+{% set lane_titles = {"deferred": "Deferred", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked", "closed": "Closed"} %}
 
 <section class="epic-lane" aria-label="Epic lane">
   <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
@@ -30,7 +30,7 @@
 </section>
 
 <div class="lanes">
-  {% for key in ["backlog", "blocked", "ready", "in_progress", "closed"] %}
+  {% for key in ["deferred", "blocked", "ready", "in_progress", "closed"] %}
   <div class="lane lane-{{ key }}" {% if key == "closed" %}data-lane="closed"{% endif %}>
     <h2 class="lane-title">
       <span class="lane-name">{{ lane_titles[key] }}</span>

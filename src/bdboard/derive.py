@@ -8,7 +8,7 @@ Lane assignment rules:
     - Blocked     : status == 'blocked' OR (status == 'open' AND has unmet
                     blocking dependency)
     - Ready       : status == 'open' AND no unmet blocking dependencies
-    - Backlog     : everything else open-ish
+    - Deferred    : everything else open-ish
     - Closed      : status in {closed, resolved, done}. Capped at
                     CLOSED_LANE_LIMIT and sorted by closed_at desc so the
                     most recent wins are most visible.
@@ -23,7 +23,7 @@ from typing import Any
 
 # Lane keys are stable identifiers used in template selectors.
 # Order here is informational only — the template controls render order.
-LANES = ("backlog", "ready", "in_progress", "blocked", "closed")
+LANES = ("deferred", "ready", "in_progress", "blocked", "closed")
 
 # Cap the closed lane so a project with thousands of closed beads doesn't
 # tank page render. Recently-closed is what people actually want to see;
@@ -83,7 +83,7 @@ def _epic_lane_rank(bead: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> i
       0: actively in progress
       1: next-ready (open with no unmet blocking dependency)
       2: blocked (explicit blocked status or open with unmet blocker)
-      3: deferred/backlog-ish
+      3: deferred
       4: anything else
     """
     status = (bead.get("status") or "").lower()
@@ -93,7 +93,7 @@ def _epic_lane_rank(bead: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> i
         return 2 if _has_unmet_blocking_dep(bead, by_id) else 1
     if status == "blocked":
         return 2
-    if status in {"deferred", "backlog"}:
+    if status == "deferred":
         return 3
     return 4
 
@@ -281,9 +281,9 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
             else:
                 buckets["ready"].append(b)
         else:
-            buckets["backlog"].append(b)
+            buckets["deferred"].append(b)
 
-    for k in ("backlog", "ready", "in_progress", "blocked"):
+    for k in ("deferred", "ready", "in_progress", "blocked"):
         buckets[k].sort(
             key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at")))
         )

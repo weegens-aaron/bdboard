@@ -418,7 +418,7 @@ pre { margin: 0; }
 .lane-ready     .lane-title { color: var(--ok); }
 .lane-in_progress .lane-title { color: var(--brand-blue); }
 .lane-blocked   .lane-title { color: var(--accent); }
-.lane-backlog   .lane-title { color: var(--muted); }
+.lane-deferred  .lane-title { color: var(--muted); }
 .lane-activity  .lane-title { color: var(--violet); }
 
 /* ============================================================
