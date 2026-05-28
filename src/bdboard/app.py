@@ -443,9 +443,13 @@ async def _hydrate_epic_dependencies(
         full = by_id.get(bead_id)
         if not full:
             continue
-        for key in ("deps", "dependencies", "dependency_count"):
-            if key in full:
-                epic[key] = full.get(key)
+        # Use helper to normalize dependency field access
+        dep_list = derive.get_dependency_list(full)
+        if dep_list:
+            epic["dependencies"] = dep_list
+        # Also preserve dependency_count if present
+        if "dependency_count" in full:
+            epic["dependency_count"] = full["dependency_count"]
     return enriched
 
 

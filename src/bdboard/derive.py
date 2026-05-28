@@ -44,6 +44,49 @@ _STATUS_META: dict[str, tuple[str, str]] = {
 }
 
 
+# ----- Dependency field access helpers -----
+
+
+def get_dependency_list(bead: dict) -> list[dict]:
+    """Extract dependency list from a bead, normalizing field name variations.
+
+    bd beads may store dependencies under 'deps' or 'dependencies'.
+    Returns an empty list if neither field is present.
+    """
+    return bead.get("deps") or bead.get("dependencies") or []
+
+
+def get_dependency_type(dep: dict) -> str:
+    """Extract dependency type, normalizing field name variations.
+
+    Dependency type may be stored as 'type' or 'dependency_type'.
+    Returns normalized lowercase string, or empty string if not found.
+    """
+    return (dep.get("type") or dep.get("dependency_type") or "").lower()
+
+
+def get_dependency_target_id(dep: dict) -> str | None:
+    """Extract target ID from a dependency dict with fallback chain.
+
+    Target ID may be stored under multiple field names:
+    - depends_on_id (preferred)
+    - target
+    - id
+    - dependsOnId (legacy camelCase)
+
+    Returns the first non-None value found, or None if all fields are missing.
+    """
+    return (
+        dep.get("depends_on_id")
+        or dep.get("target")
+        or dep.get("id")
+        or dep.get("dependsOnId")
+    )
+
+
+# ----- Lane assignment logic -----
+
+
 def _is_epic(bead: dict[str, Any]) -> bool:
     return (bead.get("issue_type") or "").lower() == "epic"
 
@@ -55,17 +98,12 @@ def _is_closed(status: str) -> bool:
 def _has_unmet_blocking_dep(bead: dict[str, Any], by_id: dict[str, dict]) -> bool:
     """A bead is functionally blocked if any of its `blocks` / `blocked-by`
     dependency targets are not yet closed."""
-    deps = bead.get("deps") or bead.get("dependencies") or []
+    deps = get_dependency_list(bead)
     for d in deps:
-        dep_type = (d.get("type") or d.get("dependency_type") or "").lower()
+        dep_type = get_dependency_type(d)
         if dep_type not in ("blocks", "blocked-by", "blocked_by"):
             continue
-        target_id = (
-            d.get("depends_on_id")
-            or d.get("target")
-            or d.get("id")
-            or d.get("dependsOnId")
-        )
+        target_id = get_dependency_target_id(d)
         target = by_id.get(target_id)
         if target is None:
             # unknown target — treat as unmet, conservative
@@ -169,20 +207,15 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     indegree: dict[str, int] = {bid: 0 for bid in active_ids}
 
     for b in active_epics:
-        dep_list = b.get("deps") or b.get("dependencies") or []
+        dep_list = get_dependency_list(b)
         this_id = b.get("id")
         if not this_id:
             continue
         for dep in dep_list:
-            dep_type = (dep.get("type") or dep.get("dependency_type") or "").lower()
+            dep_type = get_dependency_type(dep)
             if dep_type not in ("blocks", "blocked-by", "blocked_by"):
                 continue
-            predecessor_id = (
-                dep.get("depends_on_id")
-                or dep.get("target")
-                or dep.get("id")
-                or dep.get("dependsOnId")
-            )
+            predecessor_id = get_dependency_target_id(dep)
             # Only wire up dependencies between active epics. We keep by_id
             # comprehensive for _has_unmet_blocking_dep checks, but the
             # topology graph only includes active epics.
