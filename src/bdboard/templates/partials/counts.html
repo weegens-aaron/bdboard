@@ -1,6 +1,6 @@
 <dl class="counts">
   {% for status, n in counts.items() %}
-  <div class="counts-cell">
+  <div class="counts-cell {% if n == 0 %}counts-cell-zero{% endif %}">
     <dt class="counts-label">{{ status }}</dt>
     <dd class="counts-value">{{ n }}</dd>
   </div>

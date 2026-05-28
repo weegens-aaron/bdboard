@@ -333,11 +333,29 @@ def activity(beads: list[dict[str, Any]], limit: int = 25) -> list[dict[str, Any
 
 
 def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
-    """Top-of-page counts shown in the masthead."""
+    """Top-of-page counts shown in the masthead.
+
+    Always returns a fixed set of statuses in a stable order to prevent
+    layout jitter when counts reach zero. Zero-value counts are included
+    to maintain consistent header geometry.
+    """
+    # Fixed status order for stable header layout
+    status_order = ["open", "in_progress", "blocked", "deferred", "closed"]
+
+    # Count actual beads by status
     by_status: dict[str, int] = defaultdict(int)
     for b in beads:
         by_status[(b.get("status") or "unknown").lower()] += 1
-    return dict(by_status)
+
+    # Build ordered dict with all statuses, including zeros
+    result = {status: by_status.get(status, 0) for status in status_order}
+
+    # Include any non-standard statuses that actually exist
+    for status, count in by_status.items():
+        if status not in result and count > 0:
+            result[status] = count
+
+    return result
 
 
 def _epoch(ts: str | None) -> float:
