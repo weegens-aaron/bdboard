@@ -8,11 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from css_test_utils import (
-    contrast_ratio,
-    extract_style_property,
-    parse_css_variables,
-)
+from css_test_utils import extract_style_property, parse_css_variables
+from wcag_utils import contrast_ratio
 
 CSS_PATH = Path("src/bdboard/static/styles.css")
 # Status values that can appear in modal bead detail views

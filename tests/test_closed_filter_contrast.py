@@ -6,11 +6,8 @@ distinct, not color-alone, and pass WCAG 2.2 AA contrast.
 
 from pathlib import Path
 
-from css_test_utils import (
-    contrast_ratio,
-    extract_style_property,
-    parse_css_variables,
-)
+from css_test_utils import extract_style_property, parse_css_variables
+from wcag_utils import contrast_ratio
 
 
 def _extract_filter_badge_colors(css_content: str) -> dict[str, tuple[str, str]]:

@@ -1,18 +1,12 @@
-"""Shared CSS parsing and WCAG contrast test utilities.
+"""Shared CSS parsing utilities for test suite.
 
-Provides reusable functions for extracting CSS properties, resolving CSS
-variables, and computing WCAG 2.2 contrast ratios.
+Provides reusable functions for extracting CSS properties and resolving CSS
+variables. For WCAG contrast calculations, use wcag_utils module.
 """
 
 from __future__ import annotations
 
 import re
-
-from wcag_utils import (
-    contrast_ratio as _contrast_ratio,
-    hex_to_rgb as _hex_to_rgb,
-    relative_luminance as _relative_luminance,
-)
 
 
 def parse_css_variables(css: str) -> dict[str, str]:
@@ -113,41 +107,3 @@ def extract_style_property(
         value = resolve_css_value(value, variables)
 
     return value
-
-
-def hex_to_rgb(color: str) -> tuple[int, int, int]:
-    """Convert #rrggbb hex color to (r, g, b) tuple.
-
-    Args:
-        color: Hex color string (e.g., "#ff0000" or "ff0000")
-
-    Returns:
-        RGB tuple with values 0-255
-    """
-    return _hex_to_rgb(color)
-
-
-def relative_luminance(color: str) -> float:
-    """Compute relative luminance per WCAG definition.
-
-    Args:
-        color: Hex color string (e.g., "#ff0000")
-
-    Returns:
-        Relative luminance value (0.0 to 1.0)
-    """
-    rgb = _hex_to_rgb(color)
-    return _relative_luminance(rgb)
-
-
-def contrast_ratio(foreground: str, background: str) -> float:
-    """Compute WCAG contrast ratio between foreground and background colors.
-
-    Args:
-        foreground: Hex color string for text/foreground
-        background: Hex color string for background
-
-    Returns:
-        Contrast ratio (1.0 to 21.0)
-    """
-    return _contrast_ratio(foreground, background)
