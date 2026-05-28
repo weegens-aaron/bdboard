@@ -40,50 +40,52 @@
         }
       });
 
-      // Closed lane filter logic.
-      // Filters closed beads by their closed_at timestamp (1d / 7d / all).
+      // Parameterized time filter logic.
+      // Filters items by timestamp based on configurable time windows.
       // Selection persists via sessionStorage across SSE refreshes.
-      function applyClosedFilter(filter) {
-        const lane = document.querySelector('[data-lane="closed"]');
+      //
+      // config: {
+      //   laneDataAttr: string (e.g., 'closed' or 'activity'),
+      //   itemSelector: string (e.g., '.bead-card[data-closed-at]'),
+      //   timestampAttr: string (e.g., 'data-closed-at'),
+      //   timeWindows: object mapping filter names to milliseconds (e.g., { '1d': 86400000, '7d': 604800000, 'all': null }),
+      //   countAttr: string (e.g., 'data-closed-count'),
+      //   storageKey: string (e.g., 'bdboard-closed-filter')
+      // }
+      function applyTimeFilter(config) {
+        const lane = document.querySelector(`[data-lane="${config.laneDataAttr}"]`);
         if (!lane) return;
 
         const now = Date.now();
-        const oneDayMs = 24 * 60 * 60 * 1000;
-        const sevenDaysMs = 7 * oneDayMs;
-
-        const cards = lane.querySelectorAll('.bead-card[data-closed-at]');
+        const items = lane.querySelectorAll(config.itemSelector);
         let visibleCount = 0;
 
-        cards.forEach(card => {
-          const closedAt = card.getAttribute('data-closed-at');
-          if (!closedAt) {
-            card.style.display = '';
+        items.forEach(item => {
+          const timestamp = item.getAttribute(config.timestampAttr);
+          if (!timestamp) {
+            item.style.display = '';
             visibleCount++;
             return;
           }
 
-          const closedDate = new Date(closedAt.replace('Z', '+00:00'));
-          const ageMs = now - closedDate.getTime();
+          const itemDate = new Date(timestamp.replace('Z', '+00:00'));
+          const ageMs = now - itemDate.getTime();
 
-          let show = true;
-          if (filter === '1d') {
-            show = ageMs <= oneDayMs;
-          } else if (filter === '7d') {
-            show = ageMs <= sevenDaysMs;
-          }
-          // 'all' shows everything
+          // Determine visibility based on configured time window
+          const filterValue = config.timeWindows[config.currentFilter];
+          const show = filterValue === null || ageMs <= filterValue;
 
-          card.style.display = show ? '' : 'none';
+          item.style.display = show ? '' : 'none';
           if (show) visibleCount++;
         });
 
         // Update count to reflect filtered total
-        const countEl = lane.querySelector('[data-closed-count]');
+        const countEl = lane.querySelector(`[${config.countAttr}]`);
         if (countEl) countEl.textContent = visibleCount;
 
         // Update active badge styling
         lane.querySelectorAll('.filter-badge').forEach(badge => {
-          if (badge.getAttribute('data-filter') === filter) {
+          if (badge.getAttribute('data-filter') === config.currentFilter) {
             badge.classList.add('filter-badge-active');
             badge.setAttribute('aria-pressed', 'true');
           } else {
@@ -93,65 +95,43 @@
         });
 
         // Persist selection
-        sessionStorage.setItem('bdboard-closed-filter', filter);
+        sessionStorage.setItem(config.storageKey, config.currentFilter);
       }
 
-      // Activity lane filter logic.
-      // Filters activity rows by their timestamp (1h / 12h / 1d).
-      // Selection persists via sessionStorage across SSE refreshes.
+      // Closed lane filter: wrapper around applyTimeFilter.
+      function applyClosedFilter(filter) {
+        const oneDayMs = 24 * 60 * 60 * 1000;
+        applyTimeFilter({
+          laneDataAttr: 'closed',
+          itemSelector: '.bead-card[data-closed-at]',
+          timestampAttr: 'data-closed-at',
+          timeWindows: {
+            '1d': oneDayMs,
+            '7d': 7 * oneDayMs,
+            'all': null
+          },
+          countAttr: 'data-closed-count',
+          storageKey: 'bdboard-closed-filter',
+          currentFilter: filter
+        });
+      }
+
+      // Activity lane filter: wrapper around applyTimeFilter.
       function applyActivityFilter(filter) {
-        const lane = document.querySelector('[data-lane="activity"]');
-        if (!lane) return;
-
-        const now = Date.now();
         const oneHourMs = 60 * 60 * 1000;
-        const twelveHoursMs = 12 * oneHourMs;
-        const oneDayMs = 24 * oneHourMs;
-
-        const rows = lane.querySelectorAll('.activity-row[data-activity-ts]');
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-          const ts = row.getAttribute('data-activity-ts');
-          if (!ts) {
-            row.style.display = '';
-            visibleCount++;
-            return;
-          }
-
-          const activityDate = new Date(ts.replace('Z', '+00:00'));
-          const ageMs = now - activityDate.getTime();
-
-          let show = true;
-          if (filter === '1h') {
-            show = ageMs <= oneHourMs;
-          } else if (filter === '12h') {
-            show = ageMs <= twelveHoursMs;
-          } else if (filter === '1d') {
-            show = ageMs <= oneDayMs;
-          }
-
-          row.style.display = show ? '' : 'none';
-          if (show) visibleCount++;
+        applyTimeFilter({
+          laneDataAttr: 'activity',
+          itemSelector: '.activity-row[data-activity-ts]',
+          timestampAttr: 'data-activity-ts',
+          timeWindows: {
+            '1h': oneHourMs,
+            '12h': 12 * oneHourMs,
+            '1d': 24 * oneHourMs
+          },
+          countAttr: 'data-activity-count',
+          storageKey: 'bdboard-activity-filter',
+          currentFilter: filter
         });
-
-        // Update count to reflect filtered total
-        const countEl = lane.querySelector('[data-activity-count]');
-        if (countEl) countEl.textContent = visibleCount;
-
-        // Update active badge styling
-        lane.querySelectorAll('.filter-badge').forEach(badge => {
-          if (badge.getAttribute('data-filter') === filter) {
-            badge.classList.add('filter-badge-active');
-            badge.setAttribute('aria-pressed', 'true');
-          } else {
-            badge.classList.remove('filter-badge-active');
-            badge.setAttribute('aria-pressed', 'false');
-          }
-        });
-
-        // Persist selection
-        sessionStorage.setItem('bdboard-activity-filter', filter);
       }
 
       // Wire up filter badge clicks and restore saved filters.
