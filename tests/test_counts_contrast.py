@@ -49,27 +49,24 @@ def test_zero_count_value_meets_wcag_aa_for_large_text():
     )
 
 
-def test_zero_count_label_contrast_documented():
+def test_zero_count_label_meets_wcag_aa_for_small_text():
     """
-    Zero-count labels use --muted-2 (#9e9fa3) on white background.
+    Zero-count labels use --muted (#74767c) on white background.
 
-    This is a 10px label (small text). WCAG AA requires 4.5:1 for small text.
-    The actual contrast is ~2.64:1, which is below the threshold.
+    WCAG 2.2 AA requires:
+    - Small text (under 18pt / under 14pt bold): 4.5:1 contrast ratio
 
-    However, the primary accessibility target is the large numeric value (24px),
-    which meets spec at 4.54:1. The label is supplementary visual context.
-
-    This test documents the known limitation.
+    The count label is 10px small text, so it must meet the 4.5:1 threshold.
     """
-    label_color = "#9e9fa3"  # var(--muted-2) = var(--gray-70)
+    label_color = "#74767c"  # var(--muted) = var(--gray-100)
     bg_color = "#ffffff"  # white background
 
     ratio = contrast_ratio(label_color, bg_color)
 
-    # Document that this is slightly under AA for small text
-    # We're not asserting failure here, just recording the value
-    assert 2.5 < ratio < 3.0, (
-        f"Expected label contrast to be ~2.64:1 (known limitation), got {ratio:.2f}:1"
+    # Must meet 4.5:1 for small text
+    assert ratio >= 4.5, (
+        f"Zero-count label contrast {ratio:.2f}:1 fails WCAG AA small text (4.5:1). "
+        f"Color: {label_color} on {bg_color}"
     )
 
 

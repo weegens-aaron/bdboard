@@ -148,7 +148,7 @@ pre { margin: 0; }
 }
 /* De-emphasize zero counts to reduce visual noise while maintaining layout stability */
 .counts-cell-zero .counts-label {
-  color: var(--muted-2);
+  color: var(--muted);
 }
 .counts-cell-zero .counts-value {
   color: var(--muted);
