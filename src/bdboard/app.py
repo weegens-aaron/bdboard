@@ -248,6 +248,7 @@ async def index(request: Request) -> HTMLResponse:
             status_code=500,
         )
     beads = await store.snapshot()
+    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads))
     return TEMPLATES.TemplateResponse(
         request,
         "dashboard.html",
@@ -255,6 +256,7 @@ async def index(request: Request) -> HTMLResponse:
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
             "counts": derive.counts(beads),
+            "epic_lane": epic_lane,
             "lanes": derive.lanes(beads),
             "activity": derive.activity(beads),
         },
@@ -270,10 +272,12 @@ async def api_lanes(request: Request) -> HTMLResponse:
     inside the same partial (and the same /api/lanes refresh) because it's
     now a regular lane — no separate sidebar, no separate endpoint."""
     beads = await store.snapshot()
+    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads))
     return TEMPLATES.TemplateResponse(
         request,
         "partials/lanes.html",
         {
+            "epic_lane": epic_lane,
             "lanes": derive.lanes(beads),
             "activity": derive.activity(beads),
         },
@@ -355,6 +359,41 @@ async def api_bead_raw(bead_id: str) -> JSONResponse:
 
 
 # ----- helpers -----
+
+
+async def _hydrate_epic_dependencies(
+    beads: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Enrich epics with dependency edges for sequencing.
+
+    `bd list` omits expanded dependency arrays; fetch per-epic long view and
+    graft only the dependency fields we need, preserving the original snapshot
+    for everything else.
+    """
+    enriched = [dict(b) for b in beads]
+    epics = [b for b in enriched if (b.get("issue_type") or "").lower() == "epic"]
+    if not epics:
+        return enriched
+
+    async def _load(epic: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+        bead_id = epic.get("id")
+        if not bead_id:
+            return "", None
+        full, _err = await bd.show_long(bead_id)
+        return bead_id, full
+
+    rows = await asyncio.gather(*(_load(epic) for epic in epics))
+    by_id = {bead_id: full for bead_id, full in rows if bead_id and full}
+    for epic in enriched:
+        bead_id = epic.get("id")
+        full = by_id.get(bead_id)
+        if not full:
+            continue
+        for key in ("deps", "dependencies", "dependency_count"):
+            if key in full:
+                epic[key] = full.get(key)
+    return enriched
+
 
 # Field display order in the modal: identity first, then state, then
 # everything else. Anything not in this list gets appended alphabetically

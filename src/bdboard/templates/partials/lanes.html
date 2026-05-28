@@ -1,4 +1,34 @@
 {% set lane_titles = {"backlog": "Backlog", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked", "closed": "Closed"} %}
+
+<section class="epic-lane" aria-label="Epic lane">
+  <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
+  <ul class="epic-strip" role="list">
+    {% for e in epic_lane %}
+    <li class="epic-chip"
+        hx-get="/api/bead/{{ e.id }}"
+        hx-target="#bead-modal"
+        hx-swap="innerHTML">
+      <div class="epic-chip-head">
+        <span class="bead-id">{{ e.id }}</span>
+        {% if e.priority is not none %}
+        <span class="bead-priority p{{ e.priority }}">P{{ e.priority }}</span>
+        {% endif %}
+      </div>
+      <div class="bead-title">{{ e.title }}</div>
+      <div class="epic-meta">
+        <span class="epic-status status-{{ e.status_key }}" aria-label="Status: {{ e.status_label }}">
+          <span class="epic-status-icon" aria-hidden="true">{{ e.status_icon }}</span>
+          <span class="epic-status-text">{{ e.status_label }}</span>
+        </span>
+        {% if e.assignee %}<span class="bead-assignee">{{ e.assignee }}</span>{% endif %}
+      </div>
+    </li>
+    {% else %}
+    <li class="lane-empty muted">(no active epics)</li>
+    {% endfor %}
+  </ul>
+</section>
+
 <div class="lanes">
   {% for key in ["backlog", "blocked", "ready", "in_progress", "closed"] %}
   <div class="lane lane-{{ key }}">
@@ -32,9 +62,6 @@
   </div>
   {% endfor %}
 
-  {# Activity is now a regular lane, not a sidebar pane. Same .lane chrome,
-     activity-row contents. Items are clickable just like bead cards and
-     pop the same bead modal. #}
   <div class="lane lane-activity">
     <h2 class="lane-title">
       <span class="lane-name">Activity</span>
