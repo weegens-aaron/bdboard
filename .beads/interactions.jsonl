@@ -1,0 +1,5 @@
+{"id":"int-93cc7216","kind":"field_change","created_at":"2026-05-28T14:30:00.865028Z","actor":"Aaron Weegens","issue_id":"bdboard-5tj","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
+{"id":"int-41715462","kind":"field_change","created_at":"2026-05-28T14:52:23.428067Z","actor":"Aaron Weegens","issue_id":"bdboard-68e","extra":{"field":"status","new_value":"open","old_value":"in_progress"}}
+{"id":"int-a7989d85","kind":"field_change","created_at":"2026-05-28T14:52:23.429939Z","actor":"Aaron Weegens","issue_id":"bdboard-68e","extra":{"field":"assignee","new_value":"","old_value":"Aaron Weegens"}}
+{"id":"int-5b6d9d6e","kind":"field_change","created_at":"2026-05-28T14:52:23.463172Z","actor":"Aaron Weegens","issue_id":"bdboard-4ll","extra":{"field":"status","new_value":"open","old_value":"in_progress"}}
+{"id":"int-a6b8cb70","kind":"field_change","created_at":"2026-05-28T14:52:23.469647Z","actor":"Aaron Weegens","issue_id":"bdboard-4ll","extra":{"field":"assignee","new_value":"","old_value":"Aaron Weegens"}}
