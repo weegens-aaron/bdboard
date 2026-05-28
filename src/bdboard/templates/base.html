@@ -40,6 +40,107 @@
         }
       });
 
+      // Closed lane filter logic.
+      // Filters closed beads by their closed_at timestamp (1d / 7d / all).
+      // Selection persists via sessionStorage across SSE refreshes.
+      function applyClosedFilter(filter) {
+        const lane = document.querySelector('[data-lane="closed"]');
+        if (!lane) return;
+
+        const now = Date.now();
+        const oneDayMs = 24 * 60 * 60 * 1000;
+        const sevenDaysMs = 7 * oneDayMs;
+
+        const cards = lane.querySelectorAll('.bead-card[data-closed-at]');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+          const closedAt = card.getAttribute('data-closed-at');
+          if (!closedAt) {
+            card.style.display = '';
+            visibleCount++;
+            return;
+          }
+
+          const closedDate = new Date(closedAt.replace('Z', '+00:00'));
+          const ageMs = now - closedDate.getTime();
+
+          let show = true;
+          if (filter === '1d') {
+            show = ageMs <= oneDayMs;
+          } else if (filter === '7d') {
+            show = ageMs <= sevenDaysMs;
+          }
+          // 'all' shows everything
+
+          card.style.display = show ? '' : 'none';
+          if (show) visibleCount++;
+        });
+
+        // Update count to reflect filtered total
+        const countEl = lane.querySelector('[data-closed-count]');
+        if (countEl) countEl.textContent = visibleCount;
+
+        // Update active badge styling
+        lane.querySelectorAll('.filter-badge').forEach(badge => {
+          if (badge.getAttribute('data-filter') === filter) {
+            badge.classList.add('filter-badge-active');
+            badge.setAttribute('aria-pressed', 'true');
+          } else {
+            badge.classList.remove('filter-badge-active');
+            badge.setAttribute('aria-pressed', 'false');
+          }
+        });
+
+        // Persist selection
+        sessionStorage.setItem('bdboard-closed-filter', filter);
+      }
+
+      // Wire up filter badge clicks and restore saved filter on load
+      document.addEventListener('htmx:afterSettle', (e) => {
+        // Only run when lanes partial loads
+        if (!e.detail.target.classList || !e.detail.target.classList.contains('lanes-region')) {
+          // Also handle full page load (dashboard.html)
+          const lanesRegion = document.querySelector('.lanes-region');
+          if (!lanesRegion) return;
+        }
+
+        const lane = document.querySelector('[data-lane="closed"]');
+        if (!lane) return;
+
+        // Wire up badge clicks
+        lane.querySelectorAll('.filter-badge').forEach(badge => {
+          badge.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            applyClosedFilter(badge.getAttribute('data-filter'));
+          });
+          badge.setAttribute('role', 'radio');
+        });
+
+        // Restore saved filter or default to 7d
+        const savedFilter = sessionStorage.getItem('bdboard-closed-filter') || '7d';
+        applyClosedFilter(savedFilter);
+      });
+
+      // Run on initial page load too
+      document.addEventListener('DOMContentLoaded', () => {
+        const lane = document.querySelector('[data-lane="closed"]');
+        if (!lane) return;
+
+        lane.querySelectorAll('.filter-badge').forEach(badge => {
+          badge.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            applyClosedFilter(badge.getAttribute('data-filter'));
+          });
+          badge.setAttribute('role', 'radio');
+        });
+
+        const savedFilter = sessionStorage.getItem('bdboard-closed-filter') || '7d';
+        applyClosedFilter(savedFilter);
+      });
+
       // SSE live-update wiring. Server pushes a 'beads_changed' event
       // whenever watched workspace data changes under .beads/. We fire a synthetic
       // 'refresh' DOM event on body; every region that wants live data
