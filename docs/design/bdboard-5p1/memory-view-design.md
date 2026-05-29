@@ -201,16 +201,17 @@ Browser ──GET /api/memory?q=──────► app.py: api_memory()
 
 ## 6. Child bead breakdown (for the epic)
 
-Proposed implementation beads under bdboard-12f. (Filed separately under the
-epic by this design; this section is the canonical plan.)
+Implementation beads filed under bdboard-12f (this design is the canonical
+plan; the bead IDs below are the filed instances, dependency-wired so that
+`bd ready` surfaces A and D first).
 
-| Bead | Title | Scope |
-| --- | --- | --- |
-| **A** | `Bd.memories()` client + JSON contract handling | Add async `memories(query)` to `bd.py` on `_run_json`; strip `schema_version`; sort by key; unit-test the empty/sentinel/search shapes. |
-| **B** | `/api/memory` partial + `memory_list.html` | HTMX list partial rendering key + markdown body; debounced server-side search; empty states. |
-| **C** | `/memory` full page + masthead nav | `memory.html` extends `base.html`; add minimal masthead nav linking `/` ⇄ `/memory`. |
-| **D** | Recency metadata spike / decision | Resolve the §2.2 gap: either consume an upstream bd field if/when it exists, or decide recency is permanently out of scope. Tracks the epic's "sortable by recency" criterion. |
-| **E** | Curate (create / edit / forget) from UI | Follow-up: wire `bd remember` / `bd forget` write paths, refresh invalidation, confirm-before-forget, SSE wiring. Gated behind A–C. |
+| Bead | ID | Title | Scope | Depends on |
+| --- | --- | --- | --- | --- |
+| **A** | bdboard-12f.1 | `Bd.memories()` client + JSON contract handling | Add async `memories(query)` to `bd.py` on `_run_json`; strip `schema_version`; sort by key; unit-test the empty/sentinel/search shapes. | — |
+| **B** | bdboard-12f.4 | `/api/memory` partial + `memory_list.html` | HTMX list partial rendering key + markdown body; debounced server-side search; empty states. | A |
+| **C** | bdboard-12f.5 | `/memory` full page + masthead nav | `memory.html` extends `base.html`; add minimal masthead nav linking `/` ⇄ `/memory`. | B |
+| **D** | bdboard-12f.2 | Recency metadata spike / decision | Resolve the §2.2 gap: either consume an upstream bd field if/when it exists, or decide recency is permanently out of scope. Tracks the epic's "sortable by recency" criterion. | — |
+| **E** | bdboard-12f.3 | Curate (create / edit / forget) from UI | Follow-up: wire `bd remember` / `bd forget` write paths, refresh invalidation, confirm-before-forget, SSE wiring. Gated behind A–C. | A, B, C |
 
 Acceptance mapping to the epic's Success Criteria:
 
