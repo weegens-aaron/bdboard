@@ -98,18 +98,23 @@
         sessionStorage.setItem(config.storageKey, config.currentFilter);
       }
 
+      // Unified time windows shared by the Closed and Activity lanes so the
+      // filter strip is predictable when the eye moves between lanes (bdboard-ah3).
+      const oneHourMs = 60 * 60 * 1000;
+      const oneDayMs = 24 * oneHourMs;
+      const UNIFIED_TIME_WINDOWS = {
+        '12h': 12 * oneHourMs,
+        '1d': oneDayMs,
+        '3d': 3 * oneDayMs
+      };
+
       // Closed lane filter: wrapper around applyTimeFilter.
       function applyClosedFilter(filter) {
-        const oneDayMs = 24 * 60 * 60 * 1000;
         applyTimeFilter({
           laneDataAttr: 'closed',
           itemSelector: '.bead-card[data-closed-at]',
           timestampAttr: 'data-closed-at',
-          timeWindows: {
-            '1d': oneDayMs,
-            '7d': 7 * oneDayMs,
-            'all': null
-          },
+          timeWindows: UNIFIED_TIME_WINDOWS,
           countAttr: 'data-closed-count',
           storageKey: 'bdboard-closed-filter',
           currentFilter: filter
@@ -118,16 +123,11 @@
 
       // Activity lane filter: wrapper around applyTimeFilter.
       function applyActivityFilter(filter) {
-        const oneHourMs = 60 * 60 * 1000;
         applyTimeFilter({
           laneDataAttr: 'activity',
           itemSelector: '.activity-row[data-activity-ts]',
           timestampAttr: 'data-activity-ts',
-          timeWindows: {
-            '1h': oneHourMs,
-            '12h': 12 * oneHourMs,
-            '1d': 24 * oneHourMs
-          },
+          timeWindows: UNIFIED_TIME_WINDOWS,
           countAttr: 'data-activity-count',
           storageKey: 'bdboard-activity-filter',
           currentFilter: filter
@@ -149,8 +149,8 @@
             badge.setAttribute('role', 'radio');
           });
 
-          // Restore saved filter or default to 7d
-          const savedFilter = sessionStorage.getItem('bdboard-closed-filter') || '7d';
+          // Restore saved filter or default to 1d
+          const savedFilter = sessionStorage.getItem('bdboard-closed-filter') || '1d';
           applyClosedFilter(savedFilter);
         }
 
@@ -166,8 +166,8 @@
             badge.setAttribute('role', 'radio');
           });
 
-          // Restore saved filter or default to 12h
-          const savedFilter = sessionStorage.getItem('bdboard-activity-filter') || '12h';
+          // Restore saved filter or default to 1d
+          const savedFilter = sessionStorage.getItem('bdboard-activity-filter') || '1d';
           applyActivityFilter(savedFilter);
         }
       }

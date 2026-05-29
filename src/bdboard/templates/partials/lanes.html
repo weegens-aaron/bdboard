@@ -36,9 +36,9 @@
       <span class="lane-name">{{ lane_titles[key] }}</span>
       {% if key == "closed" %}
       <div class="closed-filters">
-        <button class="filter-badge" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
-        <button class="filter-badge filter-badge-active" data-filter="7d" aria-label="Show beads closed in the last 7 days">7d</button>
-        <button class="filter-badge" data-filter="all" aria-label="Show all closed beads">all</button>
+        <button class="filter-badge" data-filter="12h" aria-label="Show beads closed in the last 12 hours">12h</button>
+        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
+        <button class="filter-badge" data-filter="3d" aria-label="Show beads closed in the last 3 days">3d</button>
       </div>
       {% endif %}
       <span class="lane-count" {% if key == "closed" %}data-closed-count="total"{% endif %}>{{ lanes[key]|length }}</span>
@@ -74,9 +74,9 @@
     <h2 class="lane-title">
       <span class="lane-name">Activity</span>
       <div class="activity-filters">
-        <button class="filter-badge" data-filter="1h" aria-label="Show activity from the last hour">1h</button>
-        <button class="filter-badge filter-badge-active" data-filter="12h" aria-label="Show activity from the last 12 hours">12h</button>
-        <button class="filter-badge" data-filter="1d" aria-label="Show activity from the last 24 hours">1d</button>
+        <button class="filter-badge" data-filter="12h" aria-label="Show activity from the last 12 hours">12h</button>
+        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show activity from the last 24 hours">1d</button>
+        <button class="filter-badge" data-filter="3d" aria-label="Show activity from the last 3 days">3d</button>
       </div>
       <span class="lane-count" data-activity-count="total">{{ activity|length }}</span>
     </h2>
