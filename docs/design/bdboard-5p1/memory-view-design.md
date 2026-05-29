@@ -85,6 +85,48 @@ explicitly tracked rather than silently dropped. The v1 view sorts
 **alphabetically by key** (deterministic, matches CLI), and recency is
 deferred pending an upstream bd capability or a local provenance source.
 
+#### 2.2.1 Spike resolution (bead D: bdboard-12f.2)
+
+**Investigation findings (2026-05-29):**
+
+1. **Upstream bd capability:** `bd memories --json` (bd 1.0.4) returns a
+   flat `{key: body, schema_version: 1}` object with NO timestamp fields.
+   `bd recall <key> --json` likewise returns only `{found, key, value,
+   schema_version}`. There is no bd CLI flag to request recency metadata.
+
+2. **Local provenance source:** Memories are stored in the Dolt database's
+   `config` table with `kv.memory.<key>` prefixes. Dolt's version control
+   history (`dolt_diff_config` + `dolt_log`) **does** carry timestamp
+   provenance — e.g.:
+   ```sql
+   SELECT d.to_key, l.date, d.diff_type
+   FROM dolt_diff_config d
+   JOIN dolt_log l ON d.to_commit = l.commit_hash
+   WHERE d.to_key LIKE 'kv.memory.%'
+   ORDER BY l.date DESC;
+   ```
+   This returns `(memory_key, created_at, diff_type)` tuples with
+   millisecond precision.
+
+3. **Architectural cost of using Dolt directly:**
+   - Violates bdboard's design principle: "runtime source of truth is
+     bd CLI JSON output" (see `stack-overview` memory).
+   - Requires shelling out to `dolt sql` (embedded Dolt isn't reachable
+     via the bd wrapper).
+   - Creates undocumented coupling to bd's internal storage schema.
+   - `dolt` binary may not be on PATH in all deployment contexts.
+
+**Decision: recency is OUT OF SCOPE for v1.**
+
+- The data exists but is not exposed through the bd CLI contract.
+- Bypassing bd CLI to query Dolt directly is architecturally unsound for
+  a P4 "nice-to-have" feature.
+- v1 sorts alphabetically by key (deterministic, matches CLI).
+- Proper fix: upstream bd should add `created_at` / `updated_at` fields
+  to `bd memories --json` output. When/if that lands, bdboard can trivially
+  consume it via the existing `BdClient.memories()` plumbing.
+- This decision is recorded here and in the bead notes for traceability.
+
 ---
 
 ## 3. Design decisions (recorded per epic success criteria)
@@ -210,14 +252,14 @@ plan; the bead IDs below are the filed instances, dependency-wired so that
 | **A** | bdboard-12f.1 | `Bd.memories()` client + JSON contract handling | Add async `memories(query)` to `bd.py` on `_run_json`; strip `schema_version`; sort by key; unit-test the empty/sentinel/search shapes. | — |
 | **B** | bdboard-12f.4 | `/api/memory` partial + `memory_list.html` | HTMX list partial rendering key + markdown body; debounced server-side search; empty states. | A |
 | **C** | bdboard-12f.5 | `/memory` full page + masthead nav | `memory.html` extends `base.html`; add minimal masthead nav linking `/` ⇄ `/memory`. | B |
-| **D** | bdboard-12f.2 | Recency metadata spike / decision | Resolve the §2.2 gap: either consume an upstream bd field if/when it exists, or decide recency is permanently out of scope. Tracks the epic's "sortable by recency" criterion. | — |
+| **D** | bdboard-12f.2 | Recency metadata spike / decision | Resolve the §2.2 gap: either consume an upstream bd field if/when it exists, or decide recency is permanently out of scope. Tracks the epic's "sortable by recency" criterion. **→ RESOLVED: out of scope for v1; see §2.2.1.** | — |
 | **E** | bdboard-12f.3 | Curate (create / edit / forget) from UI | Follow-up: wire `bd remember` / `bd forget` write paths, refresh invalidation, confirm-before-forget, SSE wiring. Gated behind A–C. | A, B, C |
 
 Acceptance mapping to the epic's Success Criteria:
 
 - "view all memories (key + body)" → A + B + C.
 - "searchable/filterable by keyword" → B (D4 server-side search).
-- "sortable by recency" → **D** (explicitly gated by the §2.2 gap; v1 sorts by key).
+- "sortable by recency" → **D** (explicitly gated by the §2.2 gap; v1 sorts by key; **resolved as out of scope pending upstream bd support — see §2.2.1**).
 - "read-only vs CRUD decision recorded" → **D1 (this doc)**; CRUD itself → E.
 - "`bd memories --json` shape confirmed" → **§2.1 (confirmed here)**, hardened in A.
 - "bodies render with shared markdown renderer" → D2 + B.
