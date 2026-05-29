@@ -35,9 +35,11 @@ def _post_request(
         "query_string": b"",
         "headers": headers,
     }
+
     # FastAPI needs an async receive function.
     async def receive():
         return {"type": "http.request", "body": body, "more_body": False}
+
     return Request(scope, receive)
 
 
@@ -84,6 +86,7 @@ def _stub_forget(error: Exception | None = None) -> list[str]:
 
 def _stub_memories(result: Any) -> None:
     """Stub bd.memories to return a fixed result for re-rendering the list."""
+
     async def fake_memories(query: str | None = None) -> Any:
         if isinstance(result, Exception):
             raise result
@@ -112,6 +115,7 @@ def test_create_memory_requires_csrf_token() -> None:
 
     # No CSRF token → 403.
     from fastapi import HTTPException
+
     try:
         asyncio.run(
             app_module.api_memory_create(
@@ -224,6 +228,7 @@ def test_delete_memory_requires_csrf_token() -> None:
     _stub_memories([])
 
     from fastapi import HTTPException
+
     try:
         asyncio.run(
             app_module.api_memory_delete(
