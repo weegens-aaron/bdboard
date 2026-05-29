@@ -46,3 +46,4 @@
 {"id":"int-fbe85cb8","kind":"field_change","created_at":"2026-05-29T01:36:06.285689Z","actor":"Aaron Weegens","issue_id":"bdboard-ah3","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"bead-chain: LLM judges passed"}}
 {"id":"int-c324d6da","kind":"field_change","created_at":"2026-05-29T02:20:08.311076Z","actor":"Aaron Weegens","issue_id":"bdboard-5p1","extra":{"field":"status","new_value":"open","old_value":"deferred"}}
 {"id":"int-f69254d3","kind":"field_change","created_at":"2026-05-29T02:38:50.95542Z","actor":"Aaron Weegens","issue_id":"bdboard-5p1","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"bead-chain: LLM judges passed"}}
+{"id":"int-a15b7168","kind":"field_change","created_at":"2026-05-29T03:03:11.805895Z","actor":"Aaron Weegens","issue_id":"bdboard-12f.1","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"bead-chain: LLM judges passed"}}

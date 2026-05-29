@@ -1,0 +1,30 @@
+{# Memory list region — HTMX swap target for /api/memory.
+   Symmetric with partials/lanes.html. Renders the result-count status
+   (aria-live so screen readers hear filter updates), then either the
+   memory cards or a context-appropriate empty state. #}
+
+{% set q = (query or "").strip() %}
+{% set n = memories|length %}
+
+<p class="memory-count" role="status" aria-live="polite">
+  {% if q %}
+    {{ n }} matching “{{ q }}”
+  {% else %}
+    {{ n }} {{ "memory" if n == 1 else "memories" }}
+  {% endif %}
+</p>
+
+{% if memories %}
+<ul class="memory-list" role="list">
+  {% for m in memories %}
+  <li class="memory-card">
+    <h3 class="memory-key">{{ m.key }}</h3>
+    <div class="memory-body prose">{{ m.body | md | safe }}</div>
+  </li>
+  {% endfor %}
+</ul>
+{% elif q %}
+<p class="memory-empty muted">No memories matching “{{ q }}”.</p>
+{% else %}
+<p class="memory-empty muted">No memories yet — run <code>bd remember</code> to add one.</p>
+{% endif %}

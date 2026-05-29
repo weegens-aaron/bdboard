@@ -327,6 +327,35 @@ async def api_lanes(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/api/memory", response_class=HTMLResponse)
+async def api_memory(request: Request, q: str = "") -> HTMLResponse:
+    """Render the memory list region (HTMX swap target), symmetric with
+    /api/lanes. Server-side search via Bd.memories(q): an empty q lists
+    all memories. Bodies render through the shared `md` Jinja filter; keys
+    are shown as monospace headings. On a bd failure we degrade to a
+    friendly inline message rather than 500-ing the partial swap.
+    """
+    term = q.strip()
+    try:
+        memories = await bd.memories(term)
+    except RuntimeError as err:
+        log.warning("bd memories failed: %s", err)
+        return HTMLResponse(
+            (
+                '<p class="memory-empty muted" role="status" aria-live="polite">'
+                "Couldn\u2019t load memories right now. "
+                "Please try again in a moment."
+                "</p>"
+            ),
+            status_code=200,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/memory_list.html",
+        {"memories": memories, "query": term},
+    )
+
+
 @app.get("/api/counts", response_class=HTMLResponse)
 async def api_counts(request: Request) -> HTMLResponse:
     return TEMPLATES.TemplateResponse(

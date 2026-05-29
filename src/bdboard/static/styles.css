@@ -487,6 +487,51 @@ pre { margin: 0; }
 }
 
 /* ============================================================
+   Memory view — browse + search bd memories.
+   The list region is a vertical stack of memory cards, swapped
+   into place by HTMX from /api/memory. Mirrors the bead-card
+   chrome (paper background, hairline rule) but each card is a
+   key heading + a markdown-rendered body (.prose), not a click
+   target. The result count lives in an aria-live region.
+   ============================================================ */
+.memory-count {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.memory-card {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.memory-key {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+.memory-body {
+  font-size: 13px;
+}
+.memory-empty {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 12px 4px;
+}
+
+/* ============================================================
    Activity — the right-most swim lane. Same .lane / .lane-list
    chrome as the bead lanes; rows have their own grid layout because
    activity events carry different metadata than bead cards
