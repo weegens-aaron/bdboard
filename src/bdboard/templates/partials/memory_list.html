@@ -30,7 +30,9 @@
           class="memory-action-btn memory-edit-btn"
           aria-label="Edit {{ m.key }}"
           title="Edit"
-          onclick="editMemory('{{ m.key | e }}', {{ m.body | tojson }})"
+          data-key="{{ m.key | e }}"
+          data-body="{{ m.body | e }}"
+          onclick="editMemory(this.dataset.key, this.dataset.body)"
         >
           ✏️
         </button>

@@ -151,3 +151,30 @@ def test_whitespace_query_is_treated_as_list_all() -> None:
     # not "matching"), and the stripped term is forwarded.
     assert seen == [""]
     assert "matching" not in body
+
+
+def test_edit_button_escapes_special_chars_in_body() -> None:
+    """Regression test: edit button must work with quotes/newlines in body.
+
+    bdboard-eee: The edit button broke when the body contained double quotes
+    because tojson output wasn't HTML-escaped for the onclick attribute.
+    Fix: use data attributes with | e filter, read via dataset in JS.
+    """
+    _stub_memories(
+        [
+            {
+                "key": "tricky",
+                "body": "Use \"double quotes\" and 'single' too",
+            },
+        ]
+    )
+
+    status, body = _call()
+
+    assert status == 200
+    # The data-body attribute must be properly HTML-escaped.
+    # Double quotes become &quot;, preventing attribute breakout.
+    assert 'data-body="' in body
+    assert "&quot;double quotes&quot;" in body
+    # onclick reads from dataset, not inline template vars.
+    assert "editMemory(this.dataset.key, this.dataset.body)" in body
