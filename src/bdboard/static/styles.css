@@ -1,5 +1,5 @@
 /* ============================================================
-   bdboard — editorial dashboard, Walmart LD-token palette.
+   bdboard — editorial dashboard, design-token palette.
    Sourced from docs/diagrams/dashboard-mockup.html and trimmed
    to what bdboard actually renders. Keep design tokens in :root;
    keep visual decisions semantic (no raw hex outside :root).

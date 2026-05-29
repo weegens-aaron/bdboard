@@ -95,7 +95,7 @@ def contrast_ratio(
         21.0
         >>> contrast_ratio((255, 255, 255), (0, 0, 0))  # same, with tuples
         21.0
-        >>> contrast_ratio("#0053e2", "#ffffff")  # Walmart blue on white
+        >>> contrast_ratio("#0053e2", "#ffffff")  # brand blue on white
         # Should be > 4.5 for WCAG AA compliance
     """
     # Convert to RGB tuples if needed
