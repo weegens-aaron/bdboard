@@ -1,0 +1,15 @@
+{# Masthead nav — links the dashboard (/) and the memory view (/memory).
+   Shared by dashboard.html and memory.html so the two surfaces stay
+   symmetric and the chrome lives in one place (DRY).
+
+   `active` ("board" | "memory") marks the current page: it both gets the
+   .is-active styling hook and an aria-current="page" so assistive tech
+   announces the current location. #}
+<nav class="masthead-nav" aria-label="Primary">
+  <a href="/"
+     class="masthead-nav-link{% if active == 'board' %} is-active{% endif %}"
+     {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
+  <a href="/memory"
+     class="masthead-nav-link{% if active == 'memory' %} is-active{% endif %}"
+     {% if active == 'memory' %}aria-current="page"{% endif %}>Memory</a>
+</nav>

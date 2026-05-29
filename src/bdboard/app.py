@@ -298,6 +298,7 @@ async def index(request: Request) -> HTMLResponse:
         {
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
+            "active": "board",
             "counts": derive.counts(beads),
             "epic_lane": epic_lane,
             "lanes": derive.lanes(beads),
@@ -307,6 +308,36 @@ async def index(request: Request) -> HTMLResponse:
 
 
 # ----- HTMX partials (polled every few seconds by the dashboard) -----
+
+
+@app.get("/memory", response_class=HTMLResponse)
+async def page_memory(request: Request) -> HTMLResponse:
+    """Full-page memory view, symmetric with the dashboard index at `/`.
+
+    Extends base.html and renders the search strip + list region; the list
+    region itself is filled by an HTMX `load` fetch to /api/memory (and
+    re-swapped on debounced search), so this route stays trivially cheap
+    and never blocks on a bd subprocess. We still surface the workspace
+    validation error here for parity with `/` so a broken workspace fails
+    visibly rather than rendering an empty memory page.
+    """
+    err = _validate_or_warn()
+    if err:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            {"error": err, "workspace": str(_WORKSPACE)},
+            status_code=500,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "memory.html",
+        {
+            "workspace": _WORKSPACE.name,
+            "workspace_path": str(_WORKSPACE),
+            "active": "memory",
+        },
+    )
 
 
 @app.get("/api/lanes", response_class=HTMLResponse)

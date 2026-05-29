@@ -144,6 +144,46 @@ pre { margin: 0; }
   margin-top: 4px;
 }
 
+/* Masthead nav — links Board (/) and Memory (/memory). Sits between the
+   brand and the counts; minimal pill links with a clear active state.
+   Active link uses ink-on-paper-2 (>=12:1) and a blue underline rule so
+   the current location is signalled by more than color alone. */
+.masthead-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 2px 0;
+}
+.masthead-nav-link {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);            /* gray-140 on paper-3: ~8.9:1 */
+  text-decoration: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+.masthead-nav-link:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+  text-decoration: none;
+}
+.masthead-nav-link:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+.masthead-nav-link.is-active {
+  color: var(--brand-blue-d);     /* #004f9a on brand-blue-l: ~7.1:1 */
+  background: var(--brand-blue-l);
+  border-color: #9ab8ff;
+  /* Underline so the active page is signalled by more than color alone
+     (the decorative pill border alone is sub-3:1 against the masthead). */
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
 .counts {
   display: flex;
   gap: 20px;
@@ -494,6 +534,52 @@ pre { margin: 0; }
    key heading + a markdown-rendered body (.prose), not a click
    target. The result count lives in an aria-live region.
    ============================================================ */
+/* Memory page layout: a single scrollable column (search strip pinned,
+   list scrolls). The .layout-memory modifier lets the memory page use a
+   block column instead of the dashboard's flex lanes row. */
+.layout-memory {
+  display: block;
+  overflow: auto;
+}
+.memory-region {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.memory-search {
+  margin: 0;
+}
+.memory-search-label {
+  display: block;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.memory-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 9px 12px;
+}
+.memory-search-input::placeholder {
+  color: var(--muted);
+}
+.memory-search-input:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+  border-color: var(--brand-blue);
+}
 .memory-count {
   font-family: var(--sans);
   font-size: 12px;
