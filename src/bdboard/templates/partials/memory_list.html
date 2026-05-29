@@ -1,14 +1,18 @@
 {# Memory list region — HTMX swap target for /api/memory.
    Symmetric with partials/lanes.html. Renders the result-count status
    (aria-live so screen readers hear filter updates), then either the
-   memory cards or a context-appropriate empty state. #}
+   memory cards or a context-appropriate empty state.
+
+   Each card includes edit/forget affordances. Edit opens the form dialog
+   pre-filled; forget opens a confirmation dialog (a stray forget silently
+   degrades every future agent session). #}
 
 {% set q = (query or "").strip() %}
 {% set n = memories|length %}
 
 <p class="memory-count" role="status" aria-live="polite">
   {% if q %}
-    {{ n }} matching “{{ q }}”
+    {{ n }} matching "{{ q }}"
   {% else %}
     {{ n }} {{ "memory" if n == 1 else "memories" }}
   {% endif %}
@@ -18,13 +22,37 @@
 <ul class="memory-list" role="list">
   {% for m in memories %}
   <li class="memory-card">
-    <h3 class="memory-key">{{ m.key }}</h3>
+    <div class="memory-card-head">
+      <h3 class="memory-key">{{ m.key }}</h3>
+      <div class="memory-card-actions">
+        <button
+          type="button"
+          class="memory-action-btn memory-edit-btn"
+          aria-label="Edit {{ m.key }}"
+          title="Edit"
+          onclick="editMemory('{{ m.key | e }}', {{ m.body | tojson }})"
+        >
+          ✏️
+        </button>
+        <button
+          type="button"
+          class="memory-action-btn memory-forget-btn"
+          aria-label="Forget {{ m.key }}"
+          title="Forget"
+          onclick="confirmForget('{{ m.key | e }}')"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
     <div class="memory-body prose">{{ m.body | md | safe }}</div>
   </li>
   {% endfor %}
 </ul>
 {% elif q %}
-<p class="memory-empty muted">No memories matching “{{ q }}”.</p>
+<p class="memory-empty muted">No memories matching "{{ q }}".</p>
 {% else %}
-<p class="memory-empty muted">No memories yet — run <code>bd remember</code> to add one.</p>
+<p class="memory-empty muted">
+  No memories yet — click <strong>+ New Memory</strong> or run <code>bd remember</code> to add one.
+</p>
 {% endif %}

@@ -81,8 +81,9 @@ def test_memory_page_list_region_lazy_loads() -> None:
     _, body = _call_memory()
 
     assert 'id="memory-list"' in body
-    # The list region pulls its content from /api/memory on load.
-    assert 'hx-trigger="load"' in body
+    # The list region pulls its content from /api/memory on load, and
+    # refreshes on SSE 'refresh' events for live invalidation.
+    assert 'hx-trigger="load, refresh from:body"' in body
 
 
 def test_memory_page_nav_links_both_surfaces() -> None:

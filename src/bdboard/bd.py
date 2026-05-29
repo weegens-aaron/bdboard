@@ -29,6 +29,8 @@ LIST_TIMEOUT_S = 15.0  # generous: large workspaces with many issues
 HISTORY_TIMEOUT_S = 8.0
 SHOW_TIMEOUT_S = 8.0
 MEMORIES_TIMEOUT_S = 8.0
+REMEMBER_TIMEOUT_S = 10.0  # writes may be slower (dolt commit)
+FORGET_TIMEOUT_S = 10.0
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
 
@@ -290,3 +292,71 @@ class BdClient:
         self._show_cache.clear()
         self._history_cache.clear()
         self._memories_cache.clear()
+
+    # ----- memory mutations: remember / forget -----
+
+    async def remember(self, key: str, body: str) -> None:
+        """Upsert a memory via `bd remember "<body>" --key <key>`.
+
+        Creates a new memory if the key doesn't exist, or updates an
+        existing one. This is bdboard's first write path to bd — it
+        mutates the workspace's dolt store and triggers a watcher fire
+        that will SSE-broadcast to all connected clients.
+
+        Raises RuntimeError on subprocess failure.
+        """
+        # bd remember "<body>" --key <key>
+        # Body is passed as a positional argument, key via --key flag.
+        await self._run_mutate(
+            ["remember", body, "--key", key],
+            timeout=REMEMBER_TIMEOUT_S,
+        )
+        # Invalidate memories cache immediately so the next read picks up
+        # the fresh state (watcher will also fire, but cache may be hit
+        # before watcher completes).
+        self._memories_cache.clear()
+
+    async def forget(self, key: str) -> None:
+        """Delete a memory via `bd forget <key>`.
+
+        Raises RuntimeError on subprocess failure (including key-not-found).
+        """
+        await self._run_mutate(
+            ["forget", key],
+            timeout=FORGET_TIMEOUT_S,
+        )
+        self._memories_cache.clear()
+
+    async def _run_mutate(self, args: list[str], timeout: float) -> None:
+        """Run a bd mutation command (no --json, no parse, check exit only).
+
+        Serialized via _subprocess_gate like read commands; mutations are
+        single-writer so we must avoid concurrent writes from multiple
+        browser tabs / users on the same workspace.
+        """
+        async with self._subprocess_gate:
+            proc = await asyncio.create_subprocess_exec(
+                self.bd_bin,
+                *args,
+                cwd=str(self.workspace),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            try:
+                _stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                raise RuntimeError(
+                    "Request timed out while saving memory. Please try again."
+                )
+            if proc.returncode != 0:
+                # bd forget on a non-existent key exits non-zero with a
+                # descriptive stderr; surface it.
+                err_text = stderr.decode(errors="replace").strip()
+                raise RuntimeError(
+                    err_text
+                    or f"bd {args[0]} failed (exit {proc.returncode}). Please try again."
+                )

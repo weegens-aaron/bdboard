@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import secrets
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -97,6 +98,19 @@ TEMPLATES.env.globals["version"] = __version__
 # fresh value — means no more 'why is my CSS old?' moments during dev,
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).
 TEMPLATES.env.globals["asset_v"] = str(int(time.time()))
+
+# ----- CSRF protection -----
+# bdboard introduces its first write paths in bdboard-12f.3 (memory curate).
+# CSRF posture: a per-process token generated at startup, included in all
+# mutation forms via a hidden input, and validated on POST/DELETE. This is
+# minimal-but-sufficient for a single-user localhost dashboard:
+# - No cookie auth (no session hijacking vector), but we still guard against
+#   accidental or malicious cross-origin form submission.
+# - Token persists for the process lifetime — simple, no DB, no expiry logic.
+# - HTMX posts include the token via hx-vals or hidden inputs; we check the
+#   X-CSRF-Token header OR the _csrf form field.
+_CSRF_TOKEN = secrets.token_urlsafe(32)
+TEMPLATES.env.globals["csrf_token"] = _CSRF_TOKEN
 
 # Workspace + bd binary are picked up from env, set by the CLI before the app
 # is imported. Sensible defaults for `uvicorn bdboard.app:app --reload` dev.
@@ -384,6 +398,110 @@ async def api_memory(request: Request, q: str = "") -> HTMLResponse:
         request,
         "partials/memory_list.html",
         {"memories": memories, "query": term},
+    )
+
+
+# ----- memory mutations (remember / forget) -----
+
+
+def _check_csrf(
+    csrf_header: str | None = None,
+    csrf_form: str | None = None,
+) -> None:
+    """Validate CSRF token from header or form field.
+
+    Raises HTTPException 403 if neither matches. HTMX sends the header
+    via hx-headers; fallback form field supports non-JS form posts.
+    """
+    if csrf_header == _CSRF_TOKEN or csrf_form == _CSRF_TOKEN:
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="Invalid or missing CSRF token. Please refresh the page and try again.",
+    )
+
+
+@app.post("/api/memory", response_class=HTMLResponse)
+async def api_memory_create(
+    request: Request,
+    key: str = Form(...),
+    body: str = Form(...),
+    csrf: str = Form(None, alias="csrf_token"),
+    x_csrf_token: str | None = Header(None),
+) -> HTMLResponse:
+    """Create or update a memory via `bd remember`.
+
+    Upsert semantics: if the key exists, its body is replaced; if not, a
+    new memory is created. After mutation we re-render the full memory
+    list so the HTMX swap shows the updated state immediately (optimistic
+    refresh). The watcher will also fire an SSE event, but this ensures
+    the acting user sees their change without waiting for debounce.
+    """
+    _check_csrf(x_csrf_token, csrf)
+    key = key.strip()
+    body_text = body.strip()
+    if not key:
+        return HTMLResponse(
+            '<p class="memory-error" role="alert">Key cannot be empty.</p>',
+            status_code=400,
+        )
+    if not body_text:
+        return HTMLResponse(
+            '<p class="memory-error" role="alert">Body cannot be empty.</p>',
+            status_code=400,
+        )
+    try:
+        await bd.remember(key, body_text)
+    except RuntimeError as err:
+        log.warning("bd remember failed: %s", err)
+        return HTMLResponse(
+            f'<p class="memory-error" role="alert">Could not save: {err}</p>',
+            status_code=500,
+        )
+    # Broadcast SSE so other tabs/clients refresh too.
+    await bus.broadcast("beads_changed")
+    # Return fresh list for swap.
+    memories = await bd.memories()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/memory_list.html",
+        {"memories": memories, "query": ""},
+    )
+
+
+@app.delete("/api/memory/{key:path}", response_class=HTMLResponse)
+async def api_memory_delete(
+    request: Request,
+    key: str,
+    x_csrf_token: str | None = Header(None),
+) -> HTMLResponse:
+    """Delete a memory via `bd forget`.
+
+    The key is path-encoded so keys with slashes work. After deletion we
+    re-render the list so the HTMX swap shows the updated state. Callers
+    should confirm before invoking (UI implements confirm-before-forget).
+    """
+    _check_csrf(x_csrf_token, None)
+    key = key.strip()
+    if not key:
+        return HTMLResponse(
+            '<p class="memory-error" role="alert">Key cannot be empty.</p>',
+            status_code=400,
+        )
+    try:
+        await bd.forget(key)
+    except RuntimeError as err:
+        log.warning("bd forget failed: %s", err)
+        return HTMLResponse(
+            f'<p class="memory-error" role="alert">Could not delete: {err}</p>',
+            status_code=500,
+        )
+    await bus.broadcast("beads_changed")
+    memories = await bd.memories()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/memory_list.html",
+        {"memories": memories, "query": ""},
     )
 
 
