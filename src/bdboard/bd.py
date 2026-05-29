@@ -28,8 +28,15 @@ from typing import Any
 LIST_TIMEOUT_S = 15.0  # generous: large workspaces with many issues
 HISTORY_TIMEOUT_S = 8.0
 SHOW_TIMEOUT_S = 8.0
+MEMORIES_TIMEOUT_S = 8.0
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
+
+# bd memories --json carries a metadata sentinel alongside the key->body
+# entries; it is not a memory and must be stripped before rendering. An
+# empty/no-match result still carries this key (and nothing else), so
+# 'only schema_version present' means zero results.
+SCHEMA_VERSION_KEY = "schema_version"
 
 
 @dataclass(frozen=True)
@@ -56,6 +63,7 @@ class BdClient:
         self.workspace = (workspace or Path.cwd()).resolve()
         self._history_cache: dict[str, CacheEntry] = {}
         self._show_cache: dict[str, CacheEntry] = {}
+        self._memories_cache: dict[str, CacheEntry] = {}
         # bd's embedded dolt server can lock-wait under concurrent CLI calls;
         # serialize requests so one slow command cannot deadlock peers.
         self._subprocess_gate = asyncio.Semaphore(1)
@@ -124,6 +132,48 @@ class BdClient:
                 "expected JSON array"
             )
         return value
+
+    # ----- memories: browse + search (cached, in-flight deduped) -----
+
+    async def memories(self, query: str | None = None) -> list[dict[str, str]]:
+        """Fetch bd memories via `bd memories [term] --json`.
+
+        Returns a list of ``{"key", "body"}`` dicts sorted alphabetically
+        by key (deterministic, matching the CLI's human ordering). With a
+        ``query`` this shells `bd memories <term> --json`, which performs
+        bd's own server-side case-insensitive substring match across key
+        and body — we reuse that logic rather than re-implementing it in
+        the browser or here.
+
+        The raw JSON is a flat key->body object plus a ``schema_version``
+        sentinel. We strip the sentinel; a payload of *only* the sentinel
+        (the empty / no-match shape) yields an empty list. Inherits the
+        module's semaphore + timeout + TTL-cache + in-flight dedup via
+        ``_cached``. Raises (like :meth:`list_all`) on subprocess failure
+        or malformed JSON so callers can surface a friendly error.
+        """
+        term = (query or "").strip()
+        args = ["memories"]
+        if term:
+            args.append(term)
+        value, err = await self._cached(
+            self._memories_cache,
+            key=term,
+            fetch_args=args,
+            timeout=MEMORIES_TIMEOUT_S,
+        )
+        if err is not None:
+            raise RuntimeError(err)
+        if not isinstance(value, dict):
+            raise RuntimeError(
+                f"bd memories returned non-object ({type(value).__name__}); "
+                "expected JSON object"
+            )
+        return [
+            {"key": key, "body": body}
+            for key, body in sorted(value.items())
+            if key != SCHEMA_VERSION_KEY
+        ]
 
     # ----- bead detail: show + history (cached, in-flight deduped) -----
 
@@ -234,8 +284,9 @@ class BdClient:
         )
 
     def invalidate_caches(self) -> None:
-        """Drop show/history caches. Called by Store after a watcher fire
-        so the next bead-detail request picks up post-mutation state
-        instead of serving up-to-10s-old cached values."""
+        """Drop show/history/memories caches. Called by Store after a watcher
+        fire so the next detail or memory request picks up post-mutation
+        state instead of serving up-to-10s-old cached values."""
         self._show_cache.clear()
         self._history_cache.clear()
+        self._memories_cache.clear()
