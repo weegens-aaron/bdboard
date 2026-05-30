@@ -705,10 +705,11 @@ pre { margin: 0; }
   border-radius: 3px;
   letter-spacing: 0.04em;
 }
-.bead-priority.p0 { background: var(--accent); color: white; }
-.bead-priority.p1 { background: var(--accent-2); color: white; }
-.bead-priority.p2 { background: var(--paper-2); color: var(--ink-2); border: 1px solid var(--rule-2); }
-.bead-priority.p3, .bead-priority.p4 { background: transparent; color: var(--muted); border: 1px solid var(--rule); }
+.bead-priority.p0 { background: var(--priority-p0-bg); color: var(--priority-p0-fg); border: 1px solid var(--priority-p0-border); }
+.bead-priority.p1 { background: var(--priority-p1-bg); color: var(--priority-p1-fg); border: 1px solid var(--priority-p1-border); }
+.bead-priority.p2 { background: var(--priority-p2-bg); color: var(--priority-p2-fg); border: 1px solid var(--priority-p2-border); }
+.bead-priority.p3 { background: var(--priority-p3-bg); color: var(--priority-p3-fg); border: 1px solid var(--priority-p3-border); }
+.bead-priority.p4 { background: var(--priority-p4-bg); color: var(--priority-p4-fg); border: 1px solid var(--priority-p4-border); }
 
 .bead-title {
   font-family: var(--serif);
