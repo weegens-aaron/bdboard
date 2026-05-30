@@ -63,7 +63,7 @@ def _stub_update_field(error: Exception | None = None) -> list[tuple]:
 
 
 def _stub_show_long(bead: dict[str, Any] | None) -> None:
-    async def fake_show_long(bead_id: str):
+    async def fake_show_long(bead_id: str, fresh: bool = False):
         if bead is None:
             return None, "boom"
         return bead, None
@@ -93,6 +93,7 @@ def _call_field(
             bead_id=bead_id,
             field=form_data.get("field", ""),
             value=form_data.get("value", ""),
+            expected_updated_at=form_data.get("expected_updated_at", ""),
             csrf=csrf_form or form_data.get("csrf_token"),
             x_csrf_token=csrf_header,
         )
@@ -107,6 +108,7 @@ def _bead(**overrides) -> dict[str, Any]:
         "description": "Body **md**",
         "priority": 2,
         "notes": "existing notes",
+        "updated_at": "2026-05-30T21:22:12Z",
     }
     base.update(overrides)
     return base
@@ -504,3 +506,28 @@ def test_update_field_surfaces_stderr_on_failure(tmp_path: Path) -> None:
         raised = True
         assert "invalid priority" in str(e)
     assert raised, "non-zero bd exit must raise"
+
+
+def test_show_long_fresh_bypasses_show_cache(tmp_path: Path) -> None:
+    """show_long(fresh=True) must drop the cached entry so the
+    optimistic-lock precondition (bdboard-o9v.5) reads LIVE state and a
+    stale cache can't mask a concurrent change."""
+    from bdboard.bd import CacheEntry
+
+    client, _logs = _fake_bd_client(tmp_path)
+    # Seed a fresh (non-expired) cache entry the normal path would serve.
+    client._show_cache["bdboard-x1"] = CacheEntry(
+        fetched_at=__import__("time").monotonic(),
+        value=[{"id": "bdboard-x1", "updated_at": "STALE"}],
+        error=None,
+    )
+    # fresh=False would return the cached STALE value; assert it does.
+    cached, _ = asyncio.run(client.show_long("bdboard-x1"))
+    assert cached is not None and cached.get("updated_at") == "STALE"
+    # fresh=True drops the entry, forcing a live read (the fake bd emits no
+    # JSON, so the read errors — but crucially the stale entry is gone).
+    assert "bdboard-x1" in client._show_cache
+    asyncio.run(client.show_long("bdboard-x1", fresh=True))
+    # The pre-seeded STALE entry must not survive a fresh read.
+    surviving = client._show_cache.get("bdboard-x1")
+    assert surviving is None or surviving.value != [{"id": "bdboard-x1", "updated_at": "STALE"}]

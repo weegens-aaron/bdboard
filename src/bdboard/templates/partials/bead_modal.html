@@ -24,6 +24,7 @@
       <h3 class="modal-section-title">Bead details</h3>
       <dl class="field-grid">
         {% set bead_id = bead.id %}
+        {% set bead_updated_at = bead.updated_at %}
         {% for f in fields %}
         {% include "partials/field_row.html" %}
         {% endfor %}

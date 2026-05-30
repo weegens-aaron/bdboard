@@ -255,9 +255,20 @@ class BdClient:
         finally:
             self._inflight.pop(flight_key, None)
 
-    async def show_long(self, bead_id: str) -> tuple[dict[str, Any] | None, str | None]:
+    async def show_long(
+        self, bead_id: str, fresh: bool = False
+    ) -> tuple[dict[str, Any] | None, str | None]:
         """Fetch the full bead detail via `bd show <id> --long --json`.
-        Returns (bead_dict, error_msg). bd returns a JSON array; we unwrap."""
+        Returns (bead_dict, error_msg). bd returns a JSON array; we unwrap.
+
+        ``fresh=True`` drops any cached entry for this bead first, forcing a
+        live read. The optimistic-lock precondition check (the field-edit
+        route, bdboard-o9v.5) needs this: a stale cache (up to SUCCESS_TTL_S
+        old) could report an out-of-date ``updated_at`` and let a concurrent
+        edit slip through undetected, silently clobbering the other writer.
+        """
+        if fresh:
+            self._show_cache.pop(bead_id, None)
         value, err = await self._cached(
             self._show_cache,
             key=bead_id,

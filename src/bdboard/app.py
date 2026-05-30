@@ -663,6 +663,7 @@ async def api_bead_field_update(
     bead_id: str,
     field: str = Form(...),
     value: str = Form(""),
+    expected_updated_at: str = Form("", alias="expected_updated_at"),
     csrf: str = Form(None, alias="csrf_token"),
     x_csrf_token: str | None = Header(None),
 ) -> HTMLResponse:
@@ -678,6 +679,17 @@ async def api_bead_field_update(
     (status, parent, id, story_points, timestamps, ...) can never be written
     here even if a crafted request asks for them. The registry's `flag` is the
     ONLY flag passed to bd — we never let the client choose the flag.
+
+    Concurrency (bdboard-o9v.5, spike §4 "multi-writer races"): the
+    _subprocess_gate serializes the *writes*, but a stale form posted from
+    one tab can clobber a concurrent edit made from another tab (or by an
+    agent) — last-write-wins. To prevent silent clobber we run an
+    optimistic-lock precondition: the edit form carries the
+    `updated_at` the row was rendered with; before writing we re-read the
+    bead LIVE (cache-bypassing) and, if its `updated_at` has moved on, we
+    reject the stale submit with a friendly "bead changed, please refresh"
+    instead of overwriting the newer value. Append-only fields (notes) are
+    exempt — an append never clobbers existing content.
 
     On success we return the freshly re-rendered field row (partials/
     field_row.html) for an in-place HTMX swap of `#field-row-<field>`.
@@ -702,6 +714,32 @@ async def api_bead_field_update(
             '<p class="field-error" role="alert">Nothing to add.</p>',
             status_code=400,
         )
+    # Optimistic-lock precondition (bdboard-o9v.5). Only meaningful for
+    # replace-semantics edits where a stale form would clobber a concurrent
+    # change; append-only edits (notes) can never clobber so we skip the
+    # check for them. We read LIVE (fresh=True) so a stale cache can't mask a
+    # conflict, and we compare against the form's expected_updated_at. A
+    # missing/empty token (older form, or a client that didn't send it) skips
+    # the check rather than hard-failing — degrade gracefully to the prior
+    # last-write-wins behaviour rather than blocking edits outright.
+    if expected_updated_at and not spec.append_only:
+        current, lock_err = await bd.show_long(bead_id, fresh=True)
+        if current is not None:
+            live_updated_at = str(current.get("updated_at") or "")
+            if live_updated_at and live_updated_at != expected_updated_at.strip():
+                log.info(
+                    "stale field edit rejected: %s %s expected=%s live=%s",
+                    bead_id,
+                    field,
+                    expected_updated_at,
+                    live_updated_at,
+                )
+                return HTMLResponse(
+                    '<p class="field-error" role="alert">This bead changed since '
+                    "you opened it — please refresh and re-apply your edit so "
+                    "you don’t overwrite someone else’s change.</p>",
+                    status_code=409,
+                )
     try:
         await bd.update_field(bead_id, spec.flag, new_value, actor=_ACTOR)
     except RuntimeError as err:
@@ -740,7 +778,7 @@ async def api_bead_field_update(
     return TEMPLATES.TemplateResponse(
         request,
         "partials/field_row.html",
-        {"f": row, "bead_id": bead_id},
+        {"f": row, "bead_id": bead_id, "bead_updated_at": bead.get("updated_at")},
     )
 
 

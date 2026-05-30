@@ -87,6 +87,12 @@
           hx-indicator="#nav-progress">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="field" value="{{ f.key }}" />
+      {# Optimistic-lock token (bdboard-o9v.5): the bead's updated_at at render
+         time. The route re-reads the bead LIVE before writing and rejects
+         the submit if updated_at moved on, so a stale tab can't silently
+         clobber a concurrent edit. Append-only notes don't need it (an
+         append never clobbers), hence it lives only on the replace form. #}
+      <input type="hidden" name="expected_updated_at" value="{{ bead_updated_at | default('') }}" />
       <label class="field-edit-label" for="field-edit-input-{{ f.key }}">
         {{ f.key }}
       </label>
