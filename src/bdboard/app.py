@@ -355,6 +355,37 @@ async def page_memory(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/history", response_class=HTMLResponse)
+async def page_history(request: Request) -> HTMLResponse:
+    """Full-page History view, symmetric with `/` and `/memory` (design §D4).
+
+    Extends base.html and renders the masthead (with the History nav entry
+    active) plus the #history-region swap target; that region is filled by an
+    HTMX `load` fetch to /api/history and re-fetched on `refresh from:body`
+    (the existing SSE pipeline, design §D7), so this route stays trivially
+    cheap and never blocks on a bd subprocess. We surface the workspace
+    validation error here for parity with `/` and `/memory` so a broken
+    workspace fails visibly rather than rendering an empty history page.
+    """
+    err = _validate_or_warn()
+    if err:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            {"error": err, "workspace": str(_WORKSPACE)},
+            status_code=500,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "history.html",
+        {
+            "workspace": _WORKSPACE.name,
+            "workspace_path": str(_WORKSPACE),
+            "active": "history",
+        },
+    )
+
+
 @app.get("/api/lanes", response_class=HTMLResponse)
 async def api_lanes(request: Request) -> HTMLResponse:
     """Renders the swim lanes including the Activity column. Activity ships

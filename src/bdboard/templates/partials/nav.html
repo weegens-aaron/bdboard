@@ -9,13 +9,16 @@
    surfaces. The active page is signalled by THREE non-colour cues:
    ink colour + bold weight + an inset baseline rule (.mh-link.is-active).
 
-   `active` ("board" | "memory") marks the current page: it both gets the
-   .is-active styling hook and an aria-current="page" so assistive tech
-   announces the current location. #}
+   `active` ("board" | "memory" | "history") marks the current page: it both
+   gets the .is-active styling hook and an aria-current="page" so assistive
+   tech announces the current location. #}
 <nav class="masthead-nav" aria-label="Primary">
   <a href="/"
      class="mh-link{% if active == 'board' %} is-active{% endif %}"
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
+  <a href="/history"
+     class="mh-link{% if active == 'history' %} is-active{% endif %}"
+     {% if active == 'history' %}aria-current="page"{% endif %}>History</a>
   <a href="/memory"
      class="mh-link{% if active == 'memory' %} is-active{% endif %}"
      {% if active == 'memory' %}aria-current="page"{% endif %}>Memory</a>
