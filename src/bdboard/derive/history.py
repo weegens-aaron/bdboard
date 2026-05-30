@@ -230,10 +230,15 @@ def lead_time_stats(
     - **lead time**  = created_at → closed_at (how long from filing to done)
     - **cycle time** = started_at → closed_at (how long actively in flight)
 
-    Returns ``{n, median_lead_h, p90_lead_h, median_cycle_h, p90_cycle_h}``
-    with hour-valued floats (rounded to 1 dp) or None when there is no data
-    for that metric. ``n`` is the count of closed beads in the window.
-    Negative/zero durations from clock skew or odd data are dropped.
+    Returns ``{n, median_lead_h, p90_lead_h, median_cycle_h, p90_cycle_h,
+    avg_cycle_h}`` with hour-valued floats (rounded to 1 dp) or None when
+    there is no data for that metric. ``n`` is the count of closed beads in
+    the window. ``avg_cycle_h`` is the **mean** claim-to-close cycle time
+    (bdboard-98o): the editorial "Avg lead time" headline reports active
+    work time (started_at → closed_at) rather than bd's workspace-global
+    backlog-age lead time (created → closed). Beads lacking a parseable
+    ``started_at`` are excluded from the cycle metrics; negative/zero
+    durations from clock skew or odd data are dropped.
     """
     cutoff = _range_to_cutoff(range_key, now=now)
     windowed = _closed_in_window(beads, cutoff)
@@ -259,12 +264,15 @@ def lead_time_stats(
     def _round(v: float | None) -> float | None:
         return None if v is None else round(v, 1)
 
+    avg_cycle_h = sum(cycle_hours) / len(cycle_hours) if cycle_hours else None
+
     return {
         "n": len(windowed),
         "median_lead_h": _round(_percentile(lead_hours, 50)),
         "p90_lead_h": _round(_percentile(lead_hours, 90)),
         "median_cycle_h": _round(_percentile(cycle_hours, 50)),
         "p90_cycle_h": _round(_percentile(cycle_hours, 90)),
+        "avg_cycle_h": _round(avg_cycle_h),
     }
 
 

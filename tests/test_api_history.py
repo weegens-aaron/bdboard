@@ -102,6 +102,20 @@ def test_stats_render_as_masthead_oob_fragment() -> None:
     assert 'class="counts history-stats"' in body
 
 
+def test_avg_lead_time_is_claim_to_close_cycle_time() -> None:
+    # bdboard-98o: 'Avg lead time' is redefined as the mean claim-to-close
+    # cycle time (started_at -> closed_at), range-scoped and client-derived,
+    # NOT bd's workspace-global created->closed average. The label clarifies
+    # the claim->close definition and no longer claims to come 'via bd'.
+    _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=2)])
+
+    _, body = _call()
+
+    assert "Avg lead time" in body
+    # Clarifies the claim->close lineage + range scope, not 'via bd'.
+    assert "claim\u2192close, 30 days" in body
+
+
 def test_range_scoped_stats_update_in_oob_fragment() -> None:
     # The OOB stats fragment is range-scoped: switching the range control
     # re-fetches /api/history and the masthead strip reflects the new window.

@@ -337,6 +337,33 @@ def test_lead_time_stats_computes_hours():
     assert stats["n"] == 1
     assert stats["median_lead_h"] == 48.0
     assert stats["median_cycle_h"] == 24.0
+    # 'Avg lead time' headline (bdboard-98o) = mean claim->close cycle time.
+    assert stats["avg_cycle_h"] == 24.0
+
+
+def test_avg_cycle_h_is_mean_not_median():
+    # Three closed beads, started_at -> closed_at of 2h, 4h, 12h.
+    # mean = 6.0h, median = 4.0h -> 'Avg lead time' must report the MEAN.
+    beads = [
+        _bead(
+            "a",
+            started_at="2026-05-30T10:00:00Z",
+            closed_at="2026-05-30T12:00:00Z",
+        ),
+        _bead(
+            "b",
+            started_at="2026-05-30T08:00:00Z",
+            closed_at="2026-05-30T12:00:00Z",
+        ),
+        _bead(
+            "c",
+            started_at="2026-05-30T00:00:00Z",
+            closed_at="2026-05-30T12:00:00Z",
+        ),
+    ]
+    stats = lead_time_stats(beads, "all", now=NOW)
+    assert stats["avg_cycle_h"] == 6.0
+    assert stats["median_cycle_h"] == 4.0
 
 
 def test_lead_time_stats_empty():
@@ -346,6 +373,7 @@ def test_lead_time_stats_empty():
     assert stats["p90_lead_h"] is None
     assert stats["median_cycle_h"] is None
     assert stats["p90_cycle_h"] is None
+    assert stats["avg_cycle_h"] is None
 
 
 def test_lead_time_stats_missing_started_at_skips_cycle_only():
@@ -361,6 +389,7 @@ def test_lead_time_stats_missing_started_at_skips_cycle_only():
     assert stats["median_lead_h"] == 24.0
     # No started_at → cycle metrics stay None even though the bead counts.
     assert stats["median_cycle_h"] is None
+    assert stats["avg_cycle_h"] is None
 
 
 def test_lead_time_stats_drops_negative_durations():

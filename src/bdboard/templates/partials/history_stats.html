@@ -31,11 +31,16 @@
     <dt class="counts-label">Closed (all time) <span class="history-stat-src">via bd</span></dt>
     <dd class="counts-value">{{ bd_summary.closed_issues }}</dd>
   </div>
-  <div class="counts-cell{% if not bd_summary.average_lead_time_hours %} counts-cell-zero{% endif %}">
-    <dt class="counts-label">Avg lead time <span class="history-stat-src">via bd</span></dt>
-    <dd class="counts-value">{{ bd_summary.average_lead_time_hours | humanize_hours }}</dd>
-  </div>
   {% endif %}
+  {# 'Avg lead time' is the mean claim-to-close cycle time (bdboard-98o):
+     started_at -> closed_at over closed beads in the active range, NOT bd's
+     workspace-global created->closed lead time. It reflects active work
+     time, reacts to the range control, so it lives among the range-derived
+     KPIs (no "via bd" tag). #}
+  <div class="counts-cell{% if stats.avg_cycle_h is none %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Avg lead time <span class="history-stat-src">claim→close, {{ range_human }}</span></dt>
+    <dd class="counts-value">{{ stats.avg_cycle_h | humanize_hours }}</dd>
+  </div>
   <div class="counts-cell{% if stats.n == 0 %} counts-cell-zero{% endif %}">
     <dt class="counts-label">Closed in {{ range_human }}</dt>
     <dd class="counts-value">{{ stats.n }}</dd>
