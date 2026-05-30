@@ -6,21 +6,8 @@ A Python + FastAPI + HTMX dashboard for [bd (beads)](https://github.com/gastownh
 opens with a live view of swim lanes, activity, and **bead detail with every
 field bd exposes**.
 
-## Why Python (vs Go)
-
-- Better Code Puppy / Pydantic AI integration (agents native-extend the dashboard)
-- HTMX over the wire instead of React-on-CDN → smaller cold-start, no bundle download
-- Faster iteration (save file, refresh — no recompile)
-- All-Python stack alignment with the broader beadwork tooling
-
-See `docs/decisions/0002-dashboard-architecture.md` for context.
-
-## Run
-
-```sh
-cd /path/to/repo-with-.beads
-bdboard                # binds 127.0.0.1:7332 and opens a browser
-```
+**Who it's for:** developers using `bd` who want an at-a-glance, always-fresh
+web view of a workspace's beads without leaving their terminal-driven workflow.
 
 ## Install (dev)
 
@@ -28,6 +15,13 @@ bdboard                # binds 127.0.0.1:7332 and opens a browser
 cd bdboard
 uv venv
 uv pip install -e .
+```
+
+## Run
+
+```sh
+cd /path/to/repo-with-.beads
+bdboard                # binds 127.0.0.1:7332 and opens a browser
 ```
 
 ## Code health (CI gates)
@@ -41,6 +35,9 @@ make code-health      # lint + dead-code + duplication + audit
 make outdated         # advisory only (dependency staleness)
 ```
 
+These checks live in CI rather than a bd formula by design — see
+[`docs/decisions/0002-dashboard-architecture.md`](docs/decisions/0002-dashboard-architecture.md).
+
 | Gate | Tool | Make target | Config |
 | --- | --- | --- | --- |
 | Lint + format + unused-import/dead-code (F401, F811, F841) | ruff | `make lint` / `make fmt` | `[tool.ruff]` in `pyproject.toml` |
@@ -48,11 +45,6 @@ make outdated         # advisory only (dependency staleness)
 | Copy-paste duplication | jscpd | `make duplication` | `.jscpd.json` |
 | Dependency CVE scan | pip-audit | `make audit` | — |
 | Outdated deps (advisory, never fails) | uv | `make outdated` | — |
-
-**Why CI and not a bd formula?** bd *formulas* spawn work; they do not run
-checks. These deterministic pass/fail checks belong in CI gating every PR,
-leaving the `code-health-audit` formula (bdboard-jyf) to **triage** CI output
-rather than re-run the tools (see `docs/design/formula-spike/`).
 
 ## Flags
 
