@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from watchfiles import awatch
 
-from bdboard import __version__, derive, md
+from bdboard import derive, md
 from bdboard.bd import BdClient
 from bdboard.events import EventBus
 from bdboard.store import Store
@@ -93,8 +93,6 @@ TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
 # and the renderer has html=False, so script-injection is not possible.
 TEMPLATES.env.filters["md"] = md.render
 TEMPLATES.env.filters["dep_label"] = _dep_label
-# Footer + masthead always have access to these.
-TEMPLATES.env.globals["version"] = __version__
 # Cache-bust query param for /static assets. Every server restart gets a
 # fresh value — means no more 'why is my CSS old?' moments during dev,
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).

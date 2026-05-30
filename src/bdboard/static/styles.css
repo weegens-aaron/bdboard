@@ -1463,10 +1463,6 @@ pre { margin: 0; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.footer-version {
-  font-family: var(--mono);
-  color: var(--ink-2);
-}
 .footer-workspace {
   font-family: var(--mono);
   color: var(--ink-2);
