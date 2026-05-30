@@ -4,7 +4,7 @@
    views handed in by app.api_history():
      - range control (7d / 30d / 90d / All), default 30d
      - single editorial stats row (bd totals + range-derived KPIs)
-     - throughput-per-day bar strip in a fixed-height container
+     - beads-created-per-day and beads-closed-per-day bar strips (fixed height)
      - paginated closed list (clicking a card opens the shared bead modal)
      - one-line summary echoed at the foot (reports convention)
 
@@ -46,11 +46,11 @@
      stats out-of-band. One fetch keeps both surfaces in sync on every range
      change and SSE refresh — no second endpoint, no client JS (DRY). #}
 
-  {# Throughput chart — a day-bucketed bar strip in a FIXED-HEIGHT container
+  {# Beads closed chart — a day-bucketed bar strip in a FIXED-HEIGHT container
      so it can never collapse. Each bar carries a text aria-label ("N closed
      on <date>") and a visible count so it is not colour-only (design §5). #}
   <section class="history-throughput" aria-label="Beads closed per day">
-    <h2 class="history-section-title">Throughput</h2>
+    <h2 class="history-section-title">Beads closed</h2>
     {% if series %}
     <div class="throughput-chart" role="img"
          aria-label="Closed-per-day from {{ series[0].day }} to {{ series[-1].day }}, peak {{ peak }} in a day">
@@ -67,40 +67,37 @@
       </ul>
     </div>
     {% else %}
-    <p class="history-empty muted">No throughput to chart in {{ range_human }}.</p>
+    <p class="history-empty muted">No beads closed to chart in {{ range_human }}.</p>
     {% endif %}
   </section>
 
-  {# Churn chart — activity-over-time (design §6, bead D). Where throughput
-     counts *closes* by closed_at, churn counts beads *touched* (updated_at)
-     per day, so an edited open bead registers as activity too. Same
-     fixed-height bar-strip idiom as throughput; bars carry text aria-labels
-     and a visible count so they are never colour-only (design §5). #}
-  <section class="history-churn" aria-label="Beads touched per day">
+  {# Beads created chart — beads filed per day (bdboard-5t5). Where the closed
+     chart counts *closes* by closed_at, this counts beads *created* by
+     created_at per day, regardless of status (an open bead filed in-window
+     still counts). Same fixed-height bar-strip idiom; bars carry text
+     aria-labels and a visible count so they are never colour-only (design §5). #}
+  <section class="history-created" aria-label="Beads created per day">
     <h2 class="history-section-title">
-      Churn / activity
-      <span class="lane-count">{{ churn_total }}</span>
+      Beads created
+      <span class="lane-count">{{ created_total }}</span>
     </h2>
-    {% if churn_series %}
+    {% if created_series %}
     <div class="throughput-chart" role="img"
-         aria-label="Beads touched per day from {{ churn_series[0].day }} to {{ churn_series[-1].day }}, peak {{ churn_peak }} in a day">
+         aria-label="Beads created per day from {{ created_series[0].day }} to {{ created_series[-1].day }}, peak {{ created_peak }} in a day">
       <ul class="throughput-bars" role="list">
-        {% for d in churn_series %}
+        {% for d in created_series %}
         <li class="throughput-bar-cell">
           <span class="throughput-count" aria-hidden="true">{{ d.count if d.count else "" }}</span>
-          <span class="throughput-bar throughput-bar-churn"
-                style="height: {{ (d.count / churn_peak * 100) | round(1) if churn_peak else 0 }}%"
-                aria-label="{{ d.count }} touched on {{ d.day }}"></span>
+          <span class="throughput-bar throughput-bar-created"
+                style="height: {{ (d.count / created_peak * 100) | round(1) if created_peak else 0 }}%"
+                aria-label="{{ d.count }} created on {{ d.day }}"></span>
           <span class="throughput-day" aria-hidden="true">{{ d.day[5:] }}</span>
         </li>
         {% endfor %}
       </ul>
     </div>
-    <p class="history-churn-note muted">
-      Activity = beads last mutated (updated_at) that day, any status.
-    </p>
     {% else %}
-    <p class="history-empty muted">No activity to chart in {{ range_human }}.</p>
+    <p class="history-empty muted">No beads created to chart in {{ range_human }}.</p>
     {% endif %}
   </section>
 

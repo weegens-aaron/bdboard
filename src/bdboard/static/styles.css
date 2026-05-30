@@ -1754,15 +1754,11 @@ pre { margin: 0; }
   border-radius: 2px 2px 0 0;
   align-self: stretch;
 }
-/* Churn bars use a distinct hue (violet) so the activity strip reads as a
-   different metric from the blue throughput strip at a glance. Both are
+/* Beads-created bars use a distinct hue (violet) so the created strip reads
+   as a different metric from the blue closed strip at a glance. Both are
    non-text UI fills, so 3:1 against paper is the bar (design §5 / WCAG). */
-.throughput-bar-churn {
+.throughput-bar-created {
   background: var(--violet);
-}
-.history-churn-note {
-  margin: 6px 0 0;
-  font-size: 11px;
 }
 .throughput-day {
   font-family: var(--mono);

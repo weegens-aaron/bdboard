@@ -1,8 +1,8 @@
-"""WCAG 2.2 AA contrast for the churn (activity) chart bars (bdboard-h0m).
+"""WCAG 2.2 AA contrast for the 'Beads created' chart bars (bdboard-5t5).
 
-The churn bars use ``--violet`` as a non-text UI fill to distinguish the
-activity strip from the blue throughput strip. Non-text UI components must
-meet a 3:1 contrast ratio against their adjacent background (WCAG 1.4.11).
+The created bars use ``--violet`` as a non-text UI fill to distinguish the
+created strip from the blue closed strip. Non-text UI components must meet a
+3:1 contrast ratio against their adjacent background (WCAG 1.4.11).
 ``--violet`` and ``--paper`` are both theme-aware, so we resolve each from
 styles.css and assert 3:1 in BOTH the light and dark theme blocks.
 """
@@ -47,28 +47,28 @@ def _resolve(token: str, region: str) -> str:
     return _resolve(ref.group(1), region)
 
 
-def test_churn_bar_class_uses_violet_token():
-    # The churn variant exists and pulls the violet token (not a hard-coded hex).
-    m = re.search(r"\.throughput-bar-churn\s*\{[^}]*\}", CSS)
-    assert m, "throughput-bar-churn rule missing"
+def test_created_bar_class_uses_violet_token():
+    # The created variant exists and pulls the violet token (not a hard-coded hex).
+    m = re.search(r"\.throughput-bar-created\s*\{[^}]*\}", CSS)
+    assert m, "throughput-bar-created rule missing"
     assert "var(--violet)" in m.group(0)
 
 
-def test_churn_bar_meets_3to1_in_light_theme():
+def test_created_bar_meets_3to1_in_light_theme():
     light, _ = _theme_blocks()
     violet = _resolve("--violet", light)
     paper = _resolve("--paper", light)
     ratio = contrast_ratio(violet, paper)
     assert ratio >= 3.0, (
-        f"churn bar {ratio:.2f}:1 fails 3:1 (light): {violet} on {paper}"
+        f"created bar {ratio:.2f}:1 fails 3:1 (light): {violet} on {paper}"
     )
 
 
-def test_churn_bar_meets_3to1_in_dark_theme():
+def test_created_bar_meets_3to1_in_dark_theme():
     _, dark = _theme_blocks()
     violet = _resolve("--violet", dark)
     paper = _resolve("--paper", dark)
     ratio = contrast_ratio(violet, paper)
     assert ratio >= 3.0, (
-        f"churn bar {ratio:.2f}:1 fails 3:1 (dark): {violet} on {paper}"
+        f"created bar {ratio:.2f}:1 fails 3:1 (dark): {violet} on {paper}"
     )

@@ -13,7 +13,7 @@ from bdboard.derive import (
     _parse_dt,
     _percentile,
     _range_to_cutoff,
-    churn,
+    created,
     history_window,
     humanize_hours,
     lead_time_stats,
@@ -239,17 +239,17 @@ def test_throughput_series_is_ascending_and_continuous():
         assert (later - earlier).days == 1
 
 
-# ----- churn (activity-over-time, bdboard-h0m / design §6 bead D) -----
+# ----- created (beads-created-over-time, bdboard-5t5) -----
 
 
-def test_churn_buckets_touched_by_day_gap_filled():
-    # Two touches on day -1, one on day -3; day -2 has none -> filled with 0.
+def test_created_buckets_by_day_gap_filled():
+    # Two created on day -1, one on day -3; day -2 has none -> filled with 0.
     beads = [
-        _bead("a", updated_at=_iso(1, hour=9)),
-        _bead("b", updated_at=_iso(1, hour=15)),
-        _bead("c", updated_at=_iso(3, hour=10)),
+        _bead("a", created_at=_iso(1, hour=9)),
+        _bead("b", created_at=_iso(1, hour=15)),
+        _bead("c", created_at=_iso(3, hour=10)),
     ]
-    series = churn(beads, "7d", now=NOW)
+    series = created(beads, "7d", now=NOW)
     assert len(series) == 3  # spans -3 .. -1
     total = sum(r["count"] for r in series)
     assert total == 3
@@ -257,51 +257,51 @@ def test_churn_buckets_touched_by_day_gap_filled():
     assert 0 in counts.values()  # the quiet middle day is zero-filled
 
 
-def test_churn_counts_open_beads_too():
-    # Churn is status-agnostic: an edited OPEN bead is activity (unlike
-    # throughput, which only counts closes).
+def test_created_counts_open_beads_too():
+    # created is status-agnostic: an OPEN bead filed in-window still counts
+    # (unlike throughput, which only counts closes).
     beads = [
-        _bead("open1", status="open", updated_at=_iso(1)),
-        _bead("closed1", status="closed", closed_at=_iso(1), updated_at=_iso(1)),
+        _bead("open1", status="open", created_at=_iso(1)),
+        _bead("closed1", status="closed", created_at=_iso(1), closed_at=_iso(1)),
     ]
-    series = churn(beads, "7d", now=NOW)
+    series = created(beads, "7d", now=NOW)
     assert sum(r["count"] for r in series) == 2
 
 
-def test_churn_empty_when_nothing_touched_in_window():
-    beads = [_bead("ancient", status="open", updated_at=_iso(200))]
-    assert churn(beads, "30d", now=NOW) == []
+def test_created_empty_when_nothing_created_in_window():
+    beads = [_bead("ancient", status="open", created_at=_iso(200))]
+    assert created(beads, "30d", now=NOW) == []
 
 
-def test_churn_excludes_beads_without_updated_at():
-    beads = [_bead("a", status="open", created_at=_iso(1))]  # no updated_at
-    assert churn(beads, "all", now=NOW) == []
+def test_created_excludes_beads_without_created_at():
+    beads = [_bead("a", status="open", updated_at=_iso(1))]  # no created_at
+    assert created(beads, "all", now=NOW) == []
 
 
-def test_churn_respects_range():
+def test_created_respects_range():
     beads = [
-        _bead("recent", status="open", updated_at=_iso(2)),
-        _bead("ancient", status="open", updated_at=_iso(200)),
+        _bead("recent", status="open", created_at=_iso(2)),
+        _bead("ancient", status="open", created_at=_iso(200)),
     ]
-    series = churn(beads, "7d", now=NOW)
+    series = created(beads, "7d", now=NOW)
     assert sum(r["count"] for r in series) == 1
 
 
-def test_churn_all_range_unbounded():
+def test_created_all_range_unbounded():
     beads = [
-        _bead("a", status="open", updated_at=_iso(2)),
-        _bead("b", status="open", updated_at=_iso(500)),
+        _bead("a", status="open", created_at=_iso(2)),
+        _bead("b", status="open", created_at=_iso(500)),
     ]
-    series = churn(beads, "all", now=NOW)
+    series = created(beads, "all", now=NOW)
     assert sum(r["count"] for r in series) == 2
 
 
-def test_churn_series_is_ascending_and_continuous():
+def test_created_series_is_ascending_and_continuous():
     beads = [
-        _bead("a", status="open", updated_at=_iso(1)),
-        _bead("b", status="open", updated_at=_iso(4)),
+        _bead("a", status="open", created_at=_iso(1)),
+        _bead("b", status="open", created_at=_iso(4)),
     ]
-    series = churn(beads, "30d", now=NOW)
+    series = created(beads, "30d", now=NOW)
     days = [row["day"] for row in series]
     assert days == sorted(days)
     parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]

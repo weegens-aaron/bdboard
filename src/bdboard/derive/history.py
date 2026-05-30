@@ -140,61 +140,52 @@ def throughput(
     return series
 
 
-def _updated_in_window(
+def _created_in_window(
     beads: list[dict[str, Any]], cutoff: datetime | None
 ) -> list[dict[str, Any]]:
-    """Beads whose updated_at is >= cutoff (all when cutoff is None).
+    """Beads whose created_at is >= cutoff (all when cutoff is None).
 
-    The churn/activity counterpart to :func:`_closed_in_window`: where the
-    throughput/closed views filter by ``closed_at``, churn filters by
-    ``updated_at`` (design D3 - 'the activity/churn views filter by
-    updated_at'). Status is irrelevant: an *open* bead that was edited still
-    counts as activity. Beads with no parseable ``updated_at`` are excluded -
-    they cannot be placed on a timeline.
+    The 'beads created' counterpart to :func:`_closed_in_window`: where the
+    closed/throughput view filters by ``closed_at``, this filters by
+    ``created_at``. Status is irrelevant: a still-*open* bead filed in the
+    window counts just as much as one that has since closed. Beads with no
+    parseable ``created_at`` are excluded - they cannot be placed on a
+    timeline.
     """
     out: list[dict[str, Any]] = []
     for b in beads:
-        updated = _parse_dt(b.get("updated_at"))
-        if updated is None:
+        created = _parse_dt(b.get("created_at"))
+        if created is None:
             continue
-        if cutoff is not None and updated < cutoff:
+        if cutoff is not None and created < cutoff:
             continue
         out.append(b)
     return out
 
 
-def churn(
+def created(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Activity-over-time: beads *touched* per day within a range (design 6, D).
+    """Beads-created-per-day series within a range (mirrors :func:`throughput`).
 
-    **Churn definition** (the open question deferred bead D was waiting on):
-    a bead is 'churned' on the calendar day of its ``updated_at`` - i.e. the
-    day it was last mutated. ``churn`` counts how many beads were last touched
-    on each day in the window, regardless of status (an edited *open* bead is
-    activity just as much as a freshly *closed* one). This complements
-    :func:`throughput` (which counts *closes* by ``closed_at``): throughput
-    answers 'how much did we finish?', churn answers 'how much moved?'.
-
-    Returns a gap-free ascending series
+    Buckets ``created_at`` by local calendar day (:func:`_day_bucket`) and
+    returns a gap-free ascending series
     ``[{\"day\": \"YYYY-MM-DD\", \"count\": int}, ...]`` spanning the first
-    through last day with activity in the window, zero-filling quiet days so
-    the chart reads as a continuous timeline. Returns ``[]`` when nothing was
-    touched in the window. Pure over the snapshot - no extra I/O.
-
-    Caveat: ``updated_at`` reflects only the *latest* mutation bd retained in
-    the current Dolt-compacted snapshot, so a bead edited many times shows as
-    a single day of churn (its most recent touch), not one per edit. A true
-    per-edit feed would need per-bead ``bd history`` (deferred bead E); that
-    is intentionally out of scope here (design 3 / 6).
+    through last day that has a creation in the window. Days with zero
+    creations inside that span are filled with ``count=0`` so the chart reads
+    as a continuous timeline rather than a jagged one. Status is irrelevant
+    (an open bead filed in-window still counts), which is exactly the
+    complement to :func:`throughput`: created answers 'how much did we file?',
+    throughput answers 'how much did we finish?'. Returns ``[]`` when nothing
+    was created in the window. Pure over the snapshot - no extra I/O.
     """
     cutoff = _range_to_cutoff(range_key, now=now)
-    windowed = _updated_in_window(beads, cutoff)
+    windowed = _created_in_window(beads, cutoff)
     buckets: dict[str, int] = defaultdict(int)
     for b in windowed:
-        day = _day_bucket(b.get("updated_at"))
+        day = _day_bucket(b.get("created_at"))
         if day is not None:
             buckets[day] += 1
     if not buckets:
