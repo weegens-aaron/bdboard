@@ -1690,16 +1690,74 @@ pre { margin: 0; }
   flex-wrap: wrap;
   gap: 12px 20px;
 }
-/* "via bd" source tag — small-caps muted suffix marking the bd-sourced cells
-   so they never read as range-scoped alongside the range-derived ones. */
-.history-stat-src {
-  display: inline-block;
-  margin-left: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+/* Info-icon popover (bdboard-5wt) — terse stat labels delegate their fuller
+   explanation (data source, claim→close vs created→close definition, range
+   scope) to this CSS-only popover. The <button> reveals the tooltip on
+   hover/focus (keyboard-accessible: focus alone triggers it); aria-describedby
+   ties the always-present tooltip text to the button so assistive tech reads
+   the explanation regardless of the visual hover/focus state. No JS. */
+.counts-label { position: relative; }
+.stat-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
   color: var(--muted);
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+}
+.stat-info:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.stat-info:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+/* Tooltip: in the DOM at all times for aria-describedby, but visually hidden
+   until its trigger is hovered/focused. Clipped (not display:none) so screen
+   readers can still resolve the aria-describedby reference. */
+.stat-info-pop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  background: var(--paper-3);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: 0 4px 12px var(--shadow-inset);
+  /* visually hidden but accessible (not display:none) */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.stat-info:hover + .stat-info-pop,
+.stat-info:focus-visible + .stat-info-pop,
+.stat-info-pop:hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .history-section-title {

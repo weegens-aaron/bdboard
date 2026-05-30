@@ -79,11 +79,44 @@ def test_kpi_strip_renders_closed_count_and_labels() -> None:
     status, body = _call()
 
     assert status == 200
-    assert "Closed in 30 days" in body
-    assert "Median lead time" in body
-    assert "Throughput / day" in body
+    # bdboard-5wt: stat labels are now terse 1-2 word headlines; the verbose
+    # qualifiers moved into info-icon popovers (role="tooltip").
+    assert "Closed (range)" in body
+    assert "Median lead" in body
+    assert "Throughput" in body
     # KPI strip is in an aria-live region so range changes are announced.
     assert 'aria-live="polite"' in body
+
+
+def test_stat_labels_are_terse_with_accessible_info_popovers() -> None:
+    # bdboard-5wt: each crowded sentence-like label is replaced by a terse
+    # 1-2 word headline, with the qualifier moved into a keyboard-accessible,
+    # screen-reader-friendly info-icon popover. A stubbed bd_summary ensures
+    # the 'via bd' cells (Total / Closed all-time) also render their popovers.
+    async def fake_summary():
+        return {"total_issues": 5, "closed_issues": 3}
+
+    app_module.store.bd.status_summary = fake_summary  # type: ignore[assignment]
+    _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=2)])
+
+    _, body = _call()
+
+    # Terse headlines (no inline 'via bd' / 'claim->close, {range}' clutter).
+    for short in ("Total", "Closed", "Avg lead", "Median lead", "Throughput"):
+        assert short in body
+    assert "via bd" not in body
+
+    # Each info icon is a real button with an accessible name + describedby,
+    # paired with a role="tooltip" carrying the fuller explanation. The button
+    # being focusable (native <button>) makes the popover keyboard-reachable.
+    assert 'class="stat-info"' in body
+    assert 'aria-describedby="info-avg-lead"' in body
+    assert 'id="info-avg-lead"' in body
+    assert 'role="tooltip"' in body
+    assert 'aria-label="About ' in body
+    # The disambiguating detail survives inside the popovers (source + scope).
+    assert "reported by bd" in body
+    assert "claim\u2192close cycle time" in body
 
 
 def test_stats_render_as_masthead_oob_fragment() -> None:
@@ -103,17 +136,19 @@ def test_stats_render_as_masthead_oob_fragment() -> None:
 
 
 def test_avg_lead_time_is_claim_to_close_cycle_time() -> None:
-    # bdboard-98o: 'Avg lead time' is redefined as the mean claim-to-close
-    # cycle time (started_at -> closed_at), range-scoped and client-derived,
-    # NOT bd's workspace-global created->closed average. The label clarifies
-    # the claim->close definition and no longer claims to come 'via bd'.
+    # bdboard-98o: 'Avg lead' is the mean claim-to-close cycle time
+    # (started_at -> closed_at), range-scoped and client-derived, NOT bd's
+    # workspace-global created->closed average. bdboard-5wt: the label is the
+    # terse "Avg lead" and the claim->close definition + range scope live in
+    # the info-icon popover.
     _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=2)])
 
     _, body = _call()
 
-    assert "Avg lead time" in body
-    # Clarifies the claim->close lineage + range scope, not 'via bd'.
-    assert "claim\u2192close, 30 days" in body
+    assert "Avg lead" in body
+    # The claim->close lineage + range scope are preserved in the popover.
+    assert "claim\u2192close cycle time" in body
+    assert 'role="tooltip"' in body
 
 
 def test_range_scoped_stats_update_in_oob_fragment() -> None:
@@ -123,11 +158,12 @@ def test_range_scoped_stats_update_in_oob_fragment() -> None:
 
     _, body_7d = _call(range="7d")
     # Nothing closed in the last 7 days -> the masthead stat reads zero.
-    assert "Closed in 7 days" in body_7d
+    # The active range surfaces in the info-icon popover (bdboard-5wt).
+    assert "(7 days)" in body_7d
 
     _, body_all = _call(range="all")
     # Widening to all-time surfaces the old bead in the same OOB strip.
-    assert "Closed in all time" in body_all
+    assert "(all time)" in body_all
     assert 'hx-swap-oob="true"' in body_all
 
 
@@ -172,8 +208,8 @@ def test_bad_range_degrades_to_default() -> None:
     status, body = _call(range="bogus")
 
     assert status == 200
-    # Falls back to the 30d default window copy.
-    assert "Closed in 30 days" in body
+    # Falls back to the 30d default window; the range surfaces in popovers.
+    assert "(30 days)" in body
 
 
 def test_pagination_page_two_shows_newer_pager() -> None:
@@ -215,7 +251,7 @@ def test_all_range_includes_old_beads() -> None:
 
     assert status == 200
     assert "Bead old" in body
-    assert "Closed in all time" in body
+    assert "(all time)" in body
 
 
 def test_foot_summary_echoes_headline() -> None:
