@@ -1,0 +1,87 @@
+{
+  "formula": "code-health-audit",
+  "description": "Recurring code-health audit for {{repo}} ({{quarter}}). Children TRIAGE the mechanical code-health CI output (.github/workflows/code-health.yml: ruff/vulture, jscpd, pip-audit) rather than re-running tools, plus a judgment-only SOLID review. File one bead per finding. Recommended cadence: quarterly, run via 'bd mol pour code-health-audit --var repo={{repo}} --var quarter={{quarter}}' (persistent, for audit trail).",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "variables": {
+    "repo": {
+      "description": "Repo or package under audit",
+      "default": "bdboard"
+    },
+    "quarter": {
+      "description": "Audit period label",
+      "default": "this-cycle"
+    }
+  },
+  "steps": [
+    {
+      "id": "audit-root",
+      "title": "Code-health audit: {{repo}} ({{quarter}})",
+      "description": "Umbrella for the {{quarter}} code-health audit of {{repo}}. The mechanical pass/fail checks already run in CI (.github/workflows/code-health.yml). These children TRIAGE that CI output - they do NOT re-run the tools. File one bead per finding via the Bug Discovery Protocol; do NOT fix inline unless blocking.",
+      "type": "epic",
+      "priority": 2,
+      "labels": [
+        "code-health",
+        "audit",
+        "recurring"
+      ]
+    },
+    {
+      "id": "dry-triage",
+      "title": "DRY triage: review jscpd duplication report for {{repo}}",
+      "description": "Triage the duplication findings from the CI 'jscpd (copy-paste detector)' job (config: .jscpd.json, gate threshold 1%). Pull the latest jscpd report, review reported clones below the gate, and decide which are worth de-duplicating. Do NOT re-run jscpd yourself - read CI output. Output: ranked list of duplication hotspots (file:line) worth a refactor bead, plus whether the 1% threshold should be tightened.",
+      "type": "task",
+      "priority": 2,
+      "labels": [
+        "code-health",
+        "DRY"
+      ],
+      "depends_on": [
+        "audit-root"
+      ]
+    },
+    {
+      "id": "solid-review",
+      "title": "SOLID review: responsibility & coupling in {{repo}}",
+      "description": "Judgment-only review (no mechanical CI check exists for this). Look for SRP violations (god modules >600 lines), leaky abstractions, and tight coupling. This is the one child that is genuinely a human/agent assessment rather than CI triage. Output: refactor candidates ranked by pain.",
+      "type": "task",
+      "priority": 2,
+      "labels": [
+        "code-health",
+        "SOLID"
+      ],
+      "depends_on": [
+        "audit-root"
+      ]
+    },
+    {
+      "id": "dead-code-triage",
+      "title": "Dead-code triage: review vulture CI output for {{repo}}",
+      "description": "Triage findings from the CI 'vulture (dead-code sweep)' job (--min-confidence 80) and the ruff F401 unused-import signals from the 'ruff' job. Read the CI logs; do NOT re-run vulture/ruff. For each reported item, decide remove vs. keep (false positive) with a confidence note. Output: removal candidates with confidence notes, plus any sub-80-confidence vulture items worth a manual look.",
+      "type": "task",
+      "priority": 2,
+      "labels": [
+        "code-health",
+        "dead-code"
+      ],
+      "depends_on": [
+        "audit-root"
+      ]
+    },
+    {
+      "id": "dep-hygiene-triage",
+      "title": "Dependency-hygiene triage: review pip-audit + outdated CI output for {{repo}}",
+      "description": "Triage dependency findings from the CI 'pip-audit + outdated' job: pip-audit (CVE scan, hard gate) and 'uv pip list --outdated' (advisory, never fails). Read the CI logs; do NOT re-run the tools. Decide which outdated deps to upgrade and confirm no advisories are quietly accumulating. Output: upgrade/remove plan ranked by risk.",
+      "type": "task",
+      "priority": 2,
+      "labels": [
+        "code-health",
+        "dependencies"
+      ],
+      "depends_on": [
+        "audit-root"
+      ]
+    }
+  ]
+}

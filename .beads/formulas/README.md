@@ -43,3 +43,42 @@ materializes ONLY the root issue unless **top-level `pour:true`** is set
 later runs `bd mol wisp docs-validation`, the full epic + 4 children still
 materialize instead of a silently-empty root. Verified: both
 `bd mol pour ... --dry-run` and `bd mol wisp ... --dry-run` report 6 issues.
+
+## code-health-audit
+
+A quarterly code-health audit that spawns an epic + 4 task children
+(DRY triage, SOLID review, dead-code triage, dependency-hygiene triage).
+
+The key design point (bdboard-jyf): the **mechanical** pass/fail checks
+(ruff/vulture, jscpd, pip-audit) already run in CI — see
+`.github/workflows/code-health.yml` (shipped in bdboard-ndm). The formula
+children therefore **TRIAGE the CI output** — they do NOT re-run the tools.
+Formulas spawn judgment work; CI runs the checks. The lone exception is the
+**SOLID review** child, which is genuinely a human/agent assessment with no
+mechanical CI equivalent.
+
+File one bead per finding via the Bug Discovery Protocol — don't fix inline
+unless blocking.
+
+**Run it (recommended — persistent / pour):**
+
+```bash
+bd mol pour code-health-audit --var repo=bdboard --var quarter=2026-Q2
+```
+
+Use `--dry-run` first to preview the 6 issues (epic + 4 children) without
+creating them. Variables: `repo` (default `bdboard`), `quarter`
+(default `this-cycle`).
+
+### Chosen cadence
+
+- **Cadence: quarterly**, invoked **manually** via `bd mol pour` — same
+  interim policy as `docs-validation`. Automation/invoker is tracked
+  separately in **bdboard-ace**.
+
+### Note on phase / the vapor↔pour gotcha
+
+Same approach as `docs-validation`: **no `phase:vapor`**, but **top-level
+`pour:true`** kept as a safety net so a stray `bd mol wisp` still materializes
+the full tree instead of a silently-empty root. Verified: both
+`bd mol pour ... --dry-run` and `bd mol wisp ... --dry-run` report 6 issues.
