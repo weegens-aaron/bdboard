@@ -1379,11 +1379,6 @@ pre { margin: 0; }
   text-decoration: none;
 }
 .footer-link:hover { color: var(--brand-blue); text-decoration: underline; }
-.footer-tip {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted-2);
-}
 
 /* Live indicator — small pulsing dot proves polling is alive. */
 .live-dot {
