@@ -72,12 +72,76 @@ def _range_to_cutoff(range_key: str, now: datetime | None = None) -> datetime | 
     return base - delta
 
 
-def _closed_in_window(beads: list[dict[str, Any]], cutoff: datetime | None) -> list[dict[str, Any]]:
-    """Closed beads whose closed_at is >= cutoff (all closed when cutoff None).
+def _parse_date(value: str | None) -> datetime | None:
+    """Parse a ``YYYY-MM-DD`` date string to a start-of-day UTC datetime.
+
+    Returns None on missing/invalid input so callers can treat a bad or
+    absent date as "no bound" rather than erroring. Only the calendar-date
+    form is accepted (the HTML ``<input type="date">`` wire format); any
+    time component or other shape is rejected.
+    """
+    if not value:
+        return None
+    try:
+        dt = datetime.strptime(value.strip(), "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+    return dt.replace(tzinfo=UTC)
+
+
+def custom_bounds(
+    from_date: str | None, to_date: str | None
+) -> tuple[datetime | None, datetime | None]:
+    """Resolve explicit from/to date strings to a ``(cutoff, ceiling)`` window.
+
+    ``cutoff`` is the inclusive start-of-day lower bound; ``ceiling`` is the
+    EXCLUSIVE start-of-next-day upper bound, so a ``to`` of ``2026-05-30``
+    includes everything stamped on the 30th. Either side may be None for an
+    open-ended bound. Returns ``(None, None)`` when neither date parses —
+    the signal that there is no custom window and the caller should fall
+    back to the preset range. Inverted inputs (``from`` after ``to``) are
+    swapped so the window stays meaningful rather than collapsing to empty.
+    """
+    lo = _parse_date(from_date)
+    hi_day = _parse_date(to_date)
+    if lo is not None and hi_day is not None and lo > hi_day:
+        lo, hi_day = hi_day, lo
+    hi = hi_day + timedelta(days=1) if hi_day is not None else None
+    return lo, hi
+
+
+def _resolve_bounds(
+    range_key: str,
+    from_date: str | None,
+    to_date: str | None,
+    now: datetime | None = None,
+) -> tuple[datetime | None, datetime | None]:
+    """Single source of truth for the History window's lower/upper bounds.
+
+    An explicit custom from/to selection wins over the preset ``range_key``
+    (AC: from/to supersede range= for custom selections). When no custom
+    window is supplied, falls back to the preset cutoff with no upper bound
+    (the historical preset behaviour). Returns ``(cutoff, ceiling)`` where
+    either may be None for an open-ended side.
+    """
+    lo, hi = custom_bounds(from_date, to_date)
+    if lo is not None or hi is not None:
+        return lo, hi
+    return _range_to_cutoff(range_key, now=now), None
+
+
+def _closed_in_window(
+    beads: list[dict[str, Any]],
+    cutoff: datetime | None,
+    ceiling: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Closed beads whose closed_at is within ``[cutoff, ceiling)``.
 
     A bead is "closed" by the same rule the board uses (:data:`CLOSED_STATUSES`).
-    Beads with no parseable closed_at are excluded — they cannot be placed on
-    a timeline.
+    ``cutoff`` (inclusive) and ``ceiling`` (exclusive) may each be None for an
+    open-ended side, so the preset views (lower bound only) and the custom
+    date-range views (both bounds) share one filter. Beads with no parseable
+    closed_at are excluded — they cannot be placed on a timeline.
     """
     out: list[dict[str, Any]] = []
     for b in beads:
@@ -87,6 +151,8 @@ def _closed_in_window(beads: list[dict[str, Any]], cutoff: datetime | None) -> l
         if closed is None:
             continue
         if cutoff is not None and closed < cutoff:
+            continue
+        if ceiling is not None and closed >= ceiling:
             continue
         out.append(b)
     return out
@@ -98,6 +164,8 @@ def history_window(
     page: int = 1,
     page_size: int = HISTORY_PAGE_SIZE,
     now: datetime | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> dict[str, Any]:
     """Paginated list of closed beads within a range, newest-closed first.
 
@@ -106,9 +174,13 @@ def history_window(
     ``total`` is the full count in the window (pre-pagination). Out-of-range
     pages yield an empty ``items`` with ``has_more=False``. This is a pure
     slice over the in-memory snapshot — no extra I/O per page (design §D5).
+
+    An explicit ``from_date``/``to_date`` (``YYYY-MM-DD``) custom selection
+    supersedes ``range_key`` (bdboard-7k6); otherwise the preset window
+    applies as before.
     """
-    cutoff = _range_to_cutoff(range_key, now=now)
-    windowed = _closed_in_window(beads, cutoff)
+    cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
+    windowed = _closed_in_window(beads, cutoff, ceiling)
     windowed.sort(key=lambda b: (-_epoch(b.get("closed_at")), b.get("id") or ""))
     total = len(windowed)
     page = max(1, page)
@@ -154,6 +226,8 @@ def throughput(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
     now: datetime | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> list[dict[str, Any]]:
     """Closed-beads-per-day series within a range (design §D2).
 
@@ -162,10 +236,11 @@ def throughput(
     spanning the first through last day that has a close in the window. Days
     with zero closes inside that span are filled with ``count=0`` so the
     chart reads as a continuous timeline rather than a jagged one. Returns
-    ``[]`` when nothing closed in the window.
+    ``[]`` when nothing closed in the window. An explicit custom
+    ``from_date``/``to_date`` supersedes ``range_key`` (bdboard-7k6).
     """
-    cutoff = _range_to_cutoff(range_key, now=now)
-    windowed = _closed_in_window(beads, cutoff)
+    cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
+    windowed = _closed_in_window(beads, cutoff, ceiling)
     buckets: dict[str, int] = defaultdict(int)
     for b in windowed:
         day = _day_bucket(b.get("closed_at"))
@@ -175,16 +250,19 @@ def throughput(
 
 
 def _created_in_window(
-    beads: list[dict[str, Any]], cutoff: datetime | None
+    beads: list[dict[str, Any]],
+    cutoff: datetime | None,
+    ceiling: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Beads whose created_at is >= cutoff (all when cutoff is None).
+    """Beads whose created_at is within ``[cutoff, ceiling)`` (open-ended Nones).
 
     The 'beads created' counterpart to :func:`_closed_in_window`: where the
     closed/throughput view filters by ``closed_at``, this filters by
     ``created_at``. Status is irrelevant: a still-*open* bead filed in the
-    window counts just as much as one that has since closed. Beads with no
-    parseable ``created_at`` are excluded - they cannot be placed on a
-    timeline.
+    window counts just as much as one that has since closed. ``cutoff``
+    (inclusive) and ``ceiling`` (exclusive) may each be None for an
+    open-ended side. Beads with no parseable ``created_at`` are excluded -
+    they cannot be placed on a timeline.
     """
     out: list[dict[str, Any]] = []
     for b in beads:
@@ -192,6 +270,8 @@ def _created_in_window(
         if created is None:
             continue
         if cutoff is not None and created < cutoff:
+            continue
+        if ceiling is not None and created >= ceiling:
             continue
         out.append(b)
     return out
@@ -201,6 +281,8 @@ def created(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
     now: datetime | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> list[dict[str, Any]]:
     """Beads-created-per-day series within a range (mirrors :func:`throughput`).
 
@@ -213,10 +295,12 @@ def created(
     (an open bead filed in-window still counts), which is exactly the
     complement to :func:`throughput`: created answers 'how much did we file?',
     throughput answers 'how much did we finish?'. Returns ``[]`` when nothing
-    was created in the window. Pure over the snapshot - no extra I/O.
+    was created in the window. Pure over the snapshot - no extra I/O. An
+    explicit custom ``from_date``/``to_date`` supersedes ``range_key``
+    (bdboard-7k6).
     """
-    cutoff = _range_to_cutoff(range_key, now=now)
-    windowed = _created_in_window(beads, cutoff)
+    cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
+    windowed = _created_in_window(beads, cutoff, ceiling)
     buckets: dict[str, int] = defaultdict(int)
     for b in windowed:
         day = _day_bucket(b.get("created_at"))
@@ -247,6 +331,8 @@ def lead_time_stats(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
     now: datetime | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> dict[str, Any]:
     """Lead-time / cycle-time stats over closed beads in a range (design §D2a).
 
@@ -261,10 +347,11 @@ def lead_time_stats(
     work time (started_at → closed_at) rather than bd's workspace-global
     backlog-age lead time (created → closed). Beads lacking a parseable
     ``started_at`` are excluded from the cycle metrics; negative/zero
-    durations from clock skew or odd data are dropped.
+    durations from clock skew or odd data are dropped. An explicit custom
+    ``from_date``/``to_date`` supersedes ``range_key`` (bdboard-7k6).
     """
-    cutoff = _range_to_cutoff(range_key, now=now)
-    windowed = _closed_in_window(beads, cutoff)
+    cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
+    windowed = _closed_in_window(beads, cutoff, ceiling)
     lead_hours: list[float] = []
     cycle_hours: list[float] = []
     for b in windowed:

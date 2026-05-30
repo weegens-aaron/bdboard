@@ -1664,7 +1664,9 @@ pre { margin: 0; }
 }
 .history-toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px 12px;
 }
 .history-ranges {
   display: flex;
@@ -1673,6 +1675,46 @@ pre { margin: 0; }
 }
 /* The "All" preset reads better un-lowercased than the others. */
 .history-ranges .filter-badge { text-transform: none; }
+
+/* Custom date-range form (bdboard-7k6). Sits beside the preset badges and
+   reveals from/to <input type="date"> fields when the Custom badge is
+   toggled (or when a custom selection is active server-side). Mirrors the
+   toolbar's flex idiom and wraps gracefully at narrow widths. */
+.history-custom-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.history-custom-range[hidden] { display: none; }
+.history-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.history-date-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.history-date-input {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.history-date-input:focus-visible {
+  outline: 2px solid var(--blue-100);
+  outline-offset: 1px;
+}
+.history-date-apply { text-transform: none; align-self: flex-end; }
+.history-date-clear { align-self: flex-end; }
 
 /* History stats — a SINGLE editorial row (bdboard-4zk) combining bd's
    workspace-global totals ("via bd") with the range-derived KPIs. Relocated

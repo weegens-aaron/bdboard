@@ -542,3 +542,109 @@ def test_status_timeline_carries_committer_and_short_hash():
     tl = status_timeline(history)
     assert tl[0]["who"] == "aaron"
     assert tl[0]["commit"] == "abcdef12"  # truncated to 8 chars
+
+
+# ----- custom date-range window (bdboard-7k6) -----
+
+
+def test_parse_date_accepts_calendar_date_rejects_garbage():
+    from datetime import UTC as _UTC
+
+    from bdboard.derive import _parse_date
+
+    dt = _parse_date("2026-05-30")
+    assert dt == datetime(2026, 5, 30, tzinfo=_UTC)
+    # Missing / malformed / time-bearing inputs all degrade to None.
+    assert _parse_date(None) is None
+    assert _parse_date("") is None
+    assert _parse_date("not-a-date") is None
+    assert _parse_date("2026-05-30T12:00:00Z") is None
+
+
+def test_custom_bounds_inclusive_end_of_day():
+    from datetime import UTC as _UTC
+
+    from bdboard.derive import custom_bounds
+
+    lo, hi = custom_bounds("2026-05-01", "2026-05-30")
+    # Lower bound is start-of-day; ceiling is start of the NEXT day (exclusive)
+    # so the whole of the 30th is included.
+    assert lo == datetime(2026, 5, 1, tzinfo=_UTC)
+    assert hi == datetime(2026, 5, 31, tzinfo=_UTC)
+
+
+def test_custom_bounds_open_ended_sides_and_none():
+    from bdboard.derive import custom_bounds
+
+    lo, hi = custom_bounds("2026-05-01", None)
+    assert lo is not None and hi is None
+    lo, hi = custom_bounds(None, "2026-05-30")
+    assert lo is None and hi is not None
+    # Neither supplied -> no custom window signal.
+    assert custom_bounds(None, None) == (None, None)
+    assert custom_bounds("", "") == (None, None)
+
+
+def test_custom_bounds_swaps_inverted_dates():
+    from bdboard.derive import custom_bounds
+
+    lo, hi = custom_bounds("2026-05-30", "2026-05-01")
+    # from after to is swapped so the window is non-empty.
+    assert lo < hi
+
+
+def test_resolve_bounds_custom_supersedes_preset():
+    from bdboard.derive import _resolve_bounds, custom_bounds
+
+    lo, hi = _resolve_bounds("7d", "2026-05-01", "2026-05-30", now=NOW)
+    assert (lo, hi) == custom_bounds("2026-05-01", "2026-05-30")
+
+
+def test_resolve_bounds_falls_back_to_preset_when_no_custom():
+    from bdboard.derive import _range_to_cutoff, _resolve_bounds
+
+    lo, hi = _resolve_bounds("7d", None, None, now=NOW)
+    assert lo == _range_to_cutoff("7d", now=NOW)
+    assert hi is None
+
+
+def test_history_window_custom_range_filters_both_bounds():
+    beads = [
+        _bead("a", closed_at=_iso(0)),  # NOW (2026-05-30)
+        _bead("b", closed_at=_iso(10)),  # 2026-05-20
+        _bead("c", closed_at=_iso(40)),  # 2026-04-20
+    ]
+    # Window 2026-05-15 .. 2026-05-25 should contain only "b".
+    res = history_window(beads, "all", now=NOW, from_date="2026-05-15", to_date="2026-05-25")
+    ids = [b["id"] for b in res["items"]]
+    assert ids == ["b"]
+
+
+def test_throughput_custom_range_supersedes_preset():
+    beads = [
+        _bead("a", closed_at=_iso(0)),
+        _bead("b", closed_at=_iso(40)),  # 2026-04-20, outside 7d but in custom
+    ]
+    series = throughput(beads, "7d", now=NOW, from_date="2026-04-01", to_date="2026-04-30")
+    total = sum(d["count"] for d in series)
+    assert total == 1
+
+
+def test_created_custom_range_supersedes_preset():
+    beads = [
+        _bead("a", status="open", created_at=_iso(0)),
+        _bead("b", status="open", created_at=_iso(40)),  # 2026-04-20
+    ]
+    series = created(beads, "7d", now=NOW, from_date="2026-04-01", to_date="2026-04-30")
+    total = sum(d["count"] for d in series)
+    assert total == 1
+
+
+def test_lead_time_stats_custom_range_supersedes_preset():
+    beads = [
+        _bead("a", created_at=_iso(41), started_at=_iso(41), closed_at=_iso(40)),
+    ]
+    stats = lead_time_stats(beads, "7d", now=NOW, from_date="2026-04-01", to_date="2026-04-30")
+    # The April-closed bead is excluded by the 7d preset but counted by the
+    # custom April window.
+    assert stats["n"] == 1

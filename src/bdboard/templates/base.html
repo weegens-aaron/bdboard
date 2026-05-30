@@ -72,6 +72,34 @@
           }
         });
       })();
+
+      // Custom date-range disclosure (bdboard-7k6). The History range
+      // control's "Custom" badge toggles the from/to date form's visibility.
+      // The button + form are swapped in with #history-region, so the click
+      // listener is delegated from <body> rather than bound to the element
+      // (it survives every HTMX swap). Server-rendered state wins on load:
+      // when a custom selection is active the form ships without [hidden] and
+      // the toggle ships aria-expanded=true, so this JS only handles the
+      // user-driven open/close of an as-yet-unsubmitted range.
+      (function () {
+        document.body.addEventListener('click', function (evt) {
+          var btn = evt.target;
+          if (!btn || btn.id !== 'history-custom-toggle') return;
+          var form = document.getElementById('history-custom-range');
+          if (!form) return;
+          var open = form.hasAttribute('hidden');
+          if (open) {
+            form.removeAttribute('hidden');
+          } else {
+            form.setAttribute('hidden', '');
+          }
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open) {
+            var first = form.querySelector('input[type="date"]');
+            if (first) first.focus();
+          }
+        });
+      })();
     </script>
     <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>

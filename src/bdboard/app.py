@@ -416,6 +416,8 @@ async def api_history(
     range: str = derive.DEFAULT_HISTORY_RANGE,
     page: int = 1,
     page_size: int | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> HTMLResponse:
     """Render the History swap region (HTMX target), symmetric with /api/lanes.
 
@@ -428,6 +430,13 @@ async def api_history(
     compute the views from one snapshot — the paginated closed list plus the
     throughput-per-day and created-per-day series — and hand them to
     partials/history.html.
+
+    ``from_date``/``to_date`` (``YYYY-MM-DD``) carry an explicit custom
+    window (bdboard-7k6). When either parses, it supersedes ``range=`` for
+    every series, the closed list, and the KPIs (the derive layer resolves
+    the precedence in one place via :func:`derive._resolve_bounds`); the
+    range control marks the synthetic ``custom`` preset active so the UI
+    reflects the custom selection after each HTMX swap.
     """
     beads = await store.snapshot()
     # Normalise the range once so the template's active-state cues and the
@@ -438,13 +447,28 @@ async def api_history(
     page = max(1, page)
     # Clamp page_size to the allowed set; missing/invalid -> default 50.
     size = derive.clamp_page_size(page_size)
-    window = derive.history_window(beads, range_key=range_key, page=page, page_size=size)
-    series = derive.throughput(beads, range_key=range_key)
-    stats = derive.lead_time_stats(beads, range_key=range_key)
+    # Custom date window (bdboard-7k6). Resolve the bounds once so we know
+    # whether a valid custom selection is active; if so the template's range
+    # control highlights the synthetic 'custom' option instead of a preset.
+    custom_lo, custom_hi = derive.custom_bounds(from_date, to_date)
+    is_custom = custom_lo is not None or custom_hi is not None
+    active_range = "custom" if is_custom else range_key
+    window = derive.history_window(
+        beads,
+        range_key=range_key,
+        page=page,
+        page_size=size,
+        from_date=from_date,
+        to_date=to_date,
+    )
+    series = derive.throughput(beads, range_key=range_key, from_date=from_date, to_date=to_date)
+    stats = derive.lead_time_stats(beads, range_key=range_key, from_date=from_date, to_date=to_date)
     # Beads created per day (bdboard-5t5): day-bucketed by created_at,
     # complementing the closed-by-closed_at throughput series. Range-scoped
     # the same way so both charts read against the same window.
-    created_series = derive.created(beads, range_key=range_key)
+    created_series = derive.created(
+        beads, range_key=range_key, from_date=from_date, to_date=to_date
+    )
     peak = max((d["count"] for d in series), default=0)
     created_peak = max((d["count"] for d in created_series), default=0)
     created_total = sum(d["count"] for d in created_series)
@@ -462,6 +486,10 @@ async def api_history(
         "partials/history.html",
         {
             "range_key": range_key,
+            "active_range": active_range,
+            "is_custom": is_custom,
+            "from_date": from_date or "",
+            "to_date": to_date or "",
             "ranges": list(derive.HISTORY_RANGES.keys()),
             "page_size": size,
             "page_sizes": list(derive.HISTORY_PAGE_SIZES),

@@ -323,3 +323,98 @@ def test_range_buttons_carry_active_page_size() -> None:
 
     # Switching range preserves the chosen size (resets to page 1).
     assert 'hx-get="/api/history?range=90d&page=1&page_size=100"' in body
+
+
+# --- Custom date-range selector (bdboard-7k6) ---------------------------
+
+
+def _call_custom(
+    from_date: str | None = None,
+    to_date: str | None = None,
+    range: str = "30d",
+    page: int = 1,
+    page_size: int | None = None,
+) -> tuple[int, str]:
+    qs = f"range={range}&page={page}"
+    if page_size is not None:
+        qs += f"&page_size={page_size}"
+    if from_date is not None:
+        qs += f"&from_date={from_date}"
+    if to_date is not None:
+        qs += f"&to_date={to_date}"
+    resp = asyncio.run(
+        app_module.api_history(
+            _request(qs),
+            range=range,
+            page=page,
+            page_size=page_size,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    )
+    return resp.status_code, resp.body.decode()
+
+
+def test_custom_toggle_and_date_inputs_render() -> None:
+    _stub_snapshot([_bead("a", days_ago=1)])
+
+    _, body = _call()
+
+    # The Custom toggle and the from/to date inputs are present.
+    assert 'id="history-custom-toggle"' in body
+    assert 'id="history-custom-range"' in body
+    assert 'name="from_date"' in body
+    assert 'name="to_date"' in body
+    assert 'type="date"' in body
+
+
+def test_custom_range_marks_custom_active_not_preset() -> None:
+    # A bead closed exactly today (days_ago=0) so an all-encompassing custom
+    # window includes it.
+    today = NOW.strftime("%Y-%m-%d")
+    _stub_snapshot([_bead("a", days_ago=0)])
+
+    _, body = _call_custom(from_date="2000-01-01", to_date=today)
+
+    # The custom toggle owns the active cue; presets are not pressed.
+    assert 'id="history-custom-toggle"' in body
+    assert 'aria-expanded="true"' in body
+    # The submitted dates echo back into the inputs.
+    assert f'value="{today}"' in body
+    # The bead inside the window surfaces.
+    assert "Bead a" in body
+
+
+def test_custom_range_supersedes_preset_filtering() -> None:
+    # Old bead outside the 7d preset, but inside an explicit wide custom window.
+    today = NOW.strftime("%Y-%m-%d")
+    _stub_snapshot([_bead("old", days_ago=400)])
+
+    status, body = _call_custom(range="7d", from_date="2000-01-01", to_date=today)
+
+    assert status == 200
+    # Despite range=7d, the custom window pulls in the 400-day-old bead.
+    assert "Bead old" in body
+
+
+def test_custom_range_pager_preserves_dates() -> None:
+    today = NOW.strftime("%Y-%m-%d")
+    beads = [_bead(f"b{i}", days_ago=1) for i in range(60)]
+    _stub_snapshot(beads)
+
+    _, body = _call_custom(from_date="2000-01-01", to_date=today, page_size=25)
+
+    # Pager links carry the custom window so paging stays scoped to it.
+    assert "from_date=2000-01-01" in body
+    assert f"to_date={today}" in body
+    assert "page_size=25" in body
+
+
+def test_no_custom_dates_keeps_preset_behaviour() -> None:
+    _stub_snapshot([_bead("a", days_ago=1)])
+
+    _, body = _call_custom(range="7d")
+
+    # Without from/to, the preset wins and its badge is pressed.
+    assert 'aria-pressed="true"' in body
+    assert 'hx-get="/api/history?range=90d&page=1&page_size=50"' in body
