@@ -1,0 +1,63 @@
+{
+  "formula": "code-health-audit",
+  "description": "Recurring code-health audit for {{repo}} ({{quarter}}). Walks DRY, SOLID, dead-code, and dependency-hygiene checks, capturing findings as child beads.",
+  "version": 1,
+  "type": "workflow",
+  "phase": "vapor",
+  "variables": {
+    "repo": {
+      "description": "Repo or package under audit",
+      "default": "bdboard"
+    },
+    "quarter": {
+      "description": "Audit period label",
+      "default": "this-cycle"
+    }
+  },
+  "steps": [
+    {
+      "id": "audit-root",
+      "title": "Code-health audit: {{repo}} ({{quarter}})",
+      "description": "Umbrella for the {{quarter}} code-health audit of {{repo}}. File one bead per finding via the Bug Discovery Protocol; do NOT fix inline unless blocking.",
+      "type": "epic",
+      "priority": 2,
+      "labels": ["code-health", "audit", "recurring"]
+    },
+    {
+      "id": "dry-scan",
+      "title": "DRY scan: duplicated logic in {{repo}}",
+      "description": "Find copy-paste / near-duplicate logic. Tools: jscpd or rg for repeated blocks; eyeball helpers that should be shared. Output: list of duplication hotspots with file:line.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["code-health", "DRY"],
+      "depends_on": ["audit-root"]
+    },
+    {
+      "id": "solid-review",
+      "title": "SOLID review: responsibility & coupling in {{repo}}",
+      "description": "Look for SRP violations (god modules >600 lines), leaky abstractions, and tight coupling. Output: refactor candidates ranked by pain.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["code-health", "SOLID"],
+      "depends_on": ["audit-root"]
+    },
+    {
+      "id": "dead-code",
+      "title": "Dead-code sweep: {{repo}}",
+      "description": "Detect unused functions/imports/templates. Tools: vulture (py), ruff F401, grep for unreferenced symbols. Output: removal candidates with confidence notes.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["code-health", "dead-code"],
+      "depends_on": ["audit-root"]
+    },
+    {
+      "id": "dep-hygiene",
+      "title": "Dependency hygiene: {{repo}}",
+      "description": "Audit deps: pinned vs floating, outdated, unused, security advisories. Tools: uv pip list --outdated, pip-audit. Output: upgrade/remove plan.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["code-health", "dependencies"],
+      "depends_on": ["audit-root"]
+    }
+  ]
+}
