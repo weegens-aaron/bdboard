@@ -150,22 +150,21 @@ def test_history_masthead_stats_host_has_skeleton() -> None:
     assert 'id="history-stats"></div>' not in body
 
 
-def test_history_region_skeleton_reserves_two_charts() -> None:
-    """The history skeleton mirrors the real region's TWO charts (bdboard-3vp).
+def test_history_region_skeleton_reserves_chart() -> None:
+    """The history skeleton mirrors the real region's single combined chart.
 
-    history.html's body renders both a 'Beads closed' and a 'Beads created'
-    chart. The skeleton must reserve both fixed-height chart bodies (and NOT
-    an inline KPI strip, which now lives in the masthead) so hydration is
-    shift-free.
+    history.html's body renders ONE combined 'Created vs closed' chart
+    (bdboard-ijd merged the former two strips). The skeleton must reserve a
+    fixed-height chart body (and NOT an inline KPI strip, which now lives in
+    the masthead) so hydration is shift-free.
     """
     skel = (
         Path(app_module.__file__).parent / "templates" / "partials" / "history_skeleton.html"
     ).read_text()
 
-    # Two chart-body placeholders, matching the closed + created charts.
+    # A chart-body placeholder, matching the single combined chart.
     assert skel.count("skeleton-chart") >= 1
     assert "history-chart-skeleton" in skel
-    assert "range(2)" in skel  # loop renders both chart sections
     # The stale inline KPI strip (which lived in the body before the stats
     # moved to the masthead) must be gone so it can't shift the layout.
     assert "history-kpi-skeleton" not in skel

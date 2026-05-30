@@ -1867,6 +1867,87 @@ pre { margin: 0; }
 .throughput-bar-created {
   background: var(--violet);
 }
+/* Combined chart (bdboard-ijd): the two series share one fixed-height strip,
+   so each day cell holds a GROUPED pair of bars instead of a single bar.
+   .throughput-pair is the per-day group — a flex row that bottom-aligns the
+   created + closed bars side by side and consumes the cell's full height so
+   the percentage heights resolve against the same box. */
+.throughput-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+}
+/* Inside a grouped pair the bars share the cell width rather than each
+   filling it; flex:1 splits the available width evenly between created +
+   closed so the pair stays centred and balanced at any column width. */
+.throughput-pair .throughput-bar {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 2px;
+}
+/* Explicit closed-series variant so the combined chart reads symmetrically
+   with .throughput-bar-created; matches the default blue fill. */
+.throughput-bar-closed {
+  background: var(--blue-100);
+}
+/* Diagonal hatch on the created series so created vs closed is distinguishable
+   WITHOUT relying on hue alone (design §5 a11y / colour-blind + greyscale).
+   The stripe sits over the violet fill; it pairs with the named legend so the
+   two series are conveyed three ways: position, colour, and pattern. */
+.throughput-bar-created,
+.history-legend-created {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.55) 2px,
+    rgba(255, 255, 255, 0.55) 4px
+  );
+}
+/* Chart header row: the section title sits beside the series legend so the
+   single combined chart is self-describing. */
+.history-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.history-chart-head .history-section-title {
+  margin: 0;
+}
+.history-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.history-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink);
+}
+.history-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+.history-legend-created {
+  background-color: var(--violet);
+}
+.history-legend-closed {
+  background-color: var(--blue-100);
+}
 .throughput-day {
   font-family: var(--mono);
   font-size: 8px;

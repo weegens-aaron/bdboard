@@ -120,58 +120,53 @@
      refresh — no second endpoint, no client JS (DRY). bdboard-9jt restored
      this header strip while keeping the bottom foot-summary line removed. #}
 
-  {# Beads closed chart — a day-bucketed bar strip in a FIXED-HEIGHT container
-     so it can never collapse. Each bar carries a text aria-label ("N closed
-     on <date>") and a visible count so it is not colour-only (design §5). #}
-  <section class="history-throughput" aria-label="Beads closed per day">
-    <h2 class="history-section-title">Beads closed</h2>
-    {% if series %}
-    <div class="throughput-chart" role="img"
-         aria-label="Closed-per-day from {{ series[0].day }} to {{ series[-1].day }}, peak {{ peak }} in a day">
-      <ul class="throughput-bars" role="list">
-        {% for d in series %}
-        <li class="throughput-bar-cell">
-          <span class="throughput-count" aria-hidden="true">{{ d.count if d.count else "" }}</span>
-          <span class="throughput-bar"
-                style="height: {{ (d.count / peak * 100) | round(1) if peak else 0 }}%"
-                aria-label="{{ d.count }} closed on {{ d.day }}"></span>
-          <span class="throughput-day" aria-hidden="true">{{ d.day[5:] }}</span>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% else %}
-    <p class="history-empty muted">No beads closed to chart in {{ window_human }}.</p>
-    {% endif %}
-  </section>
+  {# Combined throughput chart (bdboard-ijd) — created AND closed per day in a
+     SINGLE day-bucketed bar strip, replacing the two stacked sections so
+     created-vs-closed throughput (net flow / backlog burn) reads at a glance.
+     Each day cell holds a GROUPED pair of bars: created (violet) + closed
+     (blue), scaled against ONE shared peak so the two series stay directly
+     comparable. FIXED-HEIGHT container so the chart can never collapse.
 
-  {# Beads created chart — beads filed per day (bdboard-5t5). Where the closed
-     chart counts *closes* by closed_at, this counts beads *created* by
-     created_at per day, regardless of status (an open bead filed in-window
-     still counts). Same fixed-height bar-strip idiom; bars carry text
-     aria-labels and a visible count so they are never colour-only (design §5). #}
-  <section class="history-created" aria-label="Beads created per day">
-    <h2 class="history-section-title">
-      Beads created
-      <span class="lane-count">{{ created_total }}</span>
-    </h2>
-    {% if created_series %}
-    <div class="throughput-chart" role="img"
-         aria-label="Beads created per day from {{ created_series[0].day }} to {{ created_series[-1].day }}, peak {{ created_peak }} in a day">
+     Not colour-only (design §5 a11y): a legend names each series, the created
+     swatch/bar carries a diagonal hatch so the distinction survives greyscale
+     / colour-blind viewing, and the whole chart plus every day cell carry a
+     descriptive text aria-label conveying both counts, the peak, and the date
+     span. Respects the active range + custom window + SSE re-fetch via the
+     same /api/history response that swaps this whole region. #}
+  <section class="history-throughput" aria-label="Beads created and closed per day">
+    <div class="history-chart-head">
+      <h2 class="history-section-title">Created vs closed</h2>
+      <ul class="history-legend" role="list">
+        <li class="history-legend-item">
+          <span class="history-legend-swatch history-legend-created" aria-hidden="true"></span>
+          Created <span class="lane-count">{{ created_total }}</span>
+        </li>
+        <li class="history-legend-item">
+          <span class="history-legend-swatch history-legend-closed" aria-hidden="true"></span>
+          Closed <span class="lane-count">{{ stats.n }}</span>
+        </li>
+      </ul>
+    </div>
+    {% if combined_series %}
+    <div class="throughput-chart throughput-chart-combined" role="img"
+         aria-label="Created vs closed per day from {{ combined_series[0].day }} to {{ combined_series[-1].day }}: {{ created_total }} created and {{ stats.n }} closed in this window, peak {{ combined_peak }} in a single series on a day">
       <ul class="throughput-bars" role="list">
-        {% for d in created_series %}
+        {% for d in combined_series %}
         <li class="throughput-bar-cell">
-          <span class="throughput-count" aria-hidden="true">{{ d.count if d.count else "" }}</span>
-          <span class="throughput-bar throughput-bar-created"
-                style="height: {{ (d.count / created_peak * 100) | round(1) if created_peak else 0 }}%"
-                aria-label="{{ d.count }} created on {{ d.day }}"></span>
+          <span class="throughput-pair"
+                aria-label="{{ d.created }} created, {{ d.closed }} closed on {{ d.day }}">
+            <span class="throughput-bar throughput-bar-created"
+                  style="height: {{ (d.created / combined_peak * 100) | round(1) if combined_peak else 0 }}%"></span>
+            <span class="throughput-bar throughput-bar-closed"
+                  style="height: {{ (d.closed / combined_peak * 100) | round(1) if combined_peak else 0 }}%"></span>
+          </span>
           <span class="throughput-day" aria-hidden="true">{{ d.day[5:] }}</span>
         </li>
         {% endfor %}
       </ul>
     </div>
     {% else %}
-    <p class="history-empty muted">No beads created to chart in {{ window_human }}.</p>
+    <p class="history-empty muted">No beads created or closed to chart in {{ window_human }}.</p>
     {% endif %}
   </section>
 

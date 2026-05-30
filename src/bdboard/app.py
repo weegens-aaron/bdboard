@@ -463,15 +463,25 @@ async def api_history(
     )
     series = derive.throughput(beads, range_key=range_key, from_date=from_date, to_date=to_date)
     stats = derive.lead_time_stats(beads, range_key=range_key, from_date=from_date, to_date=to_date)
-    # Beads created per day (bdboard-5t5): day-bucketed by created_at,
-    # complementing the closed-by-closed_at throughput series. Range-scoped
-    # the same way so both charts read against the same window.
+    # Beads created per day (bdboard-5t5): day-bucketed by created_at. The
+    # standalone series is no longer charted on its own (bdboard-ijd merged
+    # it into the combined chart), but we still tally it for the legend's
+    # range-scoped 'Created' count.
     created_series = derive.created(
         beads, range_key=range_key, from_date=from_date, to_date=to_date
     )
-    peak = max((d["count"] for d in series), default=0)
-    created_peak = max((d["count"] for d in created_series), default=0)
+    # Combined created+closed series (bdboard-ijd): created and closed counts
+    # zipped onto ONE continuous timeline so the History page renders a single
+    # grouped-bar chart instead of two stacked strips, making created-vs-closed
+    # throughput (net flow / backlog burn) readable at a glance. Range/custom
+    # window semantics match the sibling series exactly.
+    combined_series = derive.combined(
+        beads, range_key=range_key, from_date=from_date, to_date=to_date
+    )
     created_total = sum(d["count"] for d in created_series)
+    # Shared y-axis peak for the combined chart so created and closed bars are
+    # scaled against the SAME maximum and stay visually comparable per day.
+    combined_peak = max((max(d["created"], d["closed"]) for d in combined_series), default=0)
     avg_per_day = round(stats["n"] / len(series), 1) if series else 0
     # Optional headline KPI (design §6, bead F): bd's own aggregate summary
     # (incl. average_lead_time_hours). These are workspace-global, point-in-
@@ -494,11 +504,9 @@ async def api_history(
             "page_size": size,
             "page_sizes": list(derive.HISTORY_PAGE_SIZES),
             "window": window,
-            "series": series,
-            "peak": peak,
-            "created_series": created_series,
-            "created_peak": created_peak,
             "created_total": created_total,
+            "combined_series": combined_series,
+            "combined_peak": combined_peak,
             "stats": stats,
             "avg_per_day": avg_per_day,
             "bd_summary": bd_summary,

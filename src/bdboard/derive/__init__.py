@@ -30,6 +30,7 @@ from bdboard.derive.history import (
     _range_to_cutoff,
     _resolve_bounds,
     clamp_page_size,
+    combined,
     created,
     custom_bounds,
     history_window,
@@ -88,6 +89,7 @@ __all__ = [
     "history_window",
     "throughput",
     "created",
+    "combined",
     "lead_time_stats",
     "status_timeline",
     # time helpers

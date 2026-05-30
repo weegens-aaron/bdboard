@@ -222,6 +222,22 @@ def _fill_daily_series(buckets: dict[str, int]) -> list[dict[str, Any]]:
     return series
 
 
+def _bucket_by_day(beads: list[dict[str, Any]], field: str) -> dict[str, int]:
+    """Day->count map of ``beads`` bucketed by the calendar day of ``field``.
+
+    Single source of truth for the per-day tally shared by :func:`throughput`
+    (``field="closed_at"``), :func:`created` (``field="created_at"``) and
+    :func:`combined` (both). Beads whose ``field`` is missing/unparseable are
+    skipped — they cannot be placed on a timeline (bdboard-ijd).
+    """
+    buckets: dict[str, int] = defaultdict(int)
+    for b in beads:
+        day = _day_bucket(b.get(field))
+        if day is not None:
+            buckets[day] += 1
+    return buckets
+
+
 def throughput(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
@@ -241,12 +257,7 @@ def throughput(
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
     windowed = _closed_in_window(beads, cutoff, ceiling)
-    buckets: dict[str, int] = defaultdict(int)
-    for b in windowed:
-        day = _day_bucket(b.get("closed_at"))
-        if day is not None:
-            buckets[day] += 1
-    return _fill_daily_series(buckets)
+    return _fill_daily_series(_bucket_by_day(windowed, "closed_at"))
 
 
 def _created_in_window(
@@ -301,12 +312,54 @@ def created(
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
     windowed = _created_in_window(beads, cutoff, ceiling)
-    buckets: dict[str, int] = defaultdict(int)
-    for b in windowed:
-        day = _day_bucket(b.get("created_at"))
-        if day is not None:
-            buckets[day] += 1
-    return _fill_daily_series(buckets)
+    return _fill_daily_series(_bucket_by_day(windowed, "created_at"))
+
+
+def combined(
+    beads: list[dict[str, Any]],
+    range_key: str = DEFAULT_HISTORY_RANGE,
+    now: datetime | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
+) -> list[dict[str, Any]]:
+    """Created + closed per day, merged into one gap-free series (bdboard-ijd).
+
+    The single source feeding the History page's unified throughput chart.
+    Where :func:`throughput` and :func:`created` each return a standalone
+    ``count`` series, this zips both metrics onto one continuous timeline so
+    they can be read together per day (net flow / backlog burn):
+    ``[{"day": "YYYY-MM-DD", "created": int, "closed": int}, ...]``.
+
+    The span runs from the first through last day that has EITHER a creation
+    or a close in the window (the union), filling missing days on each metric
+    with ``0`` so the grouped bars stay aligned and the timeline reads
+    continuously. Returns ``[]`` when nothing was created or closed in the
+    window. Range/custom-window semantics mirror the sibling series exactly
+    (an explicit ``from_date``/``to_date`` supersedes ``range_key``); pure
+    over the snapshot, no extra I/O.
+    """
+    cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
+    closed_buckets = _bucket_by_day(_closed_in_window(beads, cutoff, ceiling), "closed_at")
+    created_buckets = _bucket_by_day(_created_in_window(beads, cutoff, ceiling), "created_at")
+    all_days = set(closed_buckets) | set(created_buckets)
+    if not all_days:
+        return []
+    days = sorted(all_days)
+    first = datetime.strptime(days[0], "%Y-%m-%d")
+    last = datetime.strptime(days[-1], "%Y-%m-%d")
+    series: list[dict[str, Any]] = []
+    cursor = first
+    while cursor <= last:
+        key = cursor.strftime("%Y-%m-%d")
+        series.append(
+            {
+                "day": key,
+                "created": created_buckets.get(key, 0),
+                "closed": closed_buckets.get(key, 0),
+            }
+        )
+        cursor += timedelta(days=1)
+    return series
 
 
 def _percentile(sorted_vals: list[float], pct: float) -> float | None:

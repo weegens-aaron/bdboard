@@ -226,8 +226,9 @@ def test_closed_list_renders_within_range() -> None:
 
 
 def test_created_chart_renders_with_text_aria_labels() -> None:
-    # Beads created (bdboard-5t5): created-over-time by created_at. An OPEN
-    # bead filed in-window must register even though it never closed.
+    # Combined chart (bdboard-ijd): created AND closed share one strip. An
+    # OPEN bead filed in-window must register on the created series even
+    # though it never closed.
     open_bead = {
         "id": "open1",
         "title": "Bead open1",
@@ -241,11 +242,20 @@ def test_created_chart_renders_with_text_aria_labels() -> None:
     status, body = _call()
 
     assert status == 200
-    assert "Beads created" in body
-    # Bars are not colour-only: each carries an accessible label.
-    assert "created on" in body
-    # The created bars use the dedicated variant class.
+    # The unified chart names both series via the legend, not two sections.
+    assert "Created vs closed" in body
+    assert "history-legend" in body
+    # Bars are not colour-only: each day pair carries an accessible label
+    # conveying both counts.
+    assert "created," in body
+    assert "closed on" in body
+    # The created bars use the dedicated (hatched) variant class.
     assert "throughput-bar-created" in body
+    # The closed series carries its explicit variant class too.
+    assert "throughput-bar-closed" in body
+    # One combined chart container, not two stacked strips.
+    assert "throughput-chart-combined" in body
+    assert "history-created" not in body
 
 
 def test_created_empty_state_when_nothing_created_in_window() -> None:
@@ -261,7 +271,8 @@ def test_created_empty_state_when_nothing_created_in_window() -> None:
     status, body = _call(range="7d")
 
     assert status == 200
-    assert "No beads created to chart" in body
+    # Combined chart's empty state covers BOTH series in one message.
+    assert "No beads created or closed to chart" in body
 
 
 # --- Page-size selector (bdboard-3jj) -----------------------------------

@@ -16,6 +16,7 @@ from bdboard.derive import (
     _percentile,
     _range_to_cutoff,
     clamp_page_size,
+    combined,
     created,
     history_window,
     humanize_hours,
@@ -331,6 +332,64 @@ def test_created_series_is_ascending_and_continuous():
     parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
     for earlier, later in zip(parsed, parsed[1:], strict=False):
         assert (later - earlier).days == 1
+
+
+# ----- combined (bdboard-ijd) -----
+
+
+def test_combined_merges_created_and_closed_per_day():
+    # One created and one closed on day -1; the combined row carries BOTH.
+    beads = [
+        _bead("new", status="open", created_at=_iso(1)),
+        _bead("done", status="closed", created_at=_iso(5), closed_at=_iso(1)),
+    ]
+    series = combined(beads, "7d", now=NOW)
+    row = {r["day"]: r for r in series}
+    day = _iso(1)[:10]
+    assert row[day]["created"] == 1
+    assert row[day]["closed"] == 1
+
+
+def test_combined_spans_union_of_created_and_closed_days():
+    # created on day -5, closed on day -1 -> the series spans -5..-1 (union),
+    # gap-filled so both metrics stay aligned across the whole window.
+    beads = [
+        _bead("new", status="open", created_at=_iso(5)),
+        _bead("done", status="closed", created_at=_iso(3), closed_at=_iso(1)),
+    ]
+    series = combined(beads, "30d", now=NOW)
+    assert len(series) == 5  # -5 .. -1 inclusive
+    days = [r["day"] for r in series]
+    assert days == sorted(days)
+    parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
+    for earlier, later in zip(parsed, parsed[1:], strict=False):
+        assert (later - earlier).days == 1
+    # Totals are preserved across the merged series.
+    assert sum(r["created"] for r in series) == 2
+    assert sum(r["closed"] for r in series) == 1
+
+
+def test_combined_counts_open_beads_on_created_series():
+    # An OPEN bead filed in-window contributes to created but not closed.
+    beads = [_bead("open1", status="open", created_at=_iso(2))]
+    series = combined(beads, "7d", now=NOW)
+    assert sum(r["created"] for r in series) == 1
+    assert sum(r["closed"] for r in series) == 0
+
+
+def test_combined_empty_when_nothing_in_window():
+    beads = [_bead("ancient", status="open", created_at=_iso(400))]
+    assert combined(beads, "7d", now=NOW) == []
+
+
+def test_combined_respects_range():
+    beads = [
+        _bead("recent", status="open", created_at=_iso(2)),
+        _bead("ancient", status="closed", created_at=_iso(300), closed_at=_iso(290)),
+    ]
+    series = combined(beads, "7d", now=NOW)
+    assert sum(r["created"] for r in series) == 1
+    assert sum(r["closed"] for r in series) == 0
 
 
 # ----- _percentile -----
