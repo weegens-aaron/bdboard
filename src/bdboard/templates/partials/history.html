@@ -155,10 +155,22 @@
         <li class="throughput-bar-cell">
           <span class="throughput-pair"
                 aria-label="{{ d.created }} created, {{ d.closed }} closed on {{ d.day }}">
-            <span class="throughput-bar throughput-bar-created"
-                  style="height: {{ (d.created / combined_peak * 100) | round(1) if combined_peak else 0 }}%"></span>
-            <span class="throughput-bar throughput-bar-closed"
-                  style="height: {{ (d.closed / combined_peak * 100) | round(1) if combined_peak else 0 }}%"></span>
+            {# Each series is its own bottom-aligned mini column: a per-day
+               count label sits above its bar, and the bar grows UP from the
+               shared baseline (column + justify-content:flex-end in CSS). This
+               restores the per-day counts lost in the combine (bdboard-oey)
+               and keeps both series anchored to the baseline rather than
+               hanging from the top. #}
+            <span class="throughput-col">
+              <span class="throughput-count" aria-hidden="true">{{ d.created if d.created else "" }}</span>
+              <span class="throughput-bar throughput-bar-created"
+                    style="height: {{ (d.created / combined_peak * 100) | round(1) if combined_peak else 0 }}%"></span>
+            </span>
+            <span class="throughput-col">
+              <span class="throughput-count" aria-hidden="true">{{ d.closed if d.closed else "" }}</span>
+              <span class="throughput-bar throughput-bar-closed"
+                    style="height: {{ (d.closed / combined_peak * 100) | round(1) if combined_peak else 0 }}%"></span>
+            </span>
           </span>
           <span class="throughput-day" aria-hidden="true">{{ d.day[5:] }}</span>
         </li>

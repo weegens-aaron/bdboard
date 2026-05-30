@@ -258,6 +258,28 @@ def test_created_chart_renders_with_text_aria_labels() -> None:
     assert "history-created" not in body
 
 
+def test_combined_chart_shows_per_day_counts_and_baseline_columns() -> None:
+    """Regression for bdboard-oey: the combine dropped the per-day count
+    labels and let bars hang upside-down from the top. The fix restores a
+    per-series .throughput-col (bottom-aligned, so bars grow UP from the
+    baseline) each carrying a visible .throughput-count."""
+    # Two beads closed the same day -> a closed count of 2 must surface as a
+    # visible per-day label, not just the legend total.
+    _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=1)])
+
+    status, body = _call()
+
+    assert status == 200
+    # Per-day count labels are back (lost in the combine).
+    assert "throughput-count" in body
+    # The specific per-day closed count (2 on that day) is rendered, not only
+    # the legend total.
+    assert ">2<" in body
+    # Each series renders in its own bottom-aligned column so bars grow up
+    # from the baseline rather than hanging from the top.
+    assert "throughput-col" in body
+
+
 def test_created_empty_state_when_nothing_created_in_window() -> None:
     old_open = {
         "id": "old",
