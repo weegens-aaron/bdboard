@@ -21,11 +21,13 @@ from __future__ import annotations
 from bdboard.derive.history import (
     DEFAULT_HISTORY_RANGE,
     HISTORY_PAGE_SIZE,
+    HISTORY_PAGE_SIZES,
     HISTORY_RANGES,
     _closed_in_window,
     _created_in_window,
     _percentile,
     _range_to_cutoff,
+    clamp_page_size,
     created,
     history_window,
     lead_time_stats,
@@ -67,6 +69,8 @@ __all__ = [
     "HISTORY_RANGES",
     "DEFAULT_HISTORY_RANGE",
     "HISTORY_PAGE_SIZE",
+    "HISTORY_PAGE_SIZES",
+    "clamp_page_size",
     # dependency helpers
     "get_dependency_list",
     "get_dependency_type",

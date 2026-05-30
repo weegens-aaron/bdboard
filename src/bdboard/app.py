@@ -409,15 +409,19 @@ async def api_history(
     request: Request,
     range: str = derive.DEFAULT_HISTORY_RANGE,
     page: int = 1,
+    page_size: int | None = None,
 ) -> HTMLResponse:
     """Render the History swap region (HTMX target), symmetric with /api/lanes.
 
     Pure derivation over the existing snapshot (design §4): no new bd call.
     ``range`` selects the window (7d/30d/90d/all, default 30d; unknown values
     degrade to the default inside derive). ``page`` drives server-side
-    pagination of the closed list (design §D5). We compute the views from
-    one snapshot — the paginated closed list plus the throughput-per-day and
-    created-per-day series — and hand them to partials/history.html.
+    pagination of the closed list (design §D5). ``page_size`` (bdboard-3jj)
+    is clamped to the allowed set {25,50,100}, defaulting to 50 on a
+    missing/invalid value so a bad query param can never break paging. We
+    compute the views from one snapshot — the paginated closed list plus the
+    throughput-per-day and created-per-day series — and hand them to
+    partials/history.html.
     """
     beads = await store.snapshot()
     # Normalise the range once so the template's active-state cues and the
@@ -426,7 +430,11 @@ async def api_history(
     if range_key not in derive.HISTORY_RANGES:
         range_key = derive.DEFAULT_HISTORY_RANGE
     page = max(1, page)
-    window = derive.history_window(beads, range_key=range_key, page=page)
+    # Clamp page_size to the allowed set; missing/invalid -> default 50.
+    size = derive.clamp_page_size(page_size)
+    window = derive.history_window(
+        beads, range_key=range_key, page=page, page_size=size
+    )
     series = derive.throughput(beads, range_key=range_key)
     # Beads created per day (bdboard-5t5): day-bucketed by created_at,
     # complementing the closed-by-closed_at throughput series. Range-scoped
@@ -441,6 +449,8 @@ async def api_history(
         {
             "range_key": range_key,
             "ranges": list(derive.HISTORY_RANGES.keys()),
+            "page_size": size,
+            "page_sizes": list(derive.HISTORY_PAGE_SIZES),
             "window": window,
             "series": series,
             "peak": peak,

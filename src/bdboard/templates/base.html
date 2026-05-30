@@ -25,6 +25,53 @@
           document.documentElement.setAttribute('data-theme', 'light');
         }
       })();
+
+      // History page-size persistence (bdboard-3jj). Mirrors the theme
+      // toggle: the chosen rows-per-page is stored in localStorage under
+      // 'bdboard-history-page-size' and re-applied on load/navigation. The
+      // <select> itself is rendered + selected server-side (so it reflects
+      // state after every HTMX swap); this JS only (a) persists the choice
+      // on change and (b) injects the persisted size into the initial
+      // region load / SSE refresh, which fire without a page_size param.
+      // All localStorage access is wrapped in try/catch so the page still
+      // works (falling back to the server default of 50) when storage is
+      // disabled.
+      (function () {
+        var DEFAULT_SIZE = 50;
+        var ALLOWED = [25, 50, 100];
+        var KEY = 'bdboard-history-page-size';
+        function storedSize() {
+          try {
+            var n = parseInt(localStorage.getItem(KEY), 10);
+            return ALLOWED.indexOf(n) !== -1 ? n : null;
+          } catch (e) { return null; }
+        }
+        // The <select> is swapped in with #history-region, so delegate the
+        // change listener from <body> rather than binding to the element.
+        document.body.addEventListener('change', function (evt) {
+          var el = evt.target;
+          if (el && el.id === 'history-page-size-select') {
+            try { localStorage.setItem(KEY, el.value); } catch (e) {}
+          }
+        });
+        // Inject the persisted size into /api/history requests that do not
+        // already carry one. The initial `load` and SSE `refresh` fetches
+        // hit a bare /api/history (server default 50); pager/range links
+        // embed page_size in their URL and the select change sends it as a
+        // parameter — both are left untouched so explicit choices win.
+        document.body.addEventListener('htmx:configRequest', function (evt) {
+          var path = evt.detail.path || '';
+          if (path.indexOf('/api/history') !== 0) return;
+          if (path.indexOf('page_size=') !== -1) return;
+          if (evt.detail.parameters && 'page_size' in evt.detail.parameters) {
+            return;
+          }
+          var size = storedSize();
+          if (size !== null && size !== DEFAULT_SIZE) {
+            evt.detail.parameters['page_size'] = size;
+          }
+        });
+      })();
     </script>
     <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>

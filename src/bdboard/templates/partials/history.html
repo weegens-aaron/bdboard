@@ -14,6 +14,7 @@
 {% set total = window["total"] %}
 {% set page = window["page"] %}
 {% set has_more = window["has_more"] %}
+{% set active_page_size = window["page_size"] %}
 
 {% set range_labels = {"7d": "7 days", "30d": "30 days", "90d": "90 days", "all": "all time"} %}
 {% set range_human = range_labels.get(range_key, range_key) %}
@@ -29,7 +30,7 @@
         class="filter-badge{% if r == range_key %} filter-badge-active{% endif %}"
         aria-pressed="{{ 'true' if r == range_key else 'false' }}"
         aria-label="Show history for the last {{ range_labels.get(r, r) }}"
-        hx-get="/api/history?range={{ r }}&page=1"
+        hx-get="/api/history?range={{ r }}&page=1&page_size={{ active_page_size }}"
         hx-target="#history-region"
         hx-swap="innerHTML">{{ "All" if r == "all" else r }}</button>
       {% endfor %}
@@ -122,21 +123,44 @@
     </ul>
 
     {# Pager — server-side pagination (design §D5). Prev/Next re-fetch this
-       region for the adjacent page within the current range. #}
+       region for the adjacent page within the current range, preserving the
+       active page size (bdboard-3jj). #}
     <nav class="history-pager" aria-label="History pages">
       {% if page > 1 %}
       <button type="button" class="filter-badge"
-              hx-get="/api/history?range={{ range_key }}&page={{ page - 1 }}"
+              hx-get="/api/history?range={{ range_key }}&page={{ page - 1 }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
               aria-label="Previous page">‹ Newer</button>
       {% endif %}
       <span class="history-page-indicator">Page {{ page }}</span>
       {% if has_more %}
       <button type="button" class="filter-badge"
-              hx-get="/api/history?range={{ range_key }}&page={{ page + 1 }}"
+              hx-get="/api/history?range={{ range_key }}&page={{ page + 1 }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
               aria-label="Next page">Older ›</button>
       {% endif %}
+      {# Page-size selector (bdboard-3jj). Changing it resets to page 1 and
+         re-swaps this region with the chosen size; the base.html persistence
+         JS mirrors the choice into localStorage so it survives reloads and
+         navigation, like the theme toggle. The selected option is rendered
+         server-side from active_page_size so it reflects state after every
+         HTMX swap of #history-region. #}
+      <label class="history-page-size">
+        <span class="history-page-size-label">Per page</span>
+        <select
+          id="history-page-size-select"
+          class="history-page-size-select"
+          aria-label="Closed beads per page"
+          hx-get="/api/history?range={{ range_key }}&page=1"
+          hx-target="#history-region"
+          hx-swap="innerHTML"
+          hx-trigger="change"
+          name="page_size">
+          {% for s in page_sizes %}
+          <option value="{{ s }}"{% if s == active_page_size %} selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
     </nav>
     {% elif page > 1 %}
     <p class="history-empty muted">

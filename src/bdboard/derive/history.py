@@ -26,8 +26,30 @@ HISTORY_RANGES: dict[str, timedelta | None] = {
 # Default range when none/invalid is supplied (matches the design's default).
 DEFAULT_HISTORY_RANGE = "30d"
 
-# Default page size for the paginated closed list (design §D5).
-HISTORY_PAGE_SIZE = 100
+# Allowed page sizes for the paginated closed list (bdboard-3jj). The
+# user-facing selector offers exactly these; any other value (missing or
+# tampered query param) clamps to HISTORY_PAGE_SIZE.
+HISTORY_PAGE_SIZES = (25, 50, 100)
+
+# Default page size for the paginated closed list (bdboard-3jj). Must be a
+# member of HISTORY_PAGE_SIZES.
+HISTORY_PAGE_SIZE = 50
+
+
+def clamp_page_size(value: Any) -> int:
+    """Coerce an arbitrary page_size input to the allowed set (bdboard-3jj).
+
+    Returns ``value`` when it parses to a member of
+    :data:`HISTORY_PAGE_SIZES`; otherwise falls back to
+    :data:`HISTORY_PAGE_SIZE` (50). This is the single source of truth for
+    page-size validation so the API endpoint and any caller agree on the
+    same default-on-invalid behaviour rather than each re-implementing it.
+    """
+    try:
+        size = int(value)
+    except (TypeError, ValueError):
+        return HISTORY_PAGE_SIZE
+    return size if size in HISTORY_PAGE_SIZES else HISTORY_PAGE_SIZE
 
 
 def _range_to_cutoff(range_key: str, now: datetime | None = None) -> datetime | None:

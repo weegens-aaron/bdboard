@@ -9,10 +9,13 @@ from datetime import datetime, timedelta, timezone
 
 from bdboard.derive import (
     DEFAULT_HISTORY_RANGE,
+    HISTORY_PAGE_SIZE,
+    HISTORY_PAGE_SIZES,
     _day_bucket,
     _parse_dt,
     _percentile,
     _range_to_cutoff,
+    clamp_page_size,
     created,
     history_window,
     humanize_hours,
@@ -188,6 +191,31 @@ def test_history_window_clamps_bad_page_and_size():
     assert len(res["items"]) == 1
     assert res["page"] == 1
     assert res["page_size"] == 1
+
+
+# ----- clamp_page_size (bdboard-3jj) -----
+
+
+def test_clamp_page_size_default_is_fifty():
+    assert HISTORY_PAGE_SIZE == 50
+    assert HISTORY_PAGE_SIZE in HISTORY_PAGE_SIZES
+
+
+def test_clamp_page_size_accepts_allowed_values():
+    for size in HISTORY_PAGE_SIZES:
+        assert clamp_page_size(size) == size
+        # Stringified query-param values coerce too.
+        assert clamp_page_size(str(size)) == size
+
+
+def test_clamp_page_size_rejects_out_of_set_values():
+    for bad in (10, 30, 75, 200, 0, -5):
+        assert clamp_page_size(bad) == HISTORY_PAGE_SIZE
+
+
+def test_clamp_page_size_handles_missing_or_garbage():
+    for bad in (None, "", "abc", "fifty", object()):
+        assert clamp_page_size(bad) == HISTORY_PAGE_SIZE
 
 
 # ----- throughput -----
