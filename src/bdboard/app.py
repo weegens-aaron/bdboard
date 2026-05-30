@@ -643,13 +643,17 @@ async def api_bead_audit(request: Request, bead_id: str) -> HTMLResponse:
         return TEMPLATES.TemplateResponse(
             request,
             "partials/bead_audit.html",
-            {"entries": None, "error": err},
+            {"entries": None, "timeline": None, "error": err},
         )
     rendered = _shape_audit(entries)
+    # Deferred bead E (bdboard-7r8): the per-bead status-transition timeline
+    # is derived from the SAME history payload we just fetched, so the
+    # lifecycle view costs no extra `bd history` subprocess call.
+    timeline = derive.status_timeline(entries)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/bead_audit.html",
-        {"entries": rendered, "error": None},
+        {"entries": rendered, "timeline": timeline, "error": None},
     )
 
 

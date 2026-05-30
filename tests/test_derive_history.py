@@ -16,6 +16,7 @@ from bdboard.derive import (
     history_window,
     humanize_hours,
     lead_time_stats,
+    status_timeline,
     throughput,
 )
 
@@ -341,3 +342,76 @@ def test_humanize_hours_days_past_48h():
     assert humanize_hours(48.0) == "2d"
     assert humanize_hours(36.0) == "36h"
     assert humanize_hours(60.0) == "2.5d"
+
+
+# ----- status_timeline (deferred bead E, bdboard-7r8) -----
+
+
+def _hist(commit, status, date, committer="root"):
+    """Build one bd-history snapshot entry (one Dolt commit for a bead)."""
+    return {
+        "CommitHash": commit,
+        "Committer": committer,
+        "CommitDate": date,
+        "Issue": {"status": status},
+    }
+
+
+def test_status_timeline_empty_input():
+    assert status_timeline([]) == []
+    assert status_timeline(None) == []
+
+
+def test_status_timeline_collapses_to_transitions_oldest_first():
+    # bd returns newest-first; two open snapshots then in_progress then closed.
+    history = [
+        _hist("c4", "closed", "2026-05-30T12:00:00Z"),
+        _hist("c3", "in_progress", "2026-05-29T12:00:00Z"),
+        _hist("c2", "open", "2026-05-28T18:00:00Z"),  # no-op status repeat
+        _hist("c1", "open", "2026-05-28T12:00:00Z"),  # origin
+    ]
+    tl = status_timeline(history)
+    # Oldest-first, one stop per distinct status (the repeat is collapsed).
+    assert [s["status"] for s in tl] == ["open", "in_progress", "closed"]
+    assert [s["commit"] for s in tl] == ["c1", "c3", "c4"]
+
+
+def test_status_timeline_computes_dwell_hours():
+    history = [
+        _hist("c3", "closed", "2026-05-30T12:00:00Z"),
+        _hist("c2", "in_progress", "2026-05-29T12:00:00Z"),
+        _hist("c1", "open", "2026-05-28T12:00:00Z"),
+    ]
+    tl = status_timeline(history)
+    # open -> in_progress = 24h; in_progress -> closed = 24h; last is open-ended.
+    assert tl[0]["dwell_h"] == 24.0
+    assert tl[1]["dwell_h"] == 24.0
+    assert tl[2]["dwell_h"] is None
+
+
+def test_status_timeline_skips_blank_status():
+    history = [
+        _hist("c2", "closed", "2026-05-30T12:00:00Z"),
+        _hist("c1", "", "2026-05-29T12:00:00Z"),
+    ]
+    tl = status_timeline(history)
+    assert [s["status"] for s in tl] == ["closed"]
+
+
+def test_status_timeline_dwell_none_on_unparseable_date():
+    history = [
+        _hist("c2", "closed", "garbage"),
+        _hist("c1", "open", "2026-05-28T12:00:00Z"),
+    ]
+    tl = status_timeline(history)
+    assert tl[0]["dwell_h"] is None  # can't measure to an unparseable end
+    assert tl[1]["dwell_h"] is None  # last stop
+
+
+def test_status_timeline_carries_committer_and_short_hash():
+    history = [
+        _hist("abcdef1234567890", "closed", "2026-05-30T12:00:00Z", committer="aaron"),
+    ]
+    tl = status_timeline(history)
+    assert tl[0]["who"] == "aaron"
+    assert tl[0]["commit"] == "abcdef12"  # truncated to 8 chars

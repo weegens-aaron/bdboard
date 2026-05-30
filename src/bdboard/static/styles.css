@@ -1361,6 +1361,49 @@ pre { margin: 0; }
 .audit-what { color: var(--ink); }
 .audit-commit { font-family: var(--mono); font-size: 10px; color: var(--muted-2); text-align: right; }
 
+/* Lifecycle status-transition timeline (bdboard-7r8). A vertical rail of
+   status stops; each row shows the status badge, when it was entered, how
+   long the bead dwelt in it, and who committed the change. The marker dot
+   reuses the same status colour tokens as the badges so colour is never the
+   only cue (the badge text carries the status name). */
+.timeline-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 2px solid var(--rule-2);
+  padding-left: 12px;
+}
+.timeline-row {
+  display: grid;
+  grid-template-columns: 12px auto 90px auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.timeline-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  align-self: center;
+  margin-left: -18px;
+  border: 2px solid var(--paper);
+  background: var(--muted-2);
+}
+.timeline-marker.status-in_progress { background: var(--accent); }
+.timeline-marker.status-closed { background: var(--ok); }
+.timeline-status {
+  font-family: var(--sans);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.timeline-when { font-family: var(--mono); color: var(--muted); }
+.timeline-dwell { font-size: 11px; }
+.timeline-who { font-size: 11px; text-align: right; }
+
 .audit-error {
   padding: 10px 12px;
   border-left: 3px solid var(--accent);

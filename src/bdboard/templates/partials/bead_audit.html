@@ -1,10 +1,37 @@
-<h3 class="modal-section-title">Audit trail</h3>
+{# Bead lifecycle + audit trail (loaded async into the modal by /api/bead/<id>/audit).
+
+   Two complementary views over the same `bd history <id>` payload:
+     1. Lifecycle timeline (deferred bead E, bdboard-7r8) — only the
+        status-transition stops with dwell time spent in each state.
+     2. Audit trail — the full field-by-field change log.
+   Both degrade gracefully: a fetch error shows one friendly message; an
+   empty history shows a "no history yet" note. #}
 {% if error %}
 <div class="audit-error">
   ⚠ Audit history is temporarily unavailable.
   <div class="muted">You can still review bead details and try loading history again in a moment.</div>
 </div>
-{% elif not entries %}
+{% else %}
+
+{% if timeline %}
+<h3 class="modal-section-title">Lifecycle</h3>
+<ol class="timeline-list" aria-label="Status-transition timeline">
+  {% for stop in timeline %}
+  <li class="timeline-row">
+    <span class="timeline-marker status-{{ stop.status }}" aria-hidden="true"></span>
+    <span class="timeline-status status-{{ stop.status }}">{{ stop.status }}</span>
+    <span class="timeline-when" title="{{ stop.when }}">{{ stop.when | humanize_ts }}</span>
+    <span class="timeline-dwell muted">
+      {%- if stop.dwell_h is not none %}for {{ stop.dwell_h | humanize_hours }}{% else %}current{% endif -%}
+    </span>
+    <span class="timeline-who muted">{{ stop.who }}</span>
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}
+
+<h3 class="modal-section-title">Audit trail</h3>
+{% if not entries %}
 <p class="muted">no recorded history yet</p>
 {% else %}
 <ol class="audit-list">
@@ -17,4 +44,5 @@
   </li>
   {% endfor %}
 </ol>
+{% endif %}
 {% endif %}

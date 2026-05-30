@@ -677,3 +677,66 @@ def humanize_hours(hours: float | None) -> str:
         return f"{val:g}h"
     days = round(hours / 24.0, 1)
     return f"{days:g}d"
+
+
+def status_timeline(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Derive a per-bead status-transition timeline from ``bd history <id>``.
+
+    ``bd history <id> --json`` returns one full issue snapshot per Dolt
+    commit, **newest first** (see design bdboard-rrc 2.2). This is the
+    deferred "bead E" enrichment: rather than the field-by-field audit diff
+    (:func:`bdboard.app._shape_audit`), we collapse the snapshot stream to
+    only the moments the lifecycle *status* changed (created -> in_progress
+    -> closed, ...) so a reader can see how long a bead spent in each state.
+
+    Pure over the history payload (no I/O): the caller reuses the entries the
+    audit view already fetched, so this adds **no** extra ``bd history``
+    subprocess call and respects the single-writer dolt gate.
+
+    Returns a list of stops ordered **oldest -> newest**, each a dict with
+    ``status``, ``when`` (ISO commit date the bead entered this status),
+    ``who`` (committer), ``commit`` (8-char short hash), and ``dwell_h``
+    (hours spent IN this status before the next transition, or ``None`` for
+    the current/last status whose dwell is still open-ended).
+
+    Empty/None input yields an empty list so the template can render a
+    "no transitions" state without special-casing.
+    """
+    if not history:
+        return []
+
+    # bd returns newest-first; walk oldest-first so transitions read forward.
+    ordered = list(reversed(history))
+
+    stops: list[dict[str, Any]] = []
+    prev_status: str | None = None
+    for hist in ordered:
+        issue = hist.get("Issue") or {}
+        status = (issue.get("status") or "").strip().lower()
+        if not status:
+            continue
+        # Record only commits where status actually changed; the first
+        # observed status is the bead's origin state and is always recorded.
+        if status == prev_status:
+            continue
+        stops.append(
+            {
+                "status": status,
+                "when": hist.get("CommitDate"),
+                "who": hist.get("Committer") or "\u2014",
+                "commit": (hist.get("CommitHash") or "")[:8],
+                "dwell_h": None,
+            }
+        )
+        prev_status = status
+
+    # Second pass: dwell time in each status is the gap until the next
+    # transition. The final stop is the bead's current state -- its dwell is
+    # open-ended, so we leave it None rather than measuring against "now".
+    for i in range(len(stops) - 1):
+        start = _parse_dt(stops[i]["when"])
+        end = _parse_dt(stops[i + 1]["when"])
+        if start is not None and end is not None and end >= start:
+            stops[i]["dwell_h"] = round((end - start).total_seconds() / 3600.0, 1)
+
+    return stops
