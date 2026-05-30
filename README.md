@@ -61,6 +61,64 @@ These checks live in CI rather than a bd formula by design — see
 - **Activity** — derived from `updated_at` / `closed_at` / `created_at` because bd doesn't expose a global audit feed; rendered as a swim lane alongside the bead lanes
 - **JSONL freshness** — bdboard reads bead state via `bd list --all --no-pager --limit 0 --json` (the dolt-native, always-fresh path). We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher walks `.beads/` recursively so any dolt write inside `.beads/embeddeddolt/` triggers a refresh within ~250ms (debounced) + ~1s cooldown. SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
 
+## Backup & cross-machine sync (beads issue data)
+
+The real bead database lives in `.beads/embeddeddolt/`, which is **gitignored** —
+so your code branches (`refs/heads/*`) carry *none* of the issue history. To keep
+the 95+ issues and their audit trail safe off-machine, beads replicates the Dolt
+database over its git-compatible wire protocol to a separate ref
+(`refs/dolt/data`) on the **same GitHub origin** you already push code to. This is
+the project-blessed "Approach A" (see bead `bdboard-6gp`); we deliberately do
+**not** commit `.beads/issues.jsonl` as the sync channel and do **not** use any
+third-party Dolt host.
+
+### One-time setup (already done on this repo)
+
+```sh
+bd dolt remote add origin https://github.com/weegens-aaron/bdboard.git
+bd dolt push        # creates refs/dolt/data on origin
+```
+
+Verify the off-machine backup exists:
+
+```sh
+git ls-remote origin 'refs/dolt/*'
+# c5ea0469...   refs/dolt/data
+```
+
+### Routine backup
+
+After a batch of bead changes, push them off-machine:
+
+```sh
+bd dolt commit      # flush any pending working-set changes (no-op if clean)
+bd dolt push        # replicate to refs/dolt/data on origin
+```
+
+Auth uses the **same GitHub HTTPS/PAT credentials as your code pushes** — no
+extra secret to manage. CI that only builds code is unaffected (it never fetches
+the `refs/dolt/data` ref); CI that needs issues runs `bd dolt pull`.
+
+### Fresh-clone hydration (verified)
+
+The Dolt remote config is stored *inside* the gitignored `.beads/embeddeddolt/`
+database, so a brand-new `git clone` does **not** inherit the remote and the
+installed `post-checkout` / `post-merge` hooks will **not** auto-hydrate issue
+data on their own. After cloning, re-add the remote once, then pull:
+
+```sh
+git clone https://github.com/weegens-aaron/bdboard.git
+cd bdboard
+bd dolt remote add origin https://github.com/weegens-aaron/bdboard.git
+bd dolt pull        # hydrates .beads/embeddeddolt/ from refs/dolt/data
+bd ready            # confirm issues are present
+```
+
+> The local-only JSONL backup in `.beads/backup/` (gitignored) is a
+> belt-and-suspenders recovery export **only** — never the wire protocol and
+> never the source of truth. The canonical, runtime source of truth is the Dolt
+> DB as read through the `bd` CLI.
+
 ## Troubleshooting
 
 ### Bead detail (or bd itself) hangs
