@@ -30,6 +30,54 @@ def parse_css_variables(css: str) -> dict[str, str]:
     return variables
 
 
+def parse_css_variables_for_block(css: str, selector: str) -> dict[str, str]:
+    """Extract custom properties declared inside a specific selector block.
+
+    Unlike :root parsing, this targets an arbitrary selector (e.g. the dark
+    theme override block ``:root[data-theme="dark"]``) so tests can validate
+    theme-specific token values.
+
+    Args:
+        css: CSS content as string
+        selector: The selector whose block to read (literal text, will be
+            regex-escaped). Example: ':root[data-theme="dark"]'
+
+    Returns:
+        Dictionary mapping variable names (with --) to their declared values.
+        Empty dict if the selector block is not found.
+    """
+    pattern = re.escape(selector) + r"\s*\{(?P<body>.*?)\}"
+    match = re.search(pattern, css, re.DOTALL)
+    if not match:
+        return {}
+
+    variables: dict[str, str] = {}
+    for name, value in re.findall(
+        r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);", match.group("body")
+    ):
+        variables[name.strip()] = value.strip()
+    return variables
+
+
+def dark_theme_variables(css: str) -> dict[str, str]:
+    """Resolve the full token table as seen under the dark theme.
+
+    The dark theme only re-declares the tokens it changes; everything else
+    inherits from :root. This layers the ``:root[data-theme="dark"]`` block
+    on top of the base :root so callers get the fully-resolved dark palette
+    (the single source of truth the browser would compute).
+
+    Args:
+        css: CSS content as string
+
+    Returns:
+        Merged variable dict (base :root overridden by dark-theme block).
+    """
+    merged = parse_css_variables(css)
+    merged.update(parse_css_variables_for_block(css, ':root[data-theme="dark"]'))
+    return merged
+
+
 def resolve_css_value(value: str, variables: dict[str, str]) -> str:
     """Resolve CSS value, including var() references recursively.
 

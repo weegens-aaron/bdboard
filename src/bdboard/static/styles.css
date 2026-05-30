@@ -42,6 +42,21 @@
   --red-100: #ea1100;
   --warning-text: #b36a16;
   --violet:       #63327e;
+  --red-pressed:  #c40e00;
+
+  /* Fills that carry text — white reads on the brand-blue / red / green
+     fills in BOTH themes, so this stays constant across light and dark. */
+  --on-brand:  #ffffff;
+
+  /* Inline danger callouts (error strips, audit failures). */
+  --danger-bg: #fde6e7;
+  --danger-fg: var(--red-100);
+
+  /* Subtle inline-code chip background (used inside callouts). */
+  --code-chip-bg: rgba(0, 0, 0, 0.06);
+
+  /* Soft elevation tint for inset shadows on active controls. */
+  --shadow-inset: rgba(0, 0, 0, 0.15);
 
   --accent:    var(--brand-red);
   --accent-2:  var(--warning-text);
@@ -79,6 +94,100 @@
   --sans:    "Bogle", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --mono:    "BogleMono", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
+
+/* ============================================================
+   Dark theme (bdboard-35e).
+   Only the *semantic aliases* are re-pointed here — every component
+   references those aliases (no raw hex outside :root), so flipping
+   data-theme="dark" on <html> recolors the whole surface. Greys are
+   inverted (paper goes dark, ink goes light) and brand fills are
+   lightened just enough to clear WCAG AA on the dark canvas.
+
+   Activation: <html data-theme="dark">. The OS preference
+   (prefers-color-scheme) is resolved once in JS by the inline anti-FOUC
+   script in base.html, which sets an explicit data-theme before first
+   paint — so there is exactly ONE dark token recipe here (DRY) instead
+   of duplicating it inside an @media block that CSS can't share with the
+   attribute selector.
+   ============================================================ */
+:root[data-theme="dark"] {
+  /* Dark greys — paper end is near-black, ink end is near-white. */
+  --gray-5:   #1b1c1f;   /* darkest "paper" */
+  --gray-10:  #232427;
+  --gray-20:  #303237;
+  --gray-30:  #3c3e44;
+  --gray-70:  #8a8c92;
+  --gray-100: #a8aab0;
+  --gray-140: #d4d5d9;
+  --gray-160: #f1f1f2;   /* lightest "ink" */
+
+  /* Semantic aliases re-pointed for the dark canvas. */
+  --ink:      var(--gray-160);
+  --ink-2:    var(--gray-140);
+  --muted:    var(--gray-100);
+  --muted-2:  var(--gray-70);
+  --rule:     #34363c;
+  --rule-2:   #41434a;
+  --paper:    #16171a;
+  --paper-2:  #202125;
+  --paper-3:  #26282c;
+
+  /* Brand fills lightened for contrast against the dark canvas. */
+  --brand-blue:   #4f9bff;
+  --brand-blue-d: #8bbcff;
+  --brand-blue-l: #16314f;
+  --brand-green:  #5fc23a;
+  --brand-red:    #ff6b5e;
+  --brand-yellow: #ffc220;
+  --blue-100:  #4f9bff;
+  --spark-10:  #3a2e12;
+  --spark-140: #ffd27a;
+  --green-100: #5fc23a;
+  --red-100:   #ff6b5e;
+  --warning-text: #ffce7a;
+  --violet:       #c79fe0;
+  --red-pressed:  #ff8a80;
+
+  /* Text that sits on a brand-colored fill. On the dark theme the
+     blue/green/red fills are light, so dark ink reads on them. */
+  --on-brand:  #16171a;
+
+  /* Inline danger callout: tinted dark-red panel, light-red text. */
+  --danger-bg: #3a1c1b;
+  --danger-fg: var(--red-100);
+
+  /* Code chips / inset shadows need light/dark-aware alpha. */
+  --code-chip-bg: rgba(255, 255, 255, 0.10);
+  --shadow-inset: rgba(0, 0, 0, 0.45);
+
+  /* Status badges — dark-friendly tinted panels with light text. */
+  --status-open-bg: #16314f;
+  --status-open-fg: #bcd6ff;
+  --status-open-border: #2f5688;
+
+  --status-in-progress-bg: #1e5fbf;
+  --status-in-progress-fg: #ffffff;
+  --status-in-progress-border: #2f72d6;
+
+  --status-blocked-bg: #3a1c1b;
+  --status-blocked-fg: #ffb3aa;
+  --status-blocked-border: #6e2f2a;
+
+  --status-deferred-bg: #3a2e12;
+  --status-deferred-fg: #ffd27a;
+  --status-deferred-border: #6b531f;
+
+  --status-closed-bg: #16321a;
+  --status-closed-fg: #a6e29a;
+  --status-closed-border: #2f5e33;
+
+  --status-unknown-bg: var(--paper-2);
+  --status-unknown-fg: var(--ink-2);
+  --status-unknown-border: var(--rule-2);
+}
+
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -183,6 +292,43 @@ pre { margin: 0; }
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
+
+/* Theme toggle (bdboard-35e) — a single pill button that flips the theme.
+   It lives in the masthead next to the nav. The button text/icon swap is
+   driven by CSS attribute selectors keyed off the <html data-theme>, so
+   the JS only has to flip one attribute (single source of truth). */
+.theme-toggle {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.theme-toggle:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+.theme-toggle-icon { font-size: 14px; line-height: 1; }
+/* Show the icon/label for the theme you'll switch TO, so the affordance
+   reads as an action. Default markup is the "dark" prompt (light theme
+   active); when dark is active we reveal the "light" prompt instead. */
+.theme-toggle .theme-toggle-to-light { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-toggle-to-dark { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-toggle-to-light { display: inline; }
 
 .counts {
   display: flex;
@@ -417,16 +563,16 @@ pre { margin: 0; }
 }
 .filter-badge-active {
   background: var(--blue-100);
-  color: #ffffff;
+  color: var(--on-brand);
   border-color: var(--blue-100);
   font-weight: 800;
   /* Visual weight change (not just color) for accessibility */
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 2px var(--shadow-inset);
 }
 .filter-badge-active:hover {
   background: var(--brand-blue-d);
   border-color: var(--brand-blue-d);
-  color: #ffffff;
+  color: var(--on-brand);
 }
 .lane-list {
   list-style: none;
@@ -661,7 +807,7 @@ pre { margin: 0; }
   font-family: var(--sans);
   font-size: 13px;
   color: var(--red-100);
-  background: #fde6e7;
+  background: var(--danger-bg);
   padding: 10px 14px;
   border-radius: 4px;
   border-left: 3px solid var(--red-100);
@@ -681,7 +827,7 @@ pre { margin: 0; }
   font-size: 13px;
   font-weight: 600;
   background: var(--brand-blue);
-  color: #ffffff;
+  color: var(--on-brand);
   border: none;
   border-radius: 4px;
   padding: 9px 14px;
@@ -754,14 +900,14 @@ pre { margin: 0; }
   color: var(--ink);
   margin: 0 0 16px;
   padding: 10px 12px;
-  background: #fff7e0;
+  background: var(--spark-10);
   border-left: 3px solid var(--spark-100);
   border-radius: 0 4px 4px 0;
 }
 .memory-dialog-warning code {
   font-family: var(--mono);
   font-size: 12px;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--code-chip-bg);
   padding: 1px 5px;
   border-radius: 3px;
 }
@@ -811,7 +957,7 @@ pre { margin: 0; }
 }
 .memory-btn-primary {
   background: var(--brand-blue);
-  color: #ffffff;
+  color: var(--on-brand);
   border: 1px solid var(--brand-blue);
 }
 .memory-btn-primary:hover {
@@ -829,12 +975,12 @@ pre { margin: 0; }
 }
 .memory-btn-danger {
   background: var(--red-100);
-  color: #ffffff;
+  color: var(--on-brand);
   border: 1px solid var(--red-100);
 }
 .memory-btn-danger:hover {
-  background: #c40e00;
-  border-color: #c40e00;
+  background: var(--red-pressed);
+  border-color: var(--red-pressed);
 }
 .memory-btn:focus-visible {
   outline: 2px solid var(--ink);
@@ -961,7 +1107,7 @@ pre { margin: 0; }
 .modal-warning {
   margin-top: 6px;
   padding: 6px 10px;
-  background: #fff7e0;
+  background: var(--spark-10);
   border-left: 3px solid var(--brand-yellow);
   color: var(--warning-text);
   font-size: 12px;
@@ -1163,12 +1309,12 @@ pre { margin: 0; }
 .audit-error {
   padding: 10px 12px;
   border-left: 3px solid var(--accent);
-  background: #fde6e7;
+  background: var(--danger-bg);
   font-size: 13px;
   color: var(--ink);
 }
 .audit-error code {
-  background: rgba(0,0,0,0.06);
+  background: var(--code-chip-bg);
   padding: 1px 4px;
   border-radius: 3px;
 }
@@ -1187,7 +1333,7 @@ pre { margin: 0; }
   font-family: var(--mono);
   font-size: 13px;
   color: var(--accent);
-  background: #fde6e7;
+  background: var(--danger-bg);
   padding: 10px 12px;
   border-radius: 4px;
 }

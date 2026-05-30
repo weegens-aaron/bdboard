@@ -13,3 +13,20 @@
      class="masthead-nav-link{% if active == 'memory' %} is-active{% endif %}"
      {% if active == 'memory' %}aria-current="page"{% endif %}>Memory</a>
 </nav>
+{# Theme toggle (bdboard-35e). Sits beside the nav as shared masthead chrome
+   so both the board and memory surfaces get it (DRY). Not inside <nav>
+   because switching themes is an action, not navigation. The visible label
+   describes the action (what you'll switch TO); CSS swaps which label shows
+   based on <html data-theme>. aria-pressed is set/maintained in JS. #}
+<button type="button"
+        id="theme-toggle"
+        class="theme-toggle"
+        aria-pressed="false"
+        aria-label="Toggle dark mode">
+  <span class="theme-toggle-to-dark" aria-hidden="true">
+    <span class="theme-toggle-icon">☽</span> Dark
+  </span>
+  <span class="theme-toggle-to-light" aria-hidden="true">
+    <span class="theme-toggle-icon">☀</span> Light
+  </span>
+</button>

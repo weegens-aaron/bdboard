@@ -4,6 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{% block title %}bdboard{% endblock %} · {{ workspace or "bd" }}</title>
+    <script>
+      // Anti-FOUC theme resolution (bdboard-35e). Runs BEFORE the
+      // stylesheet/body paint so the page never flashes the wrong theme.
+      // Single source of truth = the data-theme attribute on <html>:
+      //   1. An explicit, persisted choice in localStorage wins.
+      //   2. Otherwise fall back to the OS prefers-color-scheme.
+      // We always set an explicit attribute so the CSS has one code path
+      // (no @media duplication) and native controls get color-scheme.
+      (function () {
+        try {
+          var saved = localStorage.getItem('bdboard-theme');
+          var theme = (saved === 'dark' || saved === 'light')
+            ? saved
+            : (window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
@@ -211,6 +233,50 @@
           // regions will re-fetch their HTML partials.
           document.body.dispatchEvent(new CustomEvent('refresh'));
         });
+      })();
+
+      // Theme toggle wiring (bdboard-35e). The initial theme is already
+      // applied by the anti-FOUC script in <head>; this only handles the
+      // click-to-flip + persistence. We keep the persisted value and the
+      // <html data-theme> attribute as the single source of truth.
+      (function () {
+        function currentTheme() {
+          return document.documentElement.getAttribute('data-theme') === 'dark'
+            ? 'dark' : 'light';
+        }
+        function applyTheme(theme) {
+          document.documentElement.setAttribute('data-theme', theme);
+          const btn = document.getElementById('theme-toggle');
+          if (btn) {
+            // Announce the resulting state for assistive tech.
+            btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+          }
+          try { localStorage.setItem('bdboard-theme', theme); } catch (e) {}
+        }
+        const btn = document.getElementById('theme-toggle');
+        if (btn) {
+          btn.setAttribute('aria-pressed',
+            currentTheme() === 'dark' ? 'true' : 'false');
+          btn.addEventListener('click', () => {
+            applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+          });
+        }
+        // If the user has NOT made an explicit choice, follow live OS
+        // changes (e.g. the OS flips to dark at sunset).
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)')
+            .addEventListener('change', (e) => {
+              let saved = null;
+              try { saved = localStorage.getItem('bdboard-theme'); } catch (err) {}
+              if (saved !== 'dark' && saved !== 'light') {
+                document.documentElement.setAttribute(
+                  'data-theme', e.matches ? 'dark' : 'light');
+                const b = document.getElementById('theme-toggle');
+                if (b) b.setAttribute('aria-pressed',
+                  e.matches ? 'true' : 'false');
+              }
+            });
+        }
       })();
     </script>
   </body>
