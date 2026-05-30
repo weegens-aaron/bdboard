@@ -264,14 +264,22 @@ pre { margin: 0; }
 .masthead-nav {
   display: flex;
   align-items: center;
-  margin: 0 auto 2px 0;
+  /* margin-right:auto keeps the strip left, just after the wordmark. The
+     bottom margin ties the contents strip to the wordmark's OPTICAL baseline:
+     the row bottom-aligns line boxes (align-items:flex-end), but the 38px
+     wordmark carries far more descender + leading below its baseline than the
+     small nav text, so without this lift the strip reads as "dropped".
+     Shared verbatim with .mh-toggle so the nav and toggle stay co-planar. */
+  margin: 0 auto 8px 0;
 }
 .mh-link {
   /* Small-caps + letterspacing, matching .kicker / the counts labels. */
   font-family: var(--sans);
   text-transform: uppercase;
   letter-spacing: 0.10em;
-  font-size: 12px;
+  /* Sized up from 12px so BOARD/MEMORY read as balanced against the wordmark
+     and counts strip rather than undersized (bdboard-dmp). */
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   color: var(--muted);            /* inactive: de-emphasised. gray-100 on
@@ -286,10 +294,14 @@ pre { margin: 0; }
   cursor: pointer;
   transition: color 0.12s ease;
 }
-/* First cell in the nav has no leading rule (matches .counts-cell:first). */
+/* First cell in the nav drops only the leading hairline rule (matches
+   .counts-cell:first). Its horizontal padding stays SYMMETRIC with the other
+   cells on purpose: the active baseline rule (box-shadow) spans the padding
+   box, so zeroing padding-left here used to make BOARD's underline span a
+   different width/offset than MEMORY's. Keeping padding uniform makes the
+   active underline read identically across every cell (bdboard-dmp). */
 .masthead-nav .mh-link:first-child {
   border-left: 0;
-  padding-left: 0;
 }
 /* Hover affordance is colour-only (muted → ink) so it doesn't double-signal
    with the active baseline rule. */
@@ -318,8 +330,10 @@ pre { margin: 0; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  /* Borrows .mh-link's border-left (hairline rule) and padding; nothing to
-     override here beyond the flex layout for the icon + label. */
+  /* Borrows .mh-link's border-left (hairline rule) and padding for the flex
+     layout. The bottom margin matches .masthead-nav so the toggle shares the
+     nav's baseline lift and the whole strip stays co-planar (bdboard-dmp). */
+  margin-bottom: 8px;
 }
 .mh-toggle-icon { font-size: 13px; line-height: 1; }
 /* Show the icon/label for the theme you'll switch TO, so the affordance
