@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/kucherenko/jscpd/master/packages/jscpd/schemas/jscpd.json",
   "min-tokens": 50,
-  "threshold": 1,
+  "threshold": 0.5,
   "gitignore": true,
   "absolute": false,
   "reporters": ["consoleFull"],

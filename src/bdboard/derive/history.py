@@ -125,6 +125,31 @@ def history_window(
     }
 
 
+def _fill_daily_series(buckets: dict[str, int]) -> list[dict[str, Any]]:
+    """Turn a sparse day->count map into a gap-free ascending series.
+
+    Single source of truth for the "continuous timeline" fill shared by
+    :func:`throughput` and :func:`created` (bdboard-gau). Given ``buckets``
+    keyed by ``"YYYY-MM-DD"``, returns
+    ``[{"day": "YYYY-MM-DD", "count": int}, ...]`` spanning the first through
+    last populated day, inserting ``count=0`` for any day with no entry so
+    the chart reads as a continuous line rather than a jagged one. Returns
+    ``[]`` for an empty map.
+    """
+    if not buckets:
+        return []
+    days = sorted(buckets)
+    first = datetime.strptime(days[0], "%Y-%m-%d")
+    last = datetime.strptime(days[-1], "%Y-%m-%d")
+    series: list[dict[str, Any]] = []
+    cursor = first
+    while cursor <= last:
+        key = cursor.strftime("%Y-%m-%d")
+        series.append({"day": key, "count": buckets.get(key, 0)})
+        cursor += timedelta(days=1)
+    return series
+
+
 def throughput(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
@@ -146,18 +171,7 @@ def throughput(
         day = _day_bucket(b.get("closed_at"))
         if day is not None:
             buckets[day] += 1
-    if not buckets:
-        return []
-    days = sorted(buckets)
-    first = datetime.strptime(days[0], "%Y-%m-%d")
-    last = datetime.strptime(days[-1], "%Y-%m-%d")
-    series: list[dict[str, Any]] = []
-    cursor = first
-    while cursor <= last:
-        key = cursor.strftime("%Y-%m-%d")
-        series.append({"day": key, "count": buckets.get(key, 0)})
-        cursor += timedelta(days=1)
-    return series
+    return _fill_daily_series(buckets)
 
 
 def _created_in_window(
@@ -208,18 +222,7 @@ def created(
         day = _day_bucket(b.get("created_at"))
         if day is not None:
             buckets[day] += 1
-    if not buckets:
-        return []
-    days = sorted(buckets)
-    first = datetime.strptime(days[0], "%Y-%m-%d")
-    last = datetime.strptime(days[-1], "%Y-%m-%d")
-    series: list[dict[str, Any]] = []
-    cursor = first
-    while cursor <= last:
-        key = cursor.strftime("%Y-%m-%d")
-        series.append({"day": key, "count": buckets.get(key, 0)})
-        cursor += timedelta(days=1)
-    return series
+    return _fill_daily_series(buckets)
 
 
 def _percentile(sorted_vals: list[float], pct: float) -> float | None:
