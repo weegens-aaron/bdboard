@@ -188,19 +188,6 @@
         });
       }
 
-      // Activity lane filter: wrapper around applyTimeFilter.
-      function applyActivityFilter(filter) {
-        applyTimeFilter({
-          laneDataAttr: 'activity',
-          itemSelector: '.activity-row[data-activity-ts]',
-          timestampAttr: 'data-activity-ts',
-          timeWindows: UNIFIED_TIME_WINDOWS,
-          countAttr: 'data-activity-count',
-          storageKey: 'bdboard-activity-filter',
-          currentFilter: filter
-        });
-      }
-
       // Wire up filter badge clicks and restore saved filters.
       // Shared helper to eliminate duplication between initial load and SSE refresh.
       function wireFilterBadges() {
@@ -219,23 +206,6 @@
           // Restore saved filter or default to 1d
           const savedFilter = sessionStorage.getItem('bdboard-closed-filter') || '1d';
           applyClosedFilter(savedFilter);
-        }
-
-        // Wire up Activity lane filter badges
-        const activityLane = document.querySelector('[data-lane="activity"]');
-        if (activityLane) {
-          activityLane.querySelectorAll('.filter-badge').forEach(badge => {
-            badge.addEventListener('click', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              applyActivityFilter(badge.getAttribute('data-filter'));
-            });
-            badge.setAttribute('role', 'radio');
-          });
-
-          // Restore saved filter or default to 1d
-          const savedFilter = sessionStorage.getItem('bdboard-activity-filter') || '1d';
-          applyActivityFilter(savedFilter);
         }
       }
 

@@ -73,17 +73,11 @@
   <div class="lane lane-activity" data-lane="activity">
     <h2 class="lane-title">
       <span class="lane-name">Activity</span>
-      <div class="activity-filters">
-        <button class="filter-badge" data-filter="12h" aria-label="Show activity from the last 12 hours">12h</button>
-        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show activity from the last 24 hours">1d</button>
-        <button class="filter-badge" data-filter="3d" aria-label="Show activity from the last 3 days">3d</button>
-      </div>
-      <span class="lane-count" data-activity-count="total">{{ activity|length }}</span>
+      <span class="lane-count">{{ activity|length }}</span>
     </h2>
     <ul class="lane-list">
       {% for it in activity %}
       <li class="activity-row"
-          {% if it.ts %}data-activity-ts="{{ it.ts }}"{% endif %}
           hx-get="/api/bead/{{ it.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML">

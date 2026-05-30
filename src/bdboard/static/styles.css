@@ -589,8 +589,7 @@ pre { margin: 0; }
 }
 
 /* Closed lane filter badges — small, pressable, WCAG AA compliant */
-.closed-filters,
-.activity-filters {
+.closed-filters {
   display: flex;
   gap: 4px;
   align-items: center;
