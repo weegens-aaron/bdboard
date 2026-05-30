@@ -88,6 +88,32 @@
   --status-unknown-fg: var(--ink-2);
   --status-unknown-border: var(--rule-2);
 
+  /* Priority badge colors (bdboard-97z) — urgency gradient hot->cool,
+     strong->faint, so all five levels are mutually distinguishable by
+     HUE + TREATMENT, not lightness alone. See bdboard-tsu --design for
+     the palette decision and computed WCAG AA proof (both themes).
+     P0 solid red / P1 solid amber / P2 blue tint / P3 neutral fill /
+     P4 ghost outline. Re-pointed for the dark canvas below. */
+  --priority-p0-bg: var(--brand-red);
+  --priority-p0-fg: var(--on-brand);
+  --priority-p0-border: transparent;
+
+  --priority-p1-bg: var(--brand-yellow);
+  --priority-p1-fg: var(--ink);
+  --priority-p1-border: transparent;
+
+  --priority-p2-bg: var(--brand-blue-l);
+  --priority-p2-fg: var(--brand-blue-d);
+  --priority-p2-border: var(--status-open-border);
+
+  --priority-p3-bg: var(--gray-20);
+  --priority-p3-fg: var(--ink);
+  --priority-p3-border: var(--rule-2);
+
+  --priority-p4-bg: transparent;
+  --priority-p4-fg: var(--ink-2);
+  --priority-p4-border: var(--muted);
+
   /* Typography */
   --serif:   "Source Serif 4", "Iowan Old Style", Georgia, serif;
   --display: "Crimson Pro", "Source Serif 4", "Iowan Old Style", Georgia, serif;
@@ -184,6 +210,30 @@
   --status-unknown-bg: var(--paper-2);
   --status-unknown-fg: var(--ink-2);
   --status-unknown-border: var(--rule-2);
+
+  /* Priority badges — re-pointed for the dark canvas (bdboard-97z).
+     P0/P1 fills auto-lighten via --brand-red/--brand-yellow; on the
+     dark theme dark ink reads on those light fills, so P1 fg flips to
+     --on-brand (#16171a). P2 reuses the dark open-status panel/text. */
+  --priority-p0-bg: var(--brand-red);
+  --priority-p0-fg: var(--on-brand);
+  --priority-p0-border: transparent;
+
+  --priority-p1-bg: var(--brand-yellow);
+  --priority-p1-fg: var(--on-brand);
+  --priority-p1-border: transparent;
+
+  --priority-p2-bg: var(--brand-blue-l);
+  --priority-p2-fg: var(--status-open-fg);
+  --priority-p2-border: var(--status-open-border);
+
+  --priority-p3-bg: var(--gray-20);
+  --priority-p3-fg: var(--ink);
+  --priority-p3-border: var(--rule-2);
+
+  --priority-p4-bg: transparent;
+  --priority-p4-fg: var(--ink-2);
+  --priority-p4-border: var(--muted);
 }
 
 :root[data-theme="dark"] { color-scheme: dark; }
