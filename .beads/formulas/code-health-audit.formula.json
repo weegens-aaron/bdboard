@@ -30,7 +30,7 @@
     {
       "id": "dry-triage",
       "title": "DRY triage: review jscpd duplication report for {{repo}}",
-      "description": "Triage the duplication findings from the CI 'jscpd (copy-paste detector)' job (config: .jscpd.json, gate threshold 1%). Pull the latest jscpd report, review reported clones below the gate, and decide which are worth de-duplicating. Do NOT re-run jscpd yourself - read CI output. Output: ranked list of duplication hotspots (file:line) worth a refactor bead, plus whether the 1% threshold should be tightened.",
+      "description": "Triage the duplication findings from the CI 'jscpd (copy-paste detector)' job (config: .jscpd.json, gate threshold 0.5%). Pull the latest jscpd report, review reported clones below the gate, and decide which are worth de-duplicating. Do NOT re-run jscpd yourself - read CI output. Output: ranked list of duplication hotspots (file:line) worth a refactor bead, plus whether the 0.5% threshold should be adjusted.",
       "type": "task",
       "priority": 2,
       "labels": [

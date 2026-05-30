@@ -66,8 +66,9 @@ unless blocking.
 bd mol pour code-health-audit --var repo=bdboard --var quarter=2026-Q2
 ```
 
-Use `--dry-run` first to preview the 6 issues (epic + 4 children) without
-creating them. Variables: `repo` (default `bdboard`), `quarter`
+Use `--dry-run` first to preview the 6 issues (proto + epic + 4 children)
+without creating them — bd counts the formula root proto alongside the
+epic and its 4 task children. Variables: `repo` (default `bdboard`), `quarter`
 (default `this-cycle`).
 
 ### Chosen cadence
