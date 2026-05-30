@@ -429,7 +429,13 @@ async def api_history(
     window = derive.history_window(beads, range_key=range_key, page=page)
     series = derive.throughput(beads, range_key=range_key)
     stats = derive.lead_time_stats(beads, range_key=range_key)
+    # Churn / activity-over-time (design §6, bead D): beads touched per day
+    # by updated_at, complementing the closed-by-closed_at throughput series.
+    # Range-scoped the same way so both charts read against the same window.
+    churn_series = derive.churn(beads, range_key=range_key)
     peak = max((d["count"] for d in series), default=0)
+    churn_peak = max((d["count"] for d in churn_series), default=0)
+    churn_total = sum(d["count"] for d in churn_series)
     avg_per_day = round(stats["n"] / len(series), 1) if series else 0
     # Optional headline KPI (design §6, bead F): bd's own aggregate summary
     # (incl. average_lead_time_hours). These are workspace-global, point-in-
@@ -449,6 +455,9 @@ async def api_history(
             "window": window,
             "series": series,
             "peak": peak,
+            "churn_series": churn_series,
+            "churn_peak": churn_peak,
+            "churn_total": churn_total,
             "stats": stats,
             "avg_per_day": avg_per_day,
             "bd_summary": bd_summary,

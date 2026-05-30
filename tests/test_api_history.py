@@ -56,6 +56,7 @@ def _bead(bead_id, *, days_ago, priority=2, assignee="dev", reason="done"):
         "created_at": _iso(days_ago + 1),
         "started_at": _iso(days_ago),
         "closed_at": _iso(days_ago),
+        "updated_at": _iso(days_ago),
     }
 
 
@@ -179,3 +180,41 @@ def test_foot_summary_echoes_headline() -> None:
 
     assert "closed in 30 days" in body
     assert "closed/day on average" in body
+
+
+def test_churn_chart_renders_with_text_aria_labels() -> None:
+    # Churn (design §6, bead D): activity-over-time by updated_at. A touched
+    # OPEN bead must register even though it never closed.
+    open_bead = {
+        "id": "open1",
+        "title": "Bead open1",
+        "status": "open",
+        "priority": 1,
+        "created_at": _iso(3),
+        "updated_at": _iso(1),
+    }
+    _stub_snapshot([_bead("a", days_ago=1), open_bead])
+
+    status, body = _call()
+
+    assert status == 200
+    assert "Churn / activity" in body
+    # Bars are not colour-only: each carries an accessible label.
+    assert "touched on" in body
+    # The churn bars use the dedicated variant class.
+    assert "throughput-bar-churn" in body
+
+
+def test_churn_empty_state_when_no_activity_in_window() -> None:
+    old_open = {
+        "id": "old",
+        "title": "Bead old",
+        "status": "open",
+        "updated_at": _iso(400),
+    }
+    _stub_snapshot([old_open])
+
+    status, body = _call(range="7d")
+
+    assert status == 200
+    assert "No activity to chart" in body

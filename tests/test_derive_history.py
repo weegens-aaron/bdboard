@@ -13,6 +13,7 @@ from bdboard.derive import (
     _parse_dt,
     _percentile,
     _range_to_cutoff,
+    churn,
     history_window,
     humanize_hours,
     lead_time_stats,
@@ -30,6 +31,7 @@ def _bead(
     created_at=None,
     started_at=None,
     closed_at=None,
+    updated_at=None,
 ):
     """Build a minimal bead dict with only the fields history cares about."""
     b = {"id": bead_id, "status": status}
@@ -39,6 +41,8 @@ def _bead(
         b["started_at"] = started_at
     if closed_at is not None:
         b["closed_at"] = closed_at
+    if updated_at is not None:
+        b["updated_at"] = updated_at
     return b
 
 
@@ -230,6 +234,76 @@ def test_throughput_series_is_ascending_and_continuous():
     days = [row["day"] for row in series]
     assert days == sorted(days)
     # No gaps: consecutive calendar days.
+    parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
+    for earlier, later in zip(parsed, parsed[1:]):
+        assert (later - earlier).days == 1
+
+
+# ----- churn (activity-over-time, bdboard-h0m / design §6 bead D) -----
+
+
+def test_churn_buckets_touched_by_day_gap_filled():
+    # Two touches on day -1, one on day -3; day -2 has none -> filled with 0.
+    beads = [
+        _bead("a", updated_at=_iso(1, hour=9)),
+        _bead("b", updated_at=_iso(1, hour=15)),
+        _bead("c", updated_at=_iso(3, hour=10)),
+    ]
+    series = churn(beads, "7d", now=NOW)
+    assert len(series) == 3  # spans -3 .. -1
+    total = sum(r["count"] for r in series)
+    assert total == 3
+    counts = {row["day"]: row["count"] for row in series}
+    assert 0 in counts.values()  # the quiet middle day is zero-filled
+
+
+def test_churn_counts_open_beads_too():
+    # Churn is status-agnostic: an edited OPEN bead is activity (unlike
+    # throughput, which only counts closes).
+    beads = [
+        _bead("open1", status="open", updated_at=_iso(1)),
+        _bead("closed1", status="closed", closed_at=_iso(1), updated_at=_iso(1)),
+    ]
+    series = churn(beads, "7d", now=NOW)
+    assert sum(r["count"] for r in series) == 2
+
+
+def test_churn_empty_when_nothing_touched_in_window():
+    beads = [_bead("ancient", status="open", updated_at=_iso(200))]
+    assert churn(beads, "30d", now=NOW) == []
+
+
+def test_churn_excludes_beads_without_updated_at():
+    beads = [_bead("a", status="open", created_at=_iso(1))]  # no updated_at
+    assert churn(beads, "all", now=NOW) == []
+
+
+def test_churn_respects_range():
+    beads = [
+        _bead("recent", status="open", updated_at=_iso(2)),
+        _bead("ancient", status="open", updated_at=_iso(200)),
+    ]
+    series = churn(beads, "7d", now=NOW)
+    assert sum(r["count"] for r in series) == 1
+
+
+def test_churn_all_range_unbounded():
+    beads = [
+        _bead("a", status="open", updated_at=_iso(2)),
+        _bead("b", status="open", updated_at=_iso(500)),
+    ]
+    series = churn(beads, "all", now=NOW)
+    assert sum(r["count"] for r in series) == 2
+
+
+def test_churn_series_is_ascending_and_continuous():
+    beads = [
+        _bead("a", status="open", updated_at=_iso(1)),
+        _bead("b", status="open", updated_at=_iso(4)),
+    ]
+    series = churn(beads, "30d", now=NOW)
+    days = [row["day"] for row in series]
+    assert days == sorted(days)
     parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
     for earlier, later in zip(parsed, parsed[1:]):
         assert (later - earlier).days == 1

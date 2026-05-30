@@ -104,6 +104,39 @@
     {% endif %}
   </section>
 
+  {# Churn chart — activity-over-time (design §6, bead D). Where throughput
+     counts *closes* by closed_at, churn counts beads *touched* (updated_at)
+     per day, so an edited open bead registers as activity too. Same
+     fixed-height bar-strip idiom as throughput; bars carry text aria-labels
+     and a visible count so they are never colour-only (design §5). #}
+  <section class="history-churn" aria-label="Beads touched per day">
+    <h2 class="history-section-title">
+      Churn / activity
+      <span class="lane-count">{{ churn_total }}</span>
+    </h2>
+    {% if churn_series %}
+    <div class="throughput-chart" role="img"
+         aria-label="Beads touched per day from {{ churn_series[0].day }} to {{ churn_series[-1].day }}, peak {{ churn_peak }} in a day">
+      <ul class="throughput-bars" role="list">
+        {% for d in churn_series %}
+        <li class="throughput-bar-cell">
+          <span class="throughput-count" aria-hidden="true">{{ d.count if d.count else "" }}</span>
+          <span class="throughput-bar throughput-bar-churn"
+                style="height: {{ (d.count / churn_peak * 100) | round(1) if churn_peak else 0 }}%"
+                aria-label="{{ d.count }} touched on {{ d.day }}"></span>
+          <span class="throughput-day" aria-hidden="true">{{ d.day[5:] }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <p class="history-churn-note muted">
+      Activity = beads last mutated (updated_at) that day, any status.
+    </p>
+    {% else %}
+    <p class="history-empty muted">No activity to chart in {{ range_human }}.</p>
+    {% endif %}
+  </section>
+
   {# Closed list — vertical cards, newest-closed first. Clicking opens the
      existing bead modal (reuse, don't rebuild). #}
   <section class="history-list-section" aria-label="Closed beads">
