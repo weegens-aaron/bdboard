@@ -26,10 +26,10 @@ preview the 6 issues without creating them.
 
 - **Cadence: quarterly**, invoked **manually** via `bd mol pour` at the start of
   each quarter (lowest-friction starting point; no scheduler dependency).
-- Automation / invoker is intentionally **out of scope** here and tracked
-  separately in **bdboard-ace** (decide cadence + invoker for recurring
-  maintenance formulas). Manual quarterly pour is the interim policy so adoption
-  isn't blocked on building a scheduler.
+- Automation / invoker was **decided in bdboard-ace**: stay manual for now, no
+  scheduler shipped, with explicit revisit triggers. See the full rationale,
+  runbook, and revisit criteria in
+  `docs/design/bdboard-ace/cadence-invoker-decision.md`.
 
 ### Note on phase / the vapor↔pour gotcha
 
@@ -74,8 +74,9 @@ epic and its 4 task children. Variables: `repo` (default `bdboard`), `quarter`
 ### Chosen cadence
 
 - **Cadence: quarterly**, invoked **manually** via `bd mol pour` — same
-  interim policy as `docs-validation`. Automation/invoker is tracked
-  separately in **bdboard-ace**.
+  policy as `docs-validation`. Automation / invoker was **decided in
+  bdboard-ace** (stay manual, no scheduler; revisit triggers documented in
+  `docs/design/bdboard-ace/cadence-invoker-decision.md`).
 
 ### Note on phase / the vapor↔pour gotcha
 
