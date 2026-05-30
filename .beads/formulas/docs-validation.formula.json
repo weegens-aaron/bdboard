@@ -1,0 +1,59 @@
+{
+  "formula": "docs-validation",
+  "description": "Documentation validation pass for {{repo}}. Checks README accuracy, ADR/decision coverage, broken links, and stale setup steps. File one bead per defect found. Recommended cadence: quarterly, run via 'bd mol pour docs-validation --var repo={{repo}}' (persistent, for audit trail).",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "variables": {
+    "repo": {
+      "description": "Repo whose docs are validated",
+      "default": "bdboard"
+    }
+  },
+  "steps": [
+    {
+      "id": "docs-root",
+      "title": "Docs validation: {{repo}}",
+      "description": "Umbrella for a documentation validation pass over {{repo}}. File one bead per defect found.",
+      "type": "epic",
+      "priority": 2,
+      "labels": ["docs", "validation", "recurring"]
+    },
+    {
+      "id": "readme-accuracy",
+      "title": "README accuracy check: {{repo}}",
+      "description": "Verify README claims against reality: run every documented command, confirm described features exist, check screenshots/output are current. Output: list of inaccuracies.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["docs", "readme"],
+      "depends_on": ["docs-root"]
+    },
+    {
+      "id": "setup-steps",
+      "title": "Stale setup-step check: {{repo}}",
+      "description": "Run the documented setup from a clean state (fresh venv/clone). Note any step that fails, is missing, or is out of order. Output: corrected setup sequence.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["docs", "setup"],
+      "depends_on": ["docs-root"]
+    },
+    {
+      "id": "broken-links",
+      "title": "Broken-link sweep: {{repo}}",
+      "description": "Scan all markdown for dead internal/external links and anchors. Tool: lychee or a markdown link checker. Output: list of broken links with source file.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["docs", "links"],
+      "depends_on": ["docs-root"]
+    },
+    {
+      "id": "adr-coverage",
+      "title": "ADR / decision-coverage check: {{repo}}",
+      "description": "Cross-reference significant recent changes against docs/design ADRs. Flag decisions made in code/beads but never written down. Output: missing-ADR list.",
+      "type": "task",
+      "priority": 2,
+      "labels": ["docs", "adr"],
+      "depends_on": ["docs-root"]
+    }
+  ]
+}
