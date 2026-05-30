@@ -61,6 +61,83 @@
     {% endif %}
   </dd>
 
+  {# Inline-edit affordance (bdboard-o9v.3). For editable fields whose safe
+     semantics are REPLACE (everything except append-only `notes`), a per-field
+     <details> discloses a real form that posts the new value to
+     POST /api/bead/{id}/field and swaps THIS row back in place with the
+     re-rendered value. WCAG 2.2 AA: a native <summary> (keyboard operable),
+     a real <label> bound to each control, focus moved into the first control
+     on open (ontoggle), and a per-row aria-live region for save/error
+     feedback. The editor kind is chosen server-side from the field registry
+     (f.editor): text / number / select(enum) / md(textarea). The registry —
+     not the client — decides the bd flag, so this template only carries the
+     field key; it can never widen what is editable. #}
+  {% if f.editable and not f.append_only %}
+  <details class="field-edit"
+           data-field-edit
+           ontoggle="if(this.open){var c=this.querySelector('[data-edit-input]');if(c)c.focus();}">
+    <summary class="field-edit-summary">
+      <span class="field-edit-summary-label">Edit {{ f.key }}</span>
+    </summary>
+    <form class="field-edit-form"
+          hx-post="/api/bead/{{ bead_id }}/field"
+          hx-target="#field-row-{{ f.key }}"
+          hx-swap="outerHTML"
+          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+          hx-indicator="#nav-progress">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="field" value="{{ f.key }}" />
+      <label class="field-edit-label" for="field-edit-input-{{ f.key }}">
+        {{ f.key }}
+      </label>
+      {% if f.editor == "select" %}
+        <select id="field-edit-input-{{ f.key }}"
+                class="field-edit-select"
+                name="value"
+                data-edit-input>
+          {% for opt in f.enum_options %}
+          <option value="{{ opt }}"
+                  {% if (f.val | string) == (opt | string) %}selected{% endif %}>{% if f.key == "priority" %}P{{ opt }}{% else %}{{ opt }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      {% elif f.editor == "number" %}
+        <input type="number"
+               id="field-edit-input-{{ f.key }}"
+               class="field-edit-input"
+               name="value"
+               value="{% if f.kind != 'empty' %}{{ f.val }}{% endif %}"
+               data-edit-input />
+      {% elif f.editor == "md" or f.editor == "textarea" %}
+        <textarea id="field-edit-input-{{ f.key }}"
+                  class="field-edit-textarea"
+                  name="value"
+                  rows="6"
+                  data-edit-input>{% if f.kind != 'empty' %}{{ f.val }}{% endif %}</textarea>
+      {% else %}
+        <input type="text"
+               id="field-edit-input-{{ f.key }}"
+               class="field-edit-input"
+               name="value"
+               value="{% if f.kind != 'empty' %}{{ f.val }}{% endif %}"
+               data-edit-input />
+      {% endif %}
+      <div class="field-edit-actions">
+        <button type="button" class="memory-btn memory-btn-secondary"
+                onclick="this.closest('details').open = false">Cancel</button>
+        <button type="submit" class="memory-btn memory-btn-primary">Save</button>
+      </div>
+      {# Per-row aria-live region: save/error feedback is announced here
+         without stealing focus. Errors (4xx/5xx) are routed here by the
+         htmx:beforeSwap handler in base.html so a failed save never wipes
+         the row. #}
+      <div class="field-edit-feedback"
+           role="status"
+           aria-live="polite"
+           data-edit-feedback></div>
+    </form>
+  </details>
+  {% endif %}
+
   {# Append-only edit affordance (bdboard-o9v.4). Notes (and any future
      append_only field) are NEVER editable via a raw replace textarea —
      `bd update --notes` REPLACES the whole field and would destroy agent

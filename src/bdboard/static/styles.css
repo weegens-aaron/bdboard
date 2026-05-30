@@ -1432,6 +1432,100 @@ pre { margin: 0; }
   color: var(--brand-green);
 }
 
+/* Visually-hidden but screen-reader-available utility (bdboard-o9v.3).
+   Used by the global #a11y-announce live region so inline-edit "Saved."
+   confirmations reach assistive tech without any visible chrome. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Inline field-edit affordance (bdboard-o9v.3). A collapsed <details> per
+   editable (replace-semantics) field; mirrors the note-add visual language
+   so the modal reads as one editing surface. WCAG 2.2 AA: visible focus
+   rings on every interactive element, real labels, and a polite aria-live
+   feedback slot. */
+.field-edit {
+  margin-top: 6px;
+}
+.field-edit-summary {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  cursor: pointer;
+  display: inline-block;
+  padding: 2px 0;
+  list-style: none;
+}
+.field-edit-summary::-webkit-details-marker { display: none; }
+.field-edit-summary:hover { text-decoration: underline; }
+.field-edit[open] .field-edit-summary { margin-bottom: 8px; }
+.field-edit-summary:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.field-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-edit-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.field-edit-input,
+.field-edit-select,
+.field-edit-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 9px 12px;
+}
+.field-edit-textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+.field-edit-input:focus-visible,
+.field-edit-select:focus-visible,
+.field-edit-textarea:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+  border-color: var(--brand-blue);
+}
+.field-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.field-key:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.field-edit-feedback {
+  margin: 0;
+}
+.field-edit-feedback-error {
+  margin-top: 2px;
+}
+
 /* Audit trail */
 .audit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .audit-row {

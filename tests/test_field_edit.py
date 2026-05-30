@@ -269,6 +269,116 @@ def test_non_append_field_row_has_no_add_a_note_form() -> None:
     assert "Add a note" not in body
 
 
+# ───── UI affordance: inline edit (replace semantics) (bdboard-o9v.3) ──────
+
+
+def test_editable_field_row_renders_inline_edit_form() -> None:
+    """An editable replace-semantics field (title) renders the inline-edit
+    <details> form posting to the field route with a real <label> and a
+    polite aria-live feedback region (WCAG 2.2 AA)."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(title="Renamed"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "title", "value": "Renamed"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert 'class="field-edit"' in body
+    assert "Edit title" in body
+    assert 'hx-post="/api/bead/bdboard-x1/field"' in body
+    assert 'name="field" value="title"' in body
+    # Real label bound to the input id.
+    assert 'for="field-edit-input-title"' in body
+    assert 'id="field-edit-input-title"' in body
+    # Polite aria-live feedback slot for save/error announcements.
+    assert 'aria-live="polite"' in body
+    assert "data-edit-feedback" in body
+
+
+def test_text_field_edit_prefills_current_value() -> None:
+    """Replace-semantics text editors are PREFILLED with the current value
+    (unlike the append-only notes textarea, which must stay empty)."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(title="Current Title Here"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "title", "value": "Current Title Here"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert 'value="Current Title Here"' in body
+
+
+def test_select_field_edit_renders_enum_options_with_selected() -> None:
+    """priority (select editor) renders all enum options, labels P0..P4, and
+    marks the current value selected."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(priority=3))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "priority", "value": "3"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert "<select" in body
+    # Human-friendly P-prefixed labels.
+    assert ">P0<" in body and ">P3<" in body
+    # The current value (3) is selected.
+    sel = body.index('value="3"')
+    assert "selected" in body[sel : sel + 40]
+
+
+def test_number_field_edit_renders_number_input() -> None:
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(estimate=120))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "estimate", "value": "120"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert 'type="number"' in body
+    assert 'value="120"' in body
+
+
+def test_markdown_field_edit_renders_textarea_prefilled() -> None:
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(description="Body **md** content"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "description", "value": "Body **md** content"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert 'class="field-edit-textarea"' in body
+    ta_open = body.index('class="field-edit-textarea"')
+    ta_close = body.index("</textarea>", ta_open)
+    assert "Body **md** content" in body[ta_open:ta_close]
+
+
+def test_notes_row_has_no_replace_inline_edit_form() -> None:
+    """CRITICAL: append-only notes must NEVER get the replace-semantics
+    inline-edit form (that would route to a destructive replace). Only the
+    'Add a note' append affordance is allowed."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(notes="history\n\nnew"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "notes", "value": "new"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert 'class="field-edit"' not in body
+    assert "Add a note" in body
+
+
 # ───────────────────────── route: success path ────────────────────────────
 
 

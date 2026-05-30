@@ -133,6 +133,12 @@
     </footer>
     {% endblock %}
     <div id="bead-modal" class="modal-host" onclick="if(event.target===this)this.innerHTML=''"></div>
+    {# Global visually-hidden polite live region (bdboard-o9v.3). Inline field
+       edits announce success here ("Saved.") since the per-row feedback region
+       collapses with its <details> on a successful swap. Errors stay in the
+       still-open row's own aria-live region. One shared announcer keeps SR
+       feedback consistent without per-row bookkeeping. #}
+    <div id="a11y-announce" class="sr-only" role="status" aria-live="polite"></div>
     {# Instant bead-modal skeleton (bdboard-2do). Injected into #bead-modal
        the moment a bead card is clicked, BEFORE the /api/bead/<id> fetch
        resolves, so opening a bead is never a frozen click. Replaced wholesale
@@ -230,6 +236,63 @@
           const t = e.detail.target;
           if (modal && tpl && t && t.id === 'bead-modal') {
             modal.replaceChildren(tpl.content.cloneNode(true));
+          }
+        });
+
+        // ----- Inline field edit feedback + focus mgmt (bdboard-o9v.3) -----
+        // The inline-edit forms (partials/field_row.html) post to
+        // /api/bead/<id>/field and swap their own row in place on success.
+        // Two a11y concerns are handled here, delegated from <body> so they
+        // survive every modal/row swap:
+        //   1. ERRORS must NOT wipe the row. HTMX, by default, does not swap
+        //      non-2xx responses — good — but we still want the server's
+        //      error HTML shown in the row's aria-live region rather than
+        //      silently dropped. On htmx:beforeSwap for a 4xx/5xx from a
+        //      field-edit form we cancel the row swap and render the error
+        //      text into the form's [data-edit-feedback] region (which is
+        //      polite aria-live, so it's announced without grabbing focus).
+        //   2. SUCCESS announcement: the row (and its <details>) is replaced
+        //      wholesale on a 2xx swap, collapsing the editor; we announce
+        //      "Saved." via the global #a11y-announce live region so SR users
+        //      get confirmation, and move focus to the freshly rendered row
+        //      heading so keyboard users aren't dumped at <body> top.
+        function isFieldEditForm(el) {
+          return el && el.closest && el.closest('[data-field-edit] form');
+        }
+        const announcer = document.getElementById('a11y-announce');
+        function announce(msg) {
+          if (!announcer) return;
+          // Clear then set so identical consecutive messages re-announce.
+          announcer.textContent = '';
+          window.requestAnimationFrame(() => { announcer.textContent = msg; });
+        }
+        document.body.addEventListener('htmx:beforeSwap', (e) => {
+          const elt = e.detail && e.detail.elt;
+          if (!isFieldEditForm(elt)) return;
+          const status = e.detail.xhr && e.detail.xhr.status;
+          if (status >= 400) {
+            // Don't blow away the row; show the error in-place instead.
+            e.detail.shouldSwap = false;
+            const fb = elt.querySelector('[data-edit-feedback]');
+            if (fb) {
+              fb.className = 'field-edit-feedback field-edit-feedback-error';
+              // Server returns a small HTML fragment (<p class=field-error>).
+              fb.innerHTML = e.detail.xhr.responseText ||
+                'Could not save. Please try again.';
+            }
+          }
+        });
+        document.body.addEventListener('htmx:afterSwap', (e) => {
+          const tgt = e.detail && e.detail.target;
+          if (!tgt || !tgt.id || tgt.id.indexOf('field-row-') !== 0) return;
+          // A field row was successfully replaced -> save succeeded.
+          announce('Saved.');
+          // Move focus to the row's key cell so keyboard users land on the
+          // updated field rather than at the top of the document.
+          const key = tgt.querySelector('.field-key');
+          if (key) {
+            key.setAttribute('tabindex', '-1');
+            key.focus();
           }
         });
 
