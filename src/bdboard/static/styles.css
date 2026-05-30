@@ -1727,11 +1727,16 @@ pre { margin: 0; }
 }
 /* Tooltip: in the DOM at all times for aria-describedby, but visually hidden
    until its trigger is hovered/focused. Clipped (not display:none) so screen
-   readers can still resolve the aria-describedby reference. */
+   readers can still resolve the aria-describedby reference.
+
+   Anchored BELOW the trigger (bdboard-r1h): the stats strip sits at the very
+   top of the masthead, so an upward-anchored popover was clipped off the top
+   edge of the viewport. Opening downward keeps the whole panel in view since
+   the masthead has the entire page below it. */
 .stat-info-pop {
   position: absolute;
   left: 0;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   z-index: 20;
   width: max-content;
   max-width: 240px;
@@ -1751,6 +1756,13 @@ pre { margin: 0; }
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.12s ease;
+}
+/* Right-edge cell (e.g. "Throughput", last in the row): anchor the popover's
+   RIGHT edge to the trigger so a 240px panel grows leftward INTO the row
+   instead of overflowing past the right edge of the viewport (bdboard-r1h). */
+.history-stats .counts-cell:last-child .stat-info-pop {
+  left: auto;
+  right: 0;
 }
 .stat-info:hover + .stat-info-pop,
 .stat-info:focus-visible + .stat-info-pop,
