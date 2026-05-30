@@ -740,7 +740,7 @@ async def api_bead_field_update(
     return TEMPLATES.TemplateResponse(
         request,
         "partials/field_row.html",
-        {"f": row},
+        {"f": row, "bead_id": bead_id},
     )
 
 

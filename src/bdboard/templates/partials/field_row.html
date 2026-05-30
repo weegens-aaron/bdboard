@@ -60,4 +60,46 @@
       {{ f.val }}
     {% endif %}
   </dd>
+
+  {# Append-only edit affordance (bdboard-o9v.4). Notes (and any future
+     append_only field) are NEVER editable via a raw replace textarea —
+     `bd update --notes` REPLACES the whole field and would destroy agent
+     verification / bug-discovery history. The write path is pinned to
+     `--append-notes` server-side (POST /api/bead/{id}/field), and here the
+     UI is deliberately framed as "Add a note": a fresh, empty box whose
+     content is APPENDED below the existing history, never a prefilled
+     replace. A collapsed <details> keeps the affordance unobtrusive; the
+     submit swaps the whole row back in place so the new note appears above
+     and the form collapses again. #}
+  {% if f.editable and f.append_only %}
+  <details class="note-add">
+    <summary class="note-add-summary">+ Add a note</summary>
+    <form class="note-add-form"
+          hx-post="/api/bead/{{ bead_id }}/field"
+          hx-target="#field-row-{{ f.key }}"
+          hx-swap="outerHTML"
+          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+          hx-indicator="#nav-progress">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="field" value="{{ f.key }}" />
+      <p class="note-add-hint" id="note-add-hint-{{ f.key }}">
+        Appended below the existing {{ f.key }} — your note is
+        <strong>added</strong>, never replacing the history above.
+      </p>
+      <label class="note-add-label" for="note-add-input-{{ f.key }}">New note</label>
+      <textarea id="note-add-input-{{ f.key }}"
+                class="note-add-textarea"
+                name="value"
+                rows="4"
+                required
+                aria-describedby="note-add-hint-{{ f.key }}"
+                placeholder="Add a note (markdown supported)…"></textarea>
+      <div class="note-add-actions">
+        <button type="button" class="memory-btn memory-btn-secondary"
+                onclick="this.closest('details').open = false">Cancel</button>
+        <button type="submit" class="memory-btn memory-btn-primary">Add note</button>
+      </div>
+    </form>
+  </details>
+  {% endif %}
 </div>

@@ -205,6 +205,70 @@ def test_field_update_append_only_rejects_empty() -> None:
     assert calls == []
 
 
+# ───── UI affordance: append-only 'Add a note' (bdboard-o9v.4) ─────────────
+
+
+def test_notes_row_renders_add_a_note_affordance() -> None:
+    """The re-rendered notes row must carry the append-only 'Add a note'
+    form framed as ADDING, posting field=notes (server pins --append-notes)."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(notes="existing history\n\nfresh note"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "notes", "value": "fresh note"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    # Framed as 'Add a note', not 'edit notes'.
+    assert "Add a note" in body
+    # Posts to the field route with field=notes; server picks --append-notes.
+    assert 'name="field" value="notes"' in body
+    assert 'hx-post="/api/bead/bdboard-x1/field"' in body
+    # The hint makes the append (not replace) semantics explicit.
+    assert "added" in body.lower()
+
+
+def test_notes_add_textarea_is_never_prefilled_with_existing_notes() -> None:
+    """CRITICAL: the textarea must be EMPTY — a prefilled box invites a
+    destructive replace. Existing notes render above (read-only), never
+    inside an editable replace textarea."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    sentinel = "VERIFICATION-EVIDENCE-DO-NOT-CLOBBER"
+    _stub_show_long(_bead(notes=f"{sentinel}\n\nfresh note"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "notes", "value": "fresh note"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    # The existing notes show in the read-only value area (markdown prose)...
+    assert sentinel in body
+    # ...but NOT inside the add-note textarea (which must be empty).
+    ta_open = body.index("<textarea")
+    ta_close = body.index("</textarea>", ta_open)
+    assert sentinel not in body[ta_open:ta_close], (
+        "add-note textarea must be empty — a prefilled value risks a "
+        "destructive replace of agent verification history"
+    )
+
+
+def test_non_append_field_row_has_no_add_a_note_form() -> None:
+    """A plain editable field (title) must NOT render the notes-only
+    append affordance."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(title="Renamed"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "title", "value": "Renamed"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert "Add a note" not in body
+
+
 # ───────────────────────── route: success path ────────────────────────────
 
 
