@@ -18,13 +18,13 @@ subprocess runs. Covers the cases called out in the History design
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from starlette.requests import Request
 
 from bdboard import app as app_module
 
-NOW = datetime.now(timezone.utc)
+NOW = datetime.now(UTC)
 
 
 def _request(query_string: str = "") -> Request:
@@ -39,9 +39,7 @@ def _request(query_string: str = "") -> Request:
 
 
 def _iso(days_ago: int, hour: int = 12) -> str:
-    dt = NOW.replace(hour=hour, minute=0, second=0, microsecond=0) - timedelta(
-        days=days_ago
-    )
+    dt = NOW.replace(hour=hour, minute=0, second=0, microsecond=0) - timedelta(days=days_ago)
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -67,16 +65,12 @@ def _stub_snapshot(beads):
     app_module.store.snapshot = fake_snapshot  # type: ignore[assignment]
 
 
-def _call(
-    range: str = "30d", page: int = 1, page_size: int | None = None
-) -> tuple[int, str]:
+def _call(range: str = "30d", page: int = 1, page_size: int | None = None) -> tuple[int, str]:
     qs = f"range={range}&page={page}"
     if page_size is not None:
         qs += f"&page_size={page_size}"
     resp = asyncio.run(
-        app_module.api_history(
-            _request(qs), range=range, page=page, page_size=page_size
-        )
+        app_module.api_history(_request(qs), range=range, page=page, page_size=page_size)
     )
     return resp.status_code, resp.body.decode()
 

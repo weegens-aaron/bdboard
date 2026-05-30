@@ -70,9 +70,7 @@ def relative_luminance(rgb: tuple[int, int, int]) -> float:
     return 0.2126 * r_linear + 0.7152 * g_linear + 0.0722 * b_linear
 
 
-def contrast_ratio(
-    fg: str | tuple[int, int, int], bg: str | tuple[int, int, int]
-) -> float:
+def contrast_ratio(fg: str | tuple[int, int, int], bg: str | tuple[int, int, int]) -> float:
     """Calculate WCAG 2.2 contrast ratio between foreground and background.
 
     Args:

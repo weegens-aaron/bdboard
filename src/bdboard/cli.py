@@ -39,16 +39,11 @@ def _run(
 
     port = _pick_port(host, requested_port, strict=strict_port)
     if port != requested_port:
-        typer.echo(
-            f"port {requested_port} busy — using {port} instead "
-            f"(another bdboard running?)"
-        )
+        typer.echo(f"port {requested_port} busy — using {port} instead (another bdboard running?)")
 
     if not no_browser:
         # Defer the browser open until uvicorn is actually listening.
-        threading.Thread(
-            target=_open_when_ready, args=(host, port), daemon=True
-        ).start()
+        threading.Thread(target=_open_when_ready, args=(host, port), daemon=True).start()
 
     uvicorn.run("bdboard.app:app", host=host, port=port, log_level="info")
 

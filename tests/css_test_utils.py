@@ -52,9 +52,7 @@ def parse_css_variables_for_block(css: str, selector: str) -> dict[str, str]:
         return {}
 
     variables: dict[str, str] = {}
-    for name, value in re.findall(
-        r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);", match.group("body")
-    ):
+    for name, value in re.findall(r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);", match.group("body")):
         variables[name.strip()] = value.strip()
     return variables
 

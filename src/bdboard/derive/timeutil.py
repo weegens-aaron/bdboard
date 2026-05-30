@@ -7,7 +7,7 @@ on a single, well-tested time toolkit without importing each other.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _epoch(ts: str | None) -> float:
@@ -34,7 +34,7 @@ def _parse_dt(ts: str | None) -> datetime | None:
     except (ValueError, TypeError):
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -60,10 +60,10 @@ def humanize_ts(ts: str | None) -> str:
         s = ts.replace("Z", "+00:00")
         dt = datetime.fromisoformat(s)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
     except (ValueError, TypeError):
         return ts
-    delta = datetime.now(timezone.utc) - dt
+    delta = datetime.now(UTC) - dt
     sec = int(delta.total_seconds())
     if sec < 60:
         return f"{sec}s ago"

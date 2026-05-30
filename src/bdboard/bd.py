@@ -132,8 +132,7 @@ class BdClient:
         )
         if not isinstance(value, list):
             raise RuntimeError(
-                f"bd list returned non-list ({type(value).__name__}); "
-                "expected JSON array"
+                f"bd list returned non-list ({type(value).__name__}); expected JSON array"
             )
         return value
 
@@ -170,8 +169,7 @@ class BdClient:
             raise RuntimeError(err)
         if not isinstance(value, dict):
             raise RuntimeError(
-                f"bd memories returned non-object ({type(value).__name__}); "
-                "expected JSON object"
+                f"bd memories returned non-object ({type(value).__name__}); expected JSON object"
             )
         return [
             {"key": key, "body": body}
@@ -196,25 +194,23 @@ class BdClient:
                 stderr=asyncio.subprocess.PIPE,
             )
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout
-                )
-            except asyncio.TimeoutError:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            except TimeoutError as err:
                 proc.kill()
                 await proc.wait()
                 raise RuntimeError(
                     "Request timed out while loading bead data. Please try again."
-                )
+                ) from err
             if proc.returncode != 0:
                 raise RuntimeError(
                     f"Could not load bead data right now ({args[0]}). Please try again."
                 )
             try:
                 return json.loads(stdout)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as err:
                 raise RuntimeError(
                     "Received an unexpected response while loading bead data."
-                )
+                ) from err
 
     async def _cached(
         self,
@@ -275,9 +271,7 @@ class BdClient:
             return value, None
         return None, "bd show returned unexpected shape"
 
-    async def history(
-        self, bead_id: str
-    ) -> tuple[list[dict[str, Any]] | None, str | None]:
+    async def history(self, bead_id: str) -> tuple[list[dict[str, Any]] | None, str | None]:
         """Fetch audit history via `bd history <id> --json`.
         Returns (entries_list, error_msg). Failure is normal and surfaced."""
         return await self._cached(
@@ -372,20 +366,17 @@ class BdClient:
                 stderr=asyncio.subprocess.PIPE,
             )
             try:
-                _stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout
-                )
-            except asyncio.TimeoutError:
+                _stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            except TimeoutError as err:
                 proc.kill()
                 await proc.wait()
                 raise RuntimeError(
                     "Request timed out while saving memory. Please try again."
-                )
+                ) from err
             if proc.returncode != 0:
                 # bd forget on a non-existent key exits non-zero with a
                 # descriptive stderr; surface it.
                 err_text = stderr.decode(errors="replace").strip()
                 raise RuntimeError(
-                    err_text
-                    or f"bd {args[0]} failed (exit {proc.returncode}). Please try again."
+                    err_text or f"bd {args[0]} failed (exit {proc.returncode}). Please try again."
                 )

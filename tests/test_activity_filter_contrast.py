@@ -89,21 +89,13 @@ def test_filter_badges_have_visual_weight_difference():
     """
     css = _get_css_content()
     variables = parse_css_variables(css)
-    inactive_weight = extract_style_property(
-        css, ".filter-badge", "font-weight", variables
-    )
-    active_weight = extract_style_property(
-        css, ".filter-badge-active", "font-weight", variables
-    )
+    inactive_weight = extract_style_property(css, ".filter-badge", "font-weight", variables)
+    active_weight = extract_style_property(css, ".filter-badge-active", "font-weight", variables)
     assert inactive_weight is not None, "Could not find .filter-badge font-weight"
     assert active_weight is not None, "Could not find .filter-badge-active font-weight"
     # Active should be heavier (700 -> 800)
-    assert int(active_weight) > int(inactive_weight), (
-        "Active badge must have heavier font-weight"
-    )
+    assert int(active_weight) > int(inactive_weight), "Active badge must have heavier font-weight"
     # Active should also have a box-shadow for additional visual weight
-    shadow = extract_style_property(
-        css, ".filter-badge-active", "box-shadow", variables
-    )
+    shadow = extract_style_property(css, ".filter-badge-active", "box-shadow", variables)
     assert shadow is not None, "Active badge must have box-shadow"
     assert "inset" in shadow, "Active badge box-shadow should be inset"

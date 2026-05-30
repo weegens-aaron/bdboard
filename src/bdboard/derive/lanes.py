@@ -77,12 +77,7 @@ def get_dependency_target_id(dep: dict) -> str | None:
 
     Returns the first non-None value found, or None if all fields are missing.
     """
-    return (
-        dep.get("depends_on_id")
-        or dep.get("target")
-        or dep.get("id")
-        or dep.get("dependsOnId")
-    )
+    return dep.get("depends_on_id") or dep.get("target") or dep.get("id") or dep.get("dependsOnId")
 
 
 # ----- Lane assignment logic -----
@@ -192,9 +187,7 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     - Unwired epics appended after wired chains in stable order
     """
     active_epics = [
-        b
-        for b in beads
-        if _is_epic(b) and not _is_closed((b.get("status") or "").lower())
+        b for b in beads if _is_epic(b) and not _is_closed((b.get("status") or "").lower())
     ]
     if not active_epics:
         return []
@@ -283,9 +276,7 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
             status_key = "blocked"
         else:
             status_key = raw_status
-        icon, label = _STATUS_META.get(
-            status_key, ("?", status_key.replace("_", " ").title())
-        )
+        icon, label = _STATUS_META.get(status_key, ("?", status_key.replace("_", " ").title()))
         enriched = dict(b)
         enriched["status_key"] = status_key
         enriched["status_icon"] = icon
@@ -321,12 +312,8 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
             buckets["deferred"].append(b)
 
     for k in ("deferred", "ready", "in_progress", "blocked"):
-        buckets[k].sort(
-            key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at")))
-        )
-    buckets["closed"].sort(
-        key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at"))
-    )
+        buckets[k].sort(key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at"))))
+    buckets["closed"].sort(key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at")))
     buckets["closed"] = buckets["closed"][:CLOSED_LANE_LIMIT]
     return buckets
 

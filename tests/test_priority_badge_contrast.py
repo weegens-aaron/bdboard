@@ -92,12 +92,8 @@ def test_priority_badges_meet_wcag_aa_light():
         fg, bg, kind = _effective_pair(level, light)
         ratio = contrast_ratio(fg, bg)
         if ratio < AA_NORMAL:
-            failures.append(
-                f"P{level} ({kind}): {ratio:.2f}:1 < {AA_NORMAL}:1 ({fg} on {bg})"
-            )
-    assert not failures, "Light theme priority-badge AA failures:\n" + "\n".join(
-        failures
-    )
+            failures.append(f"P{level} ({kind}): {ratio:.2f}:1 < {AA_NORMAL}:1 ({fg} on {bg})")
+    assert not failures, "Light theme priority-badge AA failures:\n" + "\n".join(failures)
 
 
 def test_priority_badges_meet_wcag_aa_dark():
@@ -110,9 +106,5 @@ def test_priority_badges_meet_wcag_aa_dark():
         fg, bg, kind = _effective_pair(level, dark)
         ratio = contrast_ratio(fg, bg)
         if ratio < AA_NORMAL:
-            failures.append(
-                f"P{level} ({kind}): {ratio:.2f}:1 < {AA_NORMAL}:1 ({fg} on {bg})"
-            )
-    assert not failures, "Dark theme priority-badge AA failures:\n" + "\n".join(
-        failures
-    )
+            failures.append(f"P{level} ({kind}): {ratio:.2f}:1 < {AA_NORMAL}:1 ({fg} on {bg})")
+    assert not failures, "Dark theme priority-badge AA failures:\n" + "\n".join(failures)

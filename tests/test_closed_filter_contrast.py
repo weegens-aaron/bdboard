@@ -19,32 +19,20 @@ def _extract_filter_badge_colors(css_content: str) -> dict[str, tuple[str, str]]
     variables = parse_css_variables(css_content)
 
     # Inactive badge - gray text on white background
-    inactive_fg = extract_style_property(
-        css_content, ".filter-badge", "color", variables
-    )
-    inactive_bg = extract_style_property(
-        css_content, ".filter-badge", "background", variables
-    )
+    inactive_fg = extract_style_property(css_content, ".filter-badge", "color", variables)
+    inactive_bg = extract_style_property(css_content, ".filter-badge", "background", variables)
     if inactive_fg and inactive_bg:
         colors["inactive"] = (inactive_fg, inactive_bg)
 
     # Active badge - white text on blue background
-    active_fg = extract_style_property(
-        css_content, ".filter-badge-active", "color", variables
-    )
-    active_bg = extract_style_property(
-        css_content, ".filter-badge-active", "background", variables
-    )
+    active_fg = extract_style_property(css_content, ".filter-badge-active", "color", variables)
+    active_bg = extract_style_property(css_content, ".filter-badge-active", "background", variables)
     if active_fg and active_bg:
         colors["active"] = (active_fg, active_bg)
 
     # Hover state - blue text on light blue background
-    hover_fg = extract_style_property(
-        css_content, ".filter-badge:hover", "color", variables
-    )
-    hover_bg = extract_style_property(
-        css_content, ".filter-badge:hover", "background", variables
-    )
+    hover_fg = extract_style_property(css_content, ".filter-badge:hover", "color", variables)
+    hover_bg = extract_style_property(css_content, ".filter-badge:hover", "background", variables)
     if hover_fg and hover_bg:
         colors["inactive_hover"] = (hover_fg, hover_bg)
 
@@ -89,9 +77,7 @@ def test_filter_badge_hover_meets_wcag_aa():
     css_content = css_path.read_text()
     colors = _extract_filter_badge_colors(css_content)
 
-    assert "inactive_hover" in colors, (
-        "Could not extract inactive hover badge colors from CSS"
-    )
+    assert "inactive_hover" in colors, "Could not extract inactive hover badge colors from CSS"
     fg, bg = colors["inactive_hover"]
     ratio = contrast_ratio(fg, bg)
 
@@ -119,9 +105,7 @@ def test_filter_badges_have_visual_weight_difference():
         css_content, ".filter-badge", "font-weight", variables
     )
 
-    assert active_font_weight and inactive_font_weight, (
-        "Could not extract font-weight from CSS"
-    )
+    assert active_font_weight and inactive_font_weight, "Could not extract font-weight from CSS"
 
     active_weight = int(active_font_weight)
     inactive_weight = int(inactive_font_weight)
@@ -134,6 +118,4 @@ def test_filter_badges_have_visual_weight_difference():
     active_shadow = extract_style_property(
         css_content, ".filter-badge-active", "box-shadow", variables
     )
-    assert active_shadow, (
-        "Active badge must have box-shadow for non-color visual distinction"
-    )
+    assert active_shadow, "Active badge must have box-shadow for non-color visual distinction"

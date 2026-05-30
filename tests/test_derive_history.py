@@ -5,7 +5,7 @@ functions are pure over a snapshot list, so we inject a fixed ``now`` for
 deterministic range math and never touch bd.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from bdboard.derive import (
     DEFAULT_HISTORY_RANGE,
@@ -24,7 +24,7 @@ from bdboard.derive import (
     throughput,
 )
 
-NOW = datetime(2026, 5, 30, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 5, 30, 12, 0, 0, tzinfo=UTC)
 
 
 def _bead(
@@ -70,12 +70,8 @@ def test_range_to_cutoff_all_is_unbounded():
 
 def test_range_to_cutoff_unknown_falls_back_to_default():
     # Unknown key behaves like the default (30d), not an error.
-    assert _range_to_cutoff("bogus", now=NOW) == _range_to_cutoff(
-        DEFAULT_HISTORY_RANGE, now=NOW
-    )
-    assert _range_to_cutoff("", now=NOW) == _range_to_cutoff(
-        DEFAULT_HISTORY_RANGE, now=NOW
-    )
+    assert _range_to_cutoff("bogus", now=NOW) == _range_to_cutoff(DEFAULT_HISTORY_RANGE, now=NOW)
+    assert _range_to_cutoff("", now=NOW) == _range_to_cutoff(DEFAULT_HISTORY_RANGE, now=NOW)
 
 
 def test_range_to_cutoff_case_insensitive():
@@ -263,7 +259,7 @@ def test_throughput_series_is_ascending_and_continuous():
     assert days == sorted(days)
     # No gaps: consecutive calendar days.
     parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
-    for earlier, later in zip(parsed, parsed[1:]):
+    for earlier, later in zip(parsed, parsed[1:], strict=False):
         assert (later - earlier).days == 1
 
 
@@ -333,7 +329,7 @@ def test_created_series_is_ascending_and_continuous():
     days = [row["day"] for row in series]
     assert days == sorted(days)
     parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
-    for earlier, later in zip(parsed, parsed[1:]):
+    for earlier, later in zip(parsed, parsed[1:], strict=False):
         assert (later - earlier).days == 1
 
 

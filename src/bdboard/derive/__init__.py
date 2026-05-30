@@ -35,10 +35,10 @@ from bdboard.derive.history import (
     throughput,
 )
 from bdboard.derive.lanes import (
+    _STATUS_META,
     CLOSED_LANE_LIMIT,
     CLOSED_STATUSES,
     LANES,
-    _STATUS_META,
     _epic_lane_rank,
     _has_unmet_blocking_dep,
     _is_closed,

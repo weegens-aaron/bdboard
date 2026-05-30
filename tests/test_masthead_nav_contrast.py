@@ -107,9 +107,7 @@ def test_contents_bar_reuses_editorial_kit():
     rule = extract_style_property(css, ".mh-link", "border-left")
 
     assert transform == "uppercase", f"expected small-caps, got {transform!r}"
-    assert spacing and spacing.endswith("em"), (
-        f"expected letterspacing, got {spacing!r}"
-    )
+    assert spacing and spacing.endswith("em"), f"expected letterspacing, got {spacing!r}"
     assert rule and "1px" in rule, f"expected a hairline border-left, got {rule!r}"
 
 
@@ -117,9 +115,7 @@ def test_interactive_elements_have_focus_outline():
     """Every interactive contents-bar element keeps a visible focus ring."""
     css = _css()
     variables = parse_css_variables(css)
-    outline = extract_style_property(
-        css, ".mh-link:focus-visible", "outline", variables
-    )
+    outline = extract_style_property(css, ".mh-link:focus-visible", "outline", variables)
     assert outline is not None, ".mh-link is missing a :focus-visible outline"
     # The toggle is a .mh-link, so the same rule covers it; assert the colour
     # is a real, visible value (resolved through the token table).

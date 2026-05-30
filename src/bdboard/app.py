@@ -280,7 +280,7 @@ async def sse_events(request: Request) -> StreamingResponse:
                 try:
                     event = await asyncio.wait_for(q.get(), timeout=15.0)
                     yield f"event: {event}\ndata: {int(time.time())}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # heartbeat — a comment line keeps the connection alive
                     # without firing any client-side event handler
                     yield ": heartbeat\n\n"
@@ -432,9 +432,7 @@ async def api_history(
     page = max(1, page)
     # Clamp page_size to the allowed set; missing/invalid -> default 50.
     size = derive.clamp_page_size(page_size)
-    window = derive.history_window(
-        beads, range_key=range_key, page=page, page_size=size
-    )
+    window = derive.history_window(beads, range_key=range_key, page=page, page_size=size)
     series = derive.throughput(beads, range_key=range_key)
     stats = derive.lead_time_stats(beads, range_key=range_key)
     # Beads created per day (bdboard-5t5): day-bucketed by created_at,

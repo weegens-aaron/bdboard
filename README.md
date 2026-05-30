@@ -30,6 +30,30 @@ uv venv
 uv pip install -e .
 ```
 
+## Code health (CI gates)
+
+The mechanical, deterministic code-health checks run on every push/PR via
+`.github/workflows/code-health.yml` and gate merges. Run the exact same set
+locally with:
+
+```sh
+make code-health      # lint + dead-code + duplication + audit
+make outdated         # advisory only (dependency staleness)
+```
+
+| Gate | Tool | Make target | Config |
+| --- | --- | --- | --- |
+| Lint + format + unused-import/dead-code (F401, F811, F841) | ruff | `make lint` / `make fmt` | `[tool.ruff]` in `pyproject.toml` |
+| Dead-code sweep (≥80% confidence) | vulture | `make dead-code` | inline flag |
+| Copy-paste duplication | jscpd | `make duplication` | `.jscpd.json` |
+| Dependency CVE scan | pip-audit | `make audit` | — |
+| Outdated deps (advisory, never fails) | uv | `make outdated` | — |
+
+**Why CI and not a bd formula?** bd *formulas* spawn work; they do not run
+checks. These deterministic pass/fail checks belong in CI gating every PR,
+leaving the `code-health-audit` formula (bdboard-jyf) to **triage** CI output
+rather than re-run the tools (see `docs/design/formula-spike/`).
+
 ## Flags
 
 | Flag | Default | Notes |

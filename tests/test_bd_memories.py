@@ -54,9 +54,7 @@ def test_no_match_search_yields_no_results() -> None:
 
 
 def test_search_match_strips_sentinel_and_returns_entry() -> None:
-    client, _ = _client_returning(
-        {"bd-edit-stalls": "Never run bd edit.", "schema_version": 1}
-    )
+    client, _ = _client_returning({"bd-edit-stalls": "Never run bd edit.", "schema_version": 1})
 
     result = asyncio.run(client.memories("edit"))
 

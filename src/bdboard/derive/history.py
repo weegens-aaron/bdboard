@@ -8,7 +8,7 @@ to the board's 12h/1d/3d lane filter and 50-cap closed lane).
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from bdboard.derive.lanes import _is_closed
@@ -66,15 +66,13 @@ def _range_to_cutoff(range_key: str, now: datetime | None = None) -> datetime | 
     delta = HISTORY_RANGES[key]
     if delta is None:
         return None
-    base = now or datetime.now(timezone.utc)
+    base = now or datetime.now(UTC)
     if base.tzinfo is None:
-        base = base.replace(tzinfo=timezone.utc)
+        base = base.replace(tzinfo=UTC)
     return base - delta
 
 
-def _closed_in_window(
-    beads: list[dict[str, Any]], cutoff: datetime | None
-) -> list[dict[str, Any]]:
+def _closed_in_window(beads: list[dict[str, Any]], cutoff: datetime | None) -> list[dict[str, Any]]:
     """Closed beads whose closed_at is >= cutoff (all closed when cutoff None).
 
     A bead is "closed" by the same rule the board uses (:data:`CLOSED_STATUSES`).

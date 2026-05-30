@@ -59,9 +59,7 @@ def test_created_bar_meets_3to1_in_light_theme():
     violet = _resolve("--violet", light)
     paper = _resolve("--paper", light)
     ratio = contrast_ratio(violet, paper)
-    assert ratio >= 3.0, (
-        f"created bar {ratio:.2f}:1 fails 3:1 (light): {violet} on {paper}"
-    )
+    assert ratio >= 3.0, f"created bar {ratio:.2f}:1 fails 3:1 (light): {violet} on {paper}"
 
 
 def test_created_bar_meets_3to1_in_dark_theme():
@@ -69,6 +67,4 @@ def test_created_bar_meets_3to1_in_dark_theme():
     violet = _resolve("--violet", dark)
     paper = _resolve("--paper", dark)
     ratio = contrast_ratio(violet, paper)
-    assert ratio >= 3.0, (
-        f"created bar {ratio:.2f}:1 fails 3:1 (dark): {violet} on {paper}"
-    )
+    assert ratio >= 3.0, f"created bar {ratio:.2f}:1 fails 3:1 (dark): {violet} on {paper}"

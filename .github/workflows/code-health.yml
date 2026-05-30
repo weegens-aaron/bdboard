@@ -1,0 +1,80 @@
+name: code-health
+
+# Mechanical code-health gates (bdboard-ndm).
+#
+# Rationale: bd *formulas* SPAWN work, they do not RUN checks. The
+# deterministic pass/fail checks live HERE and gate every PR; the
+# code-health-audit formula (bdboard-jyf) TRIAGES this output rather than
+# re-running the tools.
+#
+# Note on package indexes: these jobs run on public GitHub-hosted runners,
+# which reach public PyPI / npm directly. The Walmart artifactory proxy used
+# in local dev (Makefile PY_INDEX) is intentionally NOT used here because it
+# is only reachable on the Walmart network.
+
+on:
+  push:
+    branches: [main, working]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: code-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff:
+    name: ruff (lint + format + F401/dead-code)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: ruff check (incl. F401 unused-import / dead-code signals)
+        run: uvx ruff check src/ tests/
+      - name: ruff format --check
+        run: uvx ruff format --check src/ tests/
+
+  dead-code:
+    name: vulture (dead-code sweep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # >=80% confidence keeps false positives out of a hard gate.
+      - run: uvx vulture src/ --min-confidence 80
+
+  tests:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: install project
+        run: uv pip install --system -e .
+      - run: python -m pytest -q
+
+  duplication:
+    name: jscpd (copy-paste detector)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Reads .jscpd.json (single source of truth for min-tokens/threshold).
+      - run: npx --yes jscpd
+
+  dependencies:
+    name: pip-audit + outdated
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: install project (so pip-audit sees the resolved env)
+        run: uv pip install --system -e .
+      - name: pip-audit (CVE scan) — hard gate
+        run: uvx pip-audit
+      - name: uv pip list --outdated (advisory, never fails)
+        run: uv pip list --outdated || true
