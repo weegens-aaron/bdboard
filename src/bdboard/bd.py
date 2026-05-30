@@ -27,6 +27,7 @@ from typing import Any
 # Timeouts and cache TTLs.
 LIST_TIMEOUT_S = 15.0  # generous: large workspaces with many issues
 HISTORY_TIMEOUT_S = 8.0
+STATUS_TIMEOUT_S = 8.0
 SHOW_TIMEOUT_S = 8.0
 MEMORIES_TIMEOUT_S = 8.0
 REMEMBER_TIMEOUT_S = 10.0  # writes may be slower (dolt commit)
@@ -66,6 +67,7 @@ class BdClient:
         self._history_cache: dict[str, CacheEntry] = {}
         self._show_cache: dict[str, CacheEntry] = {}
         self._memories_cache: dict[str, CacheEntry] = {}
+        self._status_cache: dict[str, CacheEntry] = {}
         # bd's embedded dolt server can lock-wait under concurrent CLI calls;
         # serialize requests so one slow command cannot deadlock peers.
         self._subprocess_gate = asyncio.Semaphore(1)
@@ -285,13 +287,40 @@ class BdClient:
             timeout=HISTORY_TIMEOUT_S,
         )
 
+    async def status_summary(self) -> dict[str, Any] | None:
+        """Fetch bd's aggregate status summary via `bd status --json`.
+
+        Returns the ``summary`` sub-object (``closed_issues``,
+        ``in_progress_issues``, ``average_lead_time_hours``,
+        ``total_issues``, …) or None when bd is unavailable / the payload
+        is malformed. The History page uses this as an *optional* headline
+        KPI (design §6, bead F): bd's own point-in-time numbers, rendered
+        alongside the client-derived range stats. Because it is optional
+        sugar, callers treat None as "just hide the headline" rather than
+        an error — the range-derived KPIs remain the primary surface.
+
+        Cached + in-flight-deduped via ``_cached`` (single shared key,
+        since the summary is workspace-global, not per-bead).
+        """
+        value, err = await self._cached(
+            self._status_cache,
+            key="",
+            fetch_args=["status"],
+            timeout=STATUS_TIMEOUT_S,
+        )
+        if err is not None or not isinstance(value, dict):
+            return None
+        summary = value.get("summary")
+        return summary if isinstance(summary, dict) else None
+
     def invalidate_caches(self) -> None:
-        """Drop show/history/memories caches. Called by Store after a watcher
-        fire so the next detail or memory request picks up post-mutation
-        state instead of serving up-to-10s-old cached values."""
+        """Drop show/history/memories/status caches. Called by Store after a
+        watcher fire so the next detail, memory, or status request picks up
+        post-mutation state instead of serving up-to-10s-old cached values."""
         self._show_cache.clear()
         self._history_cache.clear()
         self._memories_cache.clear()
+        self._status_cache.clear()
 
     # ----- memory mutations: remember / forget -----
 

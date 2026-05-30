@@ -1687,6 +1687,30 @@ pre { margin: 0; }
   background: var(--paper-2);
 }
 
+/* Headline KPI strip: bd's own aggregate totals (design §6, bead F).
+   Slightly more prominent than the range strip below it, with a "via bd"
+   source tag so it never reads as range-scoped. */
+.history-headline {
+  gap: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper-2);
+  margin-bottom: 12px;
+}
+.history-headline .counts-value {
+  font-weight: 700;
+}
+.history-headline-src {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
 .history-section-title {
   font-family: var(--display);
   font-size: 18px;

@@ -431,6 +431,15 @@ async def api_history(
     stats = derive.lead_time_stats(beads, range_key=range_key)
     peak = max((d["count"] for d in series), default=0)
     avg_per_day = round(stats["n"] / len(series), 1) if series else 0
+    # Optional headline KPI (design §6, bead F): bd's own aggregate summary
+    # (incl. average_lead_time_hours). These are workspace-global, point-in-
+    # time totals — NOT range-scoped — so we surface them as a distinct
+    # "via bd" headline above the range-derived KPI strip. It's pure sugar:
+    # status_summary() returns None on any bd hiccup and the template simply
+    # omits the headline, leaving the client-derived KPIs as the primary
+    # surface. Deliberately not awaited inside the snapshot path so a bd
+    # status stall can't block the (snapshot-only) history render's data.
+    bd_summary = await store.bd.status_summary()
     return TEMPLATES.TemplateResponse(
         request,
         "partials/history.html",
@@ -442,6 +451,7 @@ async def api_history(
             "peak": peak,
             "stats": stats,
             "avg_per_day": avg_per_day,
+            "bd_summary": bd_summary,
         },
     )
 

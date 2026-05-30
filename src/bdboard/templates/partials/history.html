@@ -38,6 +38,30 @@
     </div>
   </div>
 
+  {# Headline KPI — optional bd-sourced aggregate (design §6, bead F). These
+     are bd's own workspace-global, point-in-time totals (NOT range-scoped),
+     so they sit ABOVE the range-derived strip and are labelled "via bd" to
+     avoid implying they react to the range control. Pure sugar: when bd
+     status is unavailable (bd_summary is None) the whole block is omitted
+     and the client-derived strip below remains the primary surface. #}
+  {% if bd_summary %}
+  <dl class="counts history-headline" role="status" aria-live="polite"
+      aria-label="Workspace totals from bd status">
+    <div class="counts-cell{% if not bd_summary.total_issues %} counts-cell-zero{% endif %}">
+      <dt class="counts-label">Total beads <span class="history-headline-src">via bd</span></dt>
+      <dd class="counts-value">{{ bd_summary.total_issues }}</dd>
+    </div>
+    <div class="counts-cell{% if not bd_summary.closed_issues %} counts-cell-zero{% endif %}">
+      <dt class="counts-label">Closed (all time) <span class="history-headline-src">via bd</span></dt>
+      <dd class="counts-value">{{ bd_summary.closed_issues }}</dd>
+    </div>
+    <div class="counts-cell{% if not bd_summary.average_lead_time_hours %} counts-cell-zero{% endif %}">
+      <dt class="counts-label">Avg lead time <span class="history-headline-src">via bd</span></dt>
+      <dd class="counts-value">{{ bd_summary.average_lead_time_hours | humanize_hours }}</dd>
+    </div>
+  </dl>
+  {% endif %}
+
   {# KPI strip — reuses the counts strip treatment. Wrapped in an aria-live
      region so range changes are announced to screen readers (design §5). #}
   <dl class="counts history-kpis" role="status" aria-live="polite">
