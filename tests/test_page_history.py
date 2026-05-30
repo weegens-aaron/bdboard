@@ -71,17 +71,6 @@ def test_history_region_lazy_loads_from_api_history() -> None:
     assert 'hx-swap="innerHTML"' in body
 
 
-def test_history_page_has_masthead_stats_host() -> None:
-    # bdboard-w5z: the stats row lives in the masthead header (board-style),
-    # not in the body above the charts. The page renders an empty
-    # .masthead-counts host (#history-stats) symmetric with the board's
-    # counts strip; /api/history fills it via an hx-swap-oob fragment.
-    _, body = _call_history()
-
-    assert 'id="history-stats"' in body
-    assert 'class="masthead-counts"' in body
-
-
 def test_history_region_refetches_on_sse_refresh() -> None:
     _, body = _call_history()
 

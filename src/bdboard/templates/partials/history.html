@@ -3,10 +3,8 @@
    Symmetric with partials/lanes.html. Pure render over the snapshot-derived
    views handed in by app.api_history():
      - range control (7d / 30d / 90d / All), default 30d
-     - single editorial stats row (bd totals + range-derived KPIs)
      - beads-created-per-day and beads-closed-per-day bar strips (fixed height)
      - paginated closed list (clicking a card opens the shared bead modal)
-     - one-line summary echoed at the foot (reports convention)
 
    All range buttons + the pager re-fetch /api/history and re-swap this whole
    region (#history-region lives on the full page, bead C), so the control
@@ -37,14 +35,6 @@
       {% endfor %}
     </div>
   </div>
-
-  {# Stats row — relocated into the masthead header (bdboard-w5z) to mirror the
-     board's .masthead-counts. It is no longer rendered here in the body above
-     the charts; instead partials/history_stats.html is emitted as an
-     hx-swap-oob fragment (see the include at the foot of this region) so the
-     SAME /api/history response that swaps this region also updates the masthead
-     stats out-of-band. One fetch keeps both surfaces in sync on every range
-     change and SSE refresh — no second endpoint, no client JS (DRY). #}
 
   {# Beads closed chart — a day-bucketed bar strip in a FIXED-HEIGHT container
      so it can never collapse. Each bar carries a text aria-label ("N closed
@@ -161,18 +151,4 @@
     </p>
     {% endif %}
   </section>
-
-  {# Foot summary — echoes the headline per the reports convention. #}
-  <p class="history-foot-summary muted" role="status" aria-live="polite">
-    {{ stats.n }} bead{{ "" if stats.n == 1 else "s" }} closed in {{ range_human }};
-    median lead time {{ stats.median_lead_h | humanize_hours }},
-    {{ avg_per_day }} closed/day on average.
-  </p>
-
-  {# OOB masthead stats (bdboard-w5z). Emitting the stats <dl> here with
-     hx-swap-oob="true" makes HTMX peel it off the response and swap it into
-     #history-stats in the masthead, while the rest of this response fills
-     #history-region. Same fetch, both surfaces — so the range-scoped stats in
-     the header stay live on every range click and SSE refresh. #}
-  {% include "partials/history_stats.html" %}
 </div>

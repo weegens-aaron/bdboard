@@ -415,9 +415,9 @@ async def api_history(
     Pure derivation over the existing snapshot (design §4): no new bd call.
     ``range`` selects the window (7d/30d/90d/all, default 30d; unknown values
     degrade to the default inside derive). ``page`` drives server-side
-    pagination of the closed list (design §D5). We compute three views from
-    one snapshot — the paginated closed list, the throughput-per-day series,
-    and lead-time stats — and hand them to partials/history.html.
+    pagination of the closed list (design §D5). We compute the views from
+    one snapshot — the paginated closed list plus the throughput-per-day and
+    created-per-day series — and hand them to partials/history.html.
     """
     beads = await store.snapshot()
     # Normalise the range once so the template's active-state cues and the
@@ -428,7 +428,6 @@ async def api_history(
     page = max(1, page)
     window = derive.history_window(beads, range_key=range_key, page=page)
     series = derive.throughput(beads, range_key=range_key)
-    stats = derive.lead_time_stats(beads, range_key=range_key)
     # Beads created per day (bdboard-5t5): day-bucketed by created_at,
     # complementing the closed-by-closed_at throughput series. Range-scoped
     # the same way so both charts read against the same window.
@@ -436,16 +435,6 @@ async def api_history(
     peak = max((d["count"] for d in series), default=0)
     created_peak = max((d["count"] for d in created_series), default=0)
     created_total = sum(d["count"] for d in created_series)
-    avg_per_day = round(stats["n"] / len(series), 1) if series else 0
-    # Optional headline KPI (design §6, bead F): bd's own aggregate summary
-    # (incl. average_lead_time_hours). These are workspace-global, point-in-
-    # time totals — NOT range-scoped — so we surface them as a distinct
-    # "via bd" headline above the range-derived KPI strip. It's pure sugar:
-    # status_summary() returns None on any bd hiccup and the template simply
-    # omits the headline, leaving the client-derived KPIs as the primary
-    # surface. Deliberately not awaited inside the snapshot path so a bd
-    # status stall can't block the (snapshot-only) history render's data.
-    bd_summary = await store.bd.status_summary()
     return TEMPLATES.TemplateResponse(
         request,
         "partials/history.html",
@@ -458,9 +447,6 @@ async def api_history(
             "created_series": created_series,
             "created_peak": created_peak,
             "created_total": created_total,
-            "stats": stats,
-            "avg_per_day": avg_per_day,
-            "bd_summary": bd_summary,
         },
     )
 

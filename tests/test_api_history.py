@@ -73,26 +73,13 @@ def _call(range: str = "30d", page: int = 1) -> tuple[int, str]:
     return resp.status_code, resp.body.decode()
 
 
-def test_kpi_strip_renders_closed_count_and_labels() -> None:
-    _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=2)])
-
-    status, body = _call()
-
-    assert status == 200
-    # bdboard-5wt: stat labels are now terse 1-2 word headlines; the verbose
-    # qualifiers moved into info-icon popovers (role="tooltip").
-    assert "Closed (range)" in body
-    assert "Median lead" in body
-    assert "Throughput" in body
-    # KPI strip is in an aria-live region so range changes are announced.
-    assert 'aria-live="polite"' in body
-
-
-def test_stat_labels_are_terse_with_accessible_info_popovers() -> None:
-    # bdboard-5wt: each crowded sentence-like label is replaced by a terse
-    # 1-2 word headline, with the qualifier moved into a keyboard-accessible,
-    # screen-reader-friendly info-icon popover. A stubbed bd_summary ensures
-    # the 'via bd' cells (Total / Closed all-time) also render their popovers.
+def test_no_kpi_stats_strip_rendered() -> None:
+    # bdboard-2qf: the editorial KPI stats strip (Total / Closed / Avg lead /
+    # Median lead / Throughput + the closed-per-day foot summary) was removed
+    # entirely. /api/history must no longer emit the history_stats OOB fragment
+    # nor any of those labels, in the masthead or the body. A stubbed bd_summary
+    # would have populated the old 'via bd' cells, so set one to prove they're
+    # gone regardless of bd availability.
     async def fake_summary():
         return {"total_issues": 5, "closed_issues": 3}
 
@@ -101,70 +88,14 @@ def test_stat_labels_are_terse_with_accessible_info_popovers() -> None:
 
     _, body = _call()
 
-    # Terse headlines (no inline 'via bd' / 'claim->close, {range}' clutter).
-    for short in ("Total", "Closed", "Avg lead", "Median lead", "Throughput"):
-        assert short in body
-    assert "via bd" not in body
-
-    # Each info icon is a real button with an accessible name + describedby,
-    # paired with a role="tooltip" carrying the fuller explanation. The button
-    # being focusable (native <button>) makes the popover keyboard-reachable.
-    assert 'class="stat-info"' in body
-    assert 'aria-describedby="info-avg-lead"' in body
-    assert 'id="info-avg-lead"' in body
-    assert 'role="tooltip"' in body
-    assert 'aria-label="About ' in body
-    # The disambiguating detail survives inside the popovers (source + scope).
-    assert "reported by bd" in body
-    assert "claim\u2192close cycle time" in body
-
-
-def test_stats_render_as_masthead_oob_fragment() -> None:
-    # bdboard-w5z: the consolidated stats row is relocated into the masthead
-    # header and delivered as an out-of-band swap targeting #history-stats,
-    # mirroring the board's .masthead-counts. The same /api/history response
-    # therefore carries BOTH the #history-region body and the OOB stats <dl>.
-    _stub_snapshot([_bead("a", days_ago=1)])
-
-    _, body = _call()
-
-    # The stats <dl> is emitted as an OOB fragment keyed to the masthead host.
-    assert 'id="history-stats"' in body
-    assert 'hx-swap-oob="true"' in body
-    # It reuses the board's bare counts strip idiom for symmetric chrome.
-    assert 'class="counts history-stats"' in body
-
-
-def test_avg_lead_time_is_claim_to_close_cycle_time() -> None:
-    # bdboard-98o: 'Avg lead' is the mean claim-to-close cycle time
-    # (started_at -> closed_at), range-scoped and client-derived, NOT bd's
-    # workspace-global created->closed average. bdboard-5wt: the label is the
-    # terse "Avg lead" and the claim->close definition + range scope live in
-    # the info-icon popover.
-    _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=2)])
-
-    _, body = _call()
-
-    assert "Avg lead" in body
-    # The claim->close lineage + range scope are preserved in the popover.
-    assert "claim\u2192close cycle time" in body
-    assert 'role="tooltip"' in body
-
-
-def test_range_scoped_stats_update_in_oob_fragment() -> None:
-    # The OOB stats fragment is range-scoped: switching the range control
-    # re-fetches /api/history and the masthead strip reflects the new window.
-    _stub_snapshot([_bead("old", days_ago=400)])
-
-    _, body_7d = _call(range="7d")
-    # Nothing closed in the last 7 days -> the masthead stat reads zero.
-    # The active range surfaces in the info-icon popover (bdboard-5wt).
-    assert "(7 days)" in body_7d
-
-    _, body_all = _call(range="all")
-    # Widening to all-time surfaces the old bead in the same OOB strip.
-    assert "(all time)" in body_all
-    assert 'hx-swap-oob="true"' in body_all
+    # No stats surface: no OOB fragment, no host class, no stat labels/icons.
+    assert "history-stats" not in body
+    assert 'hx-swap-oob="true"' not in body
+    assert "stat-info" not in body
+    assert "history-foot-summary" not in body
+    for label in ("Avg lead", "Median lead", "Throughput", "Closed (range)"):
+        assert label not in body
+    assert "closed/day on average" not in body
 
 
 def test_throughput_bars_have_text_aria_labels() -> None:
@@ -208,8 +139,9 @@ def test_bad_range_degrades_to_default() -> None:
     status, body = _call(range="bogus")
 
     assert status == 200
-    # Falls back to the 30d default window; the range surfaces in popovers.
-    assert "(30 days)" in body
+    # Falls back to the 30d default window: the range control marks 30d active.
+    assert 'aria-pressed="true"' in body
+    assert 'hx-get="/api/history?range=30d&page=1"' in body
 
 
 def test_pagination_page_two_shows_newer_pager() -> None:
@@ -251,16 +183,17 @@ def test_all_range_includes_old_beads() -> None:
 
     assert status == 200
     assert "Bead old" in body
-    assert "(all time)" in body
+    # The 'all' range button is the active one.
+    assert 'hx-get="/api/history?range=7d&page=1"' in body
 
 
-def test_foot_summary_echoes_headline() -> None:
+def test_closed_list_renders_within_range() -> None:
     _stub_snapshot([_bead("a", days_ago=1)])
 
     _, body = _call()
 
-    assert "closed in 30 days" in body
-    assert "closed/day on average" in body
+    # The closed bead surfaces in the paginated list (no KPI strip needed).
+    assert "Bead a" in body
 
 
 def test_created_chart_renders_with_text_aria_labels() -> None:
