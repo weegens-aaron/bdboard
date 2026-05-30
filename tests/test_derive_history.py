@@ -1,6 +1,6 @@
 """Tests for the History page derivations (bdboard-eia / design bdboard-rrc §4).
 
-Covers history_window, throughput, lead_time_stats and their helpers. All
+Covers history_window, throughput and their helpers. All
 functions are pure over a snapshot list, so we inject a fixed ``now`` for
 deterministic range math and never touch bd.
 """
@@ -13,13 +13,11 @@ from bdboard.derive import (
     HISTORY_PAGE_SIZES,
     _day_bucket,
     _parse_dt,
-    _percentile,
     _range_to_cutoff,
     clamp_page_size,
     created,
     history_window,
     humanize_hours,
-    lead_time_stats,
     status_timeline,
     throughput,
 )
@@ -335,120 +333,6 @@ def test_created_series_is_ascending_and_continuous():
     parsed = [datetime.strptime(d, "%Y-%m-%d") for d in days]
     for earlier, later in zip(parsed, parsed[1:]):
         assert (later - earlier).days == 1
-
-
-# ----- _percentile -----
-
-
-def test_percentile_basic():
-    assert _percentile([], 50) is None
-    assert _percentile([42.0], 50) == 42.0
-    assert _percentile([0.0, 10.0], 50) == 5.0
-    assert _percentile([0.0, 10.0], 0) == 0.0
-    assert _percentile([0.0, 10.0], 100) == 10.0
-
-
-# ----- lead_time_stats -----
-
-
-def test_lead_time_stats_computes_hours():
-    # created 2 days before close, started 1 day before close.
-    beads = [
-        _bead(
-            "a",
-            created_at="2026-05-28T12:00:00Z",
-            started_at="2026-05-29T12:00:00Z",
-            closed_at="2026-05-30T12:00:00Z",
-        ),
-    ]
-    stats = lead_time_stats(beads, "all", now=NOW)
-    assert stats["n"] == 1
-    assert stats["median_lead_h"] == 48.0
-    assert stats["median_cycle_h"] == 24.0
-    # 'Avg lead time' headline (bdboard-98o) = mean claim->close cycle time.
-    assert stats["avg_cycle_h"] == 24.0
-
-
-def test_avg_cycle_h_is_mean_not_median():
-    # Three closed beads, started_at -> closed_at of 2h, 4h, 12h.
-    # mean = 6.0h, median = 4.0h -> 'Avg lead time' must report the MEAN.
-    beads = [
-        _bead(
-            "a",
-            started_at="2026-05-30T10:00:00Z",
-            closed_at="2026-05-30T12:00:00Z",
-        ),
-        _bead(
-            "b",
-            started_at="2026-05-30T08:00:00Z",
-            closed_at="2026-05-30T12:00:00Z",
-        ),
-        _bead(
-            "c",
-            started_at="2026-05-30T00:00:00Z",
-            closed_at="2026-05-30T12:00:00Z",
-        ),
-    ]
-    stats = lead_time_stats(beads, "all", now=NOW)
-    assert stats["avg_cycle_h"] == 6.0
-    assert stats["median_cycle_h"] == 4.0
-
-
-def test_lead_time_stats_empty():
-    stats = lead_time_stats([], "30d", now=NOW)
-    assert stats["n"] == 0
-    assert stats["median_lead_h"] is None
-    assert stats["p90_lead_h"] is None
-    assert stats["median_cycle_h"] is None
-    assert stats["p90_cycle_h"] is None
-    assert stats["avg_cycle_h"] is None
-
-
-def test_lead_time_stats_missing_started_at_skips_cycle_only():
-    beads = [
-        _bead(
-            "a",
-            created_at="2026-05-29T12:00:00Z",
-            closed_at="2026-05-30T12:00:00Z",
-        ),
-    ]
-    stats = lead_time_stats(beads, "all", now=NOW)
-    assert stats["n"] == 1
-    assert stats["median_lead_h"] == 24.0
-    # No started_at → cycle metrics stay None even though the bead counts.
-    assert stats["median_cycle_h"] is None
-    assert stats["avg_cycle_h"] is None
-
-
-def test_lead_time_stats_drops_negative_durations():
-    # closed_at before created_at (clock skew) → dropped from lead set.
-    beads = [
-        _bead(
-            "skew",
-            created_at="2026-05-30T12:00:00Z",
-            closed_at="2026-05-29T12:00:00Z",
-        ),
-    ]
-    stats = lead_time_stats(beads, "all", now=NOW)
-    assert stats["n"] == 1  # still counted as a closed bead in window
-    assert stats["median_lead_h"] is None  # but the bad duration is dropped
-
-
-def test_lead_time_stats_respects_range():
-    beads = [
-        _bead(
-            "recent",
-            created_at=_iso(3),
-            closed_at=_iso(2),
-        ),
-        _bead(
-            "ancient",
-            created_at=_iso(201),
-            closed_at=_iso(200),
-        ),
-    ]
-    stats = lead_time_stats(beads, "7d", now=NOW)
-    assert stats["n"] == 1  # only the recent close is in the 7d window
 
 
 # ----- humanize_hours (History KPI strip, bdboard-ej5) -----

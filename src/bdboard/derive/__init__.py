@@ -10,7 +10,7 @@ test suite imports directly) from the focused submodules:
 - :mod:`bdboard.derive.timeutil` — timestamp parsing / humanization
 - :mod:`bdboard.derive.lanes`    — epic_lane / lanes / activity / counts
 - :mod:`bdboard.derive.history`  — history_window / throughput / created /
-                                   lead_time_stats / status_timeline
+                                   status_timeline
 
 The submodule split is purely organizational; all functions remain pure
 over the snapshot list with no I/O.
@@ -25,12 +25,10 @@ from bdboard.derive.history import (
     HISTORY_RANGES,
     _closed_in_window,
     _created_in_window,
-    _percentile,
     _range_to_cutoff,
     clamp_page_size,
     created,
     history_window,
-    lead_time_stats,
     status_timeline,
     throughput,
 )
@@ -84,7 +82,6 @@ __all__ = [
     "history_window",
     "throughput",
     "created",
-    "lead_time_stats",
     "status_timeline",
     # time helpers
     "humanize_ts",
@@ -103,5 +100,4 @@ __all__ = [
     "_range_to_cutoff",
     "_closed_in_window",
     "_created_in_window",
-    "_percentile",
 ]
