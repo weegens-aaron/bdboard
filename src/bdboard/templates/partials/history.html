@@ -3,7 +3,7 @@
    Symmetric with partials/lanes.html. Pure render over the snapshot-derived
    views handed in by app.api_history():
      - range control (7d / 30d / 90d / All), default 30d
-     - KPI strip (closed in range, median lead time, throughput/day avg)
+     - single editorial stats row (bd totals + range-derived KPIs)
      - throughput-per-day bar strip in a fixed-height container
      - paginated closed list (clicking a card opens the shared bead modal)
      - one-line summary echoed at the foot (reports convention)
@@ -38,33 +38,32 @@
     </div>
   </div>
 
-  {# Headline KPI — optional bd-sourced aggregate (design §6, bead F). These
-     are bd's own workspace-global, point-in-time totals (NOT range-scoped),
-     so they sit ABOVE the range-derived strip and are labelled "via bd" to
-     avoid implying they react to the range control. Pure sugar: when bd
-     status is unavailable (bd_summary is None) the whole block is omitted
-     and the client-derived strip below remains the primary surface. #}
-  {% if bd_summary %}
-  <dl class="counts history-headline" role="status" aria-live="polite"
-      aria-label="Workspace totals from bd status">
+  {# Stats row — a SINGLE editorial strip (bdboard-4zk) combining the two
+     data sources that used to read as two mismatched rows:
+       1. bd's own workspace-global, point-in-time totals (NOT range-scoped),
+          tagged "via bd" so they never imply they react to the range control.
+          These render only when bd status is available (bd_summary set) —
+          pure sugar, the range-derived cells below are the primary surface.
+       2. the range-derived KPIs that DO react to the active range control.
+     One <dl class="counts"> keeps the typography/spacing/zero-muting idiom
+     identical to the board's masthead counts strip. Wrapped in an aria-live
+     region so range changes are announced to screen readers (design §5). #}
+  <dl class="counts history-stats" role="status" aria-live="polite"
+      aria-label="History statistics">
+    {% if bd_summary %}
     <div class="counts-cell{% if not bd_summary.total_issues %} counts-cell-zero{% endif %}">
-      <dt class="counts-label">Total beads <span class="history-headline-src">via bd</span></dt>
+      <dt class="counts-label">Total beads <span class="history-stat-src">via bd</span></dt>
       <dd class="counts-value">{{ bd_summary.total_issues }}</dd>
     </div>
     <div class="counts-cell{% if not bd_summary.closed_issues %} counts-cell-zero{% endif %}">
-      <dt class="counts-label">Closed (all time) <span class="history-headline-src">via bd</span></dt>
+      <dt class="counts-label">Closed (all time) <span class="history-stat-src">via bd</span></dt>
       <dd class="counts-value">{{ bd_summary.closed_issues }}</dd>
     </div>
     <div class="counts-cell{% if not bd_summary.average_lead_time_hours %} counts-cell-zero{% endif %}">
-      <dt class="counts-label">Avg lead time <span class="history-headline-src">via bd</span></dt>
+      <dt class="counts-label">Avg lead time <span class="history-stat-src">via bd</span></dt>
       <dd class="counts-value">{{ bd_summary.average_lead_time_hours | humanize_hours }}</dd>
     </div>
-  </dl>
-  {% endif %}
-
-  {# KPI strip — reuses the counts strip treatment. Wrapped in an aria-live
-     region so range changes are announced to screen readers (design §5). #}
-  <dl class="counts history-kpis" role="status" aria-live="polite">
+    {% endif %}
     <div class="counts-cell{% if stats.n == 0 %} counts-cell-zero{% endif %}">
       <dt class="counts-label">Closed in {{ range_human }}</dt>
       <dd class="counts-value">{{ stats.n }}</dd>

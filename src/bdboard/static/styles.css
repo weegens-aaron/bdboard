@@ -1679,29 +1679,22 @@ pre { margin: 0; }
 /* The "All" preset reads better un-lowercased than the others. */
 .history-ranges .filter-badge { text-transform: none; }
 
-.history-kpis {
-  gap: 28px;
-  padding: 14px 18px;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: var(--paper-2);
-}
-
-/* Headline KPI strip: bd's own aggregate totals (design §6, bead F).
-   Slightly more prominent than the range strip below it, with a "via bd"
-   source tag so it never reads as range-scoped. */
-.history-headline {
-  gap: 28px;
+/* History stats — a SINGLE editorial row (bdboard-4zk) combining bd's
+   workspace-global totals ("via bd") with the range-derived KPIs. Reuses the
+   counts strip idiom (typography, hairline rules, zero-muting) so all six
+   cells read as one balanced row. row-gap lets it wrap gracefully on narrow
+   widths instead of overflowing. */
+.history-stats {
+  flex-wrap: wrap;
+  gap: 18px 28px;
   padding: 16px 18px;
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: var(--paper-2);
-  margin-bottom: 12px;
 }
-.history-headline .counts-value {
-  font-weight: 700;
-}
-.history-headline-src {
+/* "via bd" source tag — small-caps muted suffix marking the bd-sourced cells
+   so they never read as range-scoped alongside the range-derived ones. */
+.history-stat-src {
   display: inline-block;
   margin-left: 6px;
   font-size: 11px;
