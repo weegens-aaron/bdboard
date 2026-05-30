@@ -102,6 +102,76 @@ def test_nav_and_modal_triggers_wire_progress_indicator() -> None:
         assert 'hx-indicator="#nav-progress"' in body
 
 
+def test_hydrating_regions_mark_aria_busy() -> None:
+    """Every async data region is flagged aria-busy on first paint (bdboard-3vp).
+
+    AC: skeletons are accessible (aria-busy/aria-live or equivalent). Each
+    full-page shell marks its hydrating region(s) aria-busy="true" so AT knows
+    the shimmer is a loading placeholder; a delegated htmx:afterSettle handler
+    (in base.html) flips it to false once real content lands.
+    """
+    _, board = _call_index()
+    # Board: both the lanes region and the masthead counts host.
+    assert 'class="lanes-region"' in board
+    assert 'aria-busy="true"' in board
+    assert board.count('aria-busy="true"') >= 2
+
+    _, history = _call_history()
+    # History: the swap region AND the masthead stats host both load lazily.
+    assert 'id="history-region"' in history
+    assert 'id="history-stats"' in history
+    assert history.count('aria-busy="true"') >= 2
+
+    _, memory = _call_memory()
+    assert 'id="memory-list"' in memory
+    assert 'aria-busy="true"' in memory
+
+    # The settle handler that clears the busy flag must be wired once on body.
+    assert "htmx:afterSettle" in board
+    assert "aria-busy" in board  # handler references it
+
+
+def test_history_masthead_stats_host_has_skeleton() -> None:
+    """The History masthead stats strip paints a skeleton, not a blank gap.
+
+    Regression guard for bdboard-3vp: #history-stats used to be an empty
+    <div> that stayed blank until the first /api/history OOB swap landed, so
+    the KPI/masthead-counts region had no skeleton loader. It now includes the
+    shared counts skeleton (reserving the stat columns) so the masthead is
+    symmetric with the board's #counts host.
+    """
+    _, body = _call_history()
+
+    # The stats host exists, is busy, and ships shimmer placeholders.
+    assert 'id="history-stats"' in body
+    assert "counts-skeleton" in body
+    # Empty host regression: there must be skeleton markup between the host's
+    # opening tag and its close, not just <div id="history-stats"></div>.
+    assert 'id="history-stats"></div>' not in body
+
+
+def test_history_region_skeleton_reserves_two_charts() -> None:
+    """The history skeleton mirrors the real region's TWO charts (bdboard-3vp).
+
+    history.html's body renders both a 'Beads closed' and a 'Beads created'
+    chart. The skeleton must reserve both fixed-height chart bodies (and NOT
+    an inline KPI strip, which now lives in the masthead) so hydration is
+    shift-free.
+    """
+    skel = (
+        Path(app_module.__file__).parent / "templates" / "partials" / "history_skeleton.html"
+    ).read_text()
+
+    # Two chart-body placeholders, matching the closed + created charts.
+    assert skel.count("skeleton-chart") >= 1
+    assert "history-chart-skeleton" in skel
+    assert "range(2)" in skel  # loop renders both chart sections
+    # The stale inline KPI strip (which lived in the body before the stats
+    # moved to the masthead) must be gone so it can't shift the layout.
+    assert "history-kpi-skeleton" not in skel
+    assert "skeleton-kpi" not in skel
+
+
 def test_styles_include_skeleton_and_progress_css() -> None:
     """The stylesheet defines the shimmer + progress-bar primitives."""
     css = (Path(app_module.__file__).parent / "static" / "styles.css").read_text()

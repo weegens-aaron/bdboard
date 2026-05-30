@@ -8,11 +8,21 @@
     </div>
     {% include "partials/nav.html" %}
     {# Masthead stats host (bdboard-w5z) — symmetric with the board's
-       .masthead-counts. It starts empty; the #history-region's first
-       /api/history load (and every range click / SSE refresh) returns the
-       stats <dl> as an hx-swap-oob fragment that targets #history-stats by id,
-       so the header strip is populated and kept current with no extra fetch. #}
-    <div class="masthead-counts" id="history-stats"></div>
+       .masthead-counts. The #history-region's first /api/history load (and
+       every range click / SSE refresh) returns the stats <dl> as an
+       hx-swap-oob fragment that targets #history-stats by id, so the header
+       strip is populated and kept current with no extra fetch.
+
+       It ships an instant skeleton (bdboard-3vp) so the masthead reserves the
+       stats columns and shows shimmer placeholders instead of a blank gap
+       while that first fetch is in flight — symmetric with the board's
+       #counts host. aria-busy flags it as loading for assistive tech; the OOB
+       stats <dl> that lands has aria-busy="false" + aria-live, so AT waits for
+       real data and is then notified. The skeleton is replaced wholesale when
+       the OOB swap targets #history-stats by id, so no layout shift. #}
+    <div class="masthead-counts" id="history-stats" aria-busy="true">
+      {% with cells = 6 %}{% include "partials/counts_skeleton.html" %}{% endwith %}
+    </div>
   </div>
 </header>
 
@@ -39,7 +49,8 @@
     id="history-region"
     class="history-region"
     aria-label="Bead history"
-        hx-get="/api/history"
+    aria-busy="true"
+    hx-get="/api/history"
     hx-trigger="load, refresh from:body"
     hx-swap="innerHTML"
     hx-indicator="#nav-progress"

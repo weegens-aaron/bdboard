@@ -173,6 +173,23 @@
         document.body.addEventListener('htmx:timeout', stopBar);
         document.body.addEventListener('htmx:responseError', stopBar);
 
+        // Clear aria-busy on hydrating regions once their content settles
+        // (bdboard-3vp). The full-page shells mark each async data region
+        // (#history-region, .lanes-region, #counts, #memory-list) aria-busy
+        // so assistive tech knows the skeleton is a loading placeholder, not
+        // real content. After the first (and every) HTMX swap completes we
+        // flip it to "false" so AT is told the region is ready. Regions that
+        // are replaced wholesale by an OOB fragment carrying its own
+        // aria-busy (e.g. the masthead #history-stats) self-resolve and are
+        // simply not present as a swap target here — this is the innerHTML
+        // path only.
+        document.body.addEventListener('htmx:afterSettle', (e) => {
+          const t = e.detail && e.detail.target;
+          if (t && t.hasAttribute && t.hasAttribute('aria-busy')) {
+            t.setAttribute('aria-busy', 'false');
+          }
+        });
+
         // Bead modal: paint an instant skeleton the moment a card is
         // clicked. We key off the request TARGET being #bead-modal so we
         // only do this for modal-opening fetches, not the in-modal audit

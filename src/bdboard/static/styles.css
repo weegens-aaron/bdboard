@@ -1984,16 +1984,18 @@ pre { margin: 0; }
      itself just reserves the box so the lane/list keeps its height. */
   pointer-events: none;
 }
-/* History region skeleton scaffold. */
+/* History region skeleton scaffold (bdboard-3vp): mirrors history.html's
+   real body so the swap is shift-free — a range toolbar, two chart sections
+   (closed + created), then the closed list. The KPI strip is NOT reserved
+   here; those stats live in the masthead host (#history-stats), which renders
+   its own counts skeleton. */
 .history-skeleton { display: flex; flex-direction: column; gap: 14px; }
 .skeleton-range { width: 220px; height: 30px; }
-.history-kpi-skeleton {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.skeleton-kpi { width: 150px; height: 64px; flex: 1 1 120px; }
-.skeleton-chart { width: 100%; height: 180px; }
+/* Each chart section reserves a section title line + a fixed-height chart
+   body, matching .history-throughput / .history-created so neither chart
+   collapses or jumps when the real bar strips land. */
+.history-chart-skeleton { display: flex; flex-direction: column; gap: 10px; }
+.skeleton-chart { width: 100%; height: 140px; }
 .history-list-skeleton {
   list-style: none;
   margin: 0;

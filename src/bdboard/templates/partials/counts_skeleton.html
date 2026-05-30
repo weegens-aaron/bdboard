@@ -1,9 +1,15 @@
-{# Counts strip skeleton (bdboard-2do). Mirrors counts.html's structure so
-   the masthead reserves layout space and shows shimmer placeholders while
-   /api/counts hydrates — no layout shift, instant feedback. aria-hidden +
-   role=presentation: it's a visual placeholder, not content for AT. #}
+{# Counts strip skeleton (bdboard-2do, parametrized bdboard-3vp). Mirrors
+   counts.html's structure so the masthead reserves layout space and shows
+   shimmer placeholders while its data hydrates — no layout shift, instant
+   feedback. aria-hidden + role=presentation: it's a visual placeholder, not
+   content for AT.
+
+   `cells` lets callers reserve the right number of stat columns so the strip
+   doesn't reflow when real data lands: the board's masthead counts has 5,
+   the History masthead stats strip (#history-stats) has up to 6. Defaults to
+   5 so existing includes keep their behaviour (DRY — one skeleton, two hosts). #}
 <dl class="counts counts-skeleton" aria-hidden="true">
-  {% for _ in range(5) %}
+  {% for _ in range(cells | default(5)) %}
   <div class="counts-cell">
     <dt class="counts-label"><span class="skeleton skeleton-text skeleton-label"></span></dt>
     <dd class="counts-value"><span class="skeleton skeleton-text skeleton-num"></span></dd>
