@@ -17,7 +17,7 @@ Lane assignment rules:
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from heapq import heappop, heappush
 from typing import Any
 
@@ -392,6 +392,235 @@ def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
             result[status] = count
 
     return result
+
+
+# ----- History page derivations (bdboard-rrc design §4) -----
+#
+# All pure functions over the existing list_all snapshot — no new bd call,
+# no persistence. They power the long-window History page (the complement
+# to the board's 12h/1d/3d lane filter and 50-cap closed lane).
+
+# Range presets the History page understands. "all" is the unbounded view.
+# Mapping is to a timedelta cutoff measured back from "now"; "all" -> None.
+HISTORY_RANGES: dict[str, timedelta | None] = {
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30),
+    "90d": timedelta(days=90),
+    "all": None,
+}
+
+# Default range when none/invalid is supplied (matches the design's default).
+DEFAULT_HISTORY_RANGE = "30d"
+
+# Default page size for the paginated closed list (design §D5).
+HISTORY_PAGE_SIZE = 100
+
+
+def _range_to_cutoff(range_key: str, now: datetime | None = None) -> datetime | None:
+    """Resolve a range preset to a UTC cutoff datetime (inclusive lower bound).
+
+    Returns None for the unbounded ``"all"`` view. Unknown/empty keys fall
+    back to :data:`DEFAULT_HISTORY_RANGE` so a bad query param degrades to a
+    sensible window rather than erroring. ``now`` is injectable for
+    deterministic tests.
+    """
+    key = (range_key or "").strip().lower()
+    if key not in HISTORY_RANGES:
+        key = DEFAULT_HISTORY_RANGE
+    delta = HISTORY_RANGES[key]
+    if delta is None:
+        return None
+    base = now or datetime.now(timezone.utc)
+    if base.tzinfo is None:
+        base = base.replace(tzinfo=timezone.utc)
+    return base - delta
+
+
+def _parse_dt(ts: str | None) -> datetime | None:
+    """Parse an ISO timestamp (optional trailing Z) to a tz-aware datetime.
+
+    Naive timestamps are assumed UTC. Returns None on missing/invalid input
+    so callers can skip beads lacking a usable timestamp.
+    """
+    if not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _day_bucket(ts: str | None) -> str | None:
+    """Bucket a timestamp into a local-calendar-day key (``YYYY-MM-DD``).
+
+    Uses the server's local timezone (design §D6) so a user's "today" lines
+    up with their wall clock rather than splitting across the UTC date line.
+    Returns None when the timestamp is missing/unparseable.
+    """
+    dt = _parse_dt(ts)
+    if dt is None:
+        return None
+    # astimezone() with no arg converts to the system local timezone.
+    return dt.astimezone().strftime("%Y-%m-%d")
+
+
+def _closed_in_window(
+    beads: list[dict[str, Any]], cutoff: datetime | None
+) -> list[dict[str, Any]]:
+    """Closed beads whose closed_at is >= cutoff (all closed when cutoff None).
+
+    A bead is "closed" by the same rule the board uses (:data:`CLOSED_STATUSES`).
+    Beads with no parseable closed_at are excluded — they cannot be placed on
+    a timeline.
+    """
+    out: list[dict[str, Any]] = []
+    for b in beads:
+        if not _is_closed((b.get("status") or "").lower()):
+            continue
+        closed = _parse_dt(b.get("closed_at"))
+        if closed is None:
+            continue
+        if cutoff is not None and closed < cutoff:
+            continue
+        out.append(b)
+    return out
+
+
+def history_window(
+    beads: list[dict[str, Any]],
+    range_key: str = DEFAULT_HISTORY_RANGE,
+    page: int = 1,
+    page_size: int = HISTORY_PAGE_SIZE,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Paginated list of closed beads within a range, newest-closed first.
+
+    Returns a dict: ``{items, page, page_size, total, has_more}`` where
+    ``items`` is the requested page (closed_at desc, then id for stability).
+    ``total`` is the full count in the window (pre-pagination). Out-of-range
+    pages yield an empty ``items`` with ``has_more=False``. This is a pure
+    slice over the in-memory snapshot — no extra I/O per page (design §D5).
+    """
+    cutoff = _range_to_cutoff(range_key, now=now)
+    windowed = _closed_in_window(beads, cutoff)
+    windowed.sort(key=lambda b: (-_epoch(b.get("closed_at")), b.get("id") or ""))
+    total = len(windowed)
+    page = max(1, page)
+    size = max(1, page_size)
+    start = (page - 1) * size
+    end = start + size
+    items = windowed[start:end]
+    return {
+        "items": items,
+        "page": page,
+        "page_size": size,
+        "total": total,
+        "has_more": end < total,
+    }
+
+
+def throughput(
+    beads: list[dict[str, Any]],
+    range_key: str = DEFAULT_HISTORY_RANGE,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Closed-beads-per-day series within a range (design §D2).
+
+    Buckets closed_at by local calendar day (:func:`_day_bucket`) and returns
+    a gap-free ascending series ``[{"day": "YYYY-MM-DD", "count": int}, ...]``
+    spanning the first through last day that has a close in the window. Days
+    with zero closes inside that span are filled with ``count=0`` so the
+    chart reads as a continuous timeline rather than a jagged one. Returns
+    ``[]`` when nothing closed in the window.
+    """
+    cutoff = _range_to_cutoff(range_key, now=now)
+    windowed = _closed_in_window(beads, cutoff)
+    buckets: dict[str, int] = defaultdict(int)
+    for b in windowed:
+        day = _day_bucket(b.get("closed_at"))
+        if day is not None:
+            buckets[day] += 1
+    if not buckets:
+        return []
+    days = sorted(buckets)
+    first = datetime.strptime(days[0], "%Y-%m-%d")
+    last = datetime.strptime(days[-1], "%Y-%m-%d")
+    series: list[dict[str, Any]] = []
+    cursor = first
+    while cursor <= last:
+        key = cursor.strftime("%Y-%m-%d")
+        series.append({"day": key, "count": buckets.get(key, 0)})
+        cursor += timedelta(days=1)
+    return series
+
+
+def _percentile(sorted_vals: list[float], pct: float) -> float | None:
+    """Linear-interpolated percentile of an already-sorted list.
+
+    ``pct`` in [0, 100]. Returns None for an empty list. Single-element lists
+    return that element. Matches the common "linear interpolation between
+    closest ranks" definition (numpy's default).
+    """
+    if not sorted_vals:
+        return None
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    rank = (pct / 100.0) * (len(sorted_vals) - 1)
+    low = int(rank)
+    high = min(low + 1, len(sorted_vals) - 1)
+    frac = rank - low
+    return sorted_vals[low] + (sorted_vals[high] - sorted_vals[low]) * frac
+
+
+def lead_time_stats(
+    beads: list[dict[str, Any]],
+    range_key: str = DEFAULT_HISTORY_RANGE,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Lead-time / cycle-time stats over closed beads in a range (design §D2a).
+
+    - **lead time**  = created_at → closed_at (how long from filing to done)
+    - **cycle time** = started_at → closed_at (how long actively in flight)
+
+    Returns ``{n, median_lead_h, p90_lead_h, median_cycle_h, p90_cycle_h}``
+    with hour-valued floats (rounded to 1 dp) or None when there is no data
+    for that metric. ``n`` is the count of closed beads in the window.
+    Negative/zero durations from clock skew or odd data are dropped.
+    """
+    cutoff = _range_to_cutoff(range_key, now=now)
+    windowed = _closed_in_window(beads, cutoff)
+    lead_hours: list[float] = []
+    cycle_hours: list[float] = []
+    for b in windowed:
+        closed = _parse_dt(b.get("closed_at"))
+        if closed is None:
+            continue
+        created = _parse_dt(b.get("created_at"))
+        if created is not None:
+            h = (closed - created).total_seconds() / 3600.0
+            if h >= 0:
+                lead_hours.append(h)
+        started = _parse_dt(b.get("started_at"))
+        if started is not None:
+            h = (closed - started).total_seconds() / 3600.0
+            if h >= 0:
+                cycle_hours.append(h)
+    lead_hours.sort()
+    cycle_hours.sort()
+
+    def _round(v: float | None) -> float | None:
+        return None if v is None else round(v, 1)
+
+    return {
+        "n": len(windowed),
+        "median_lead_h": _round(_percentile(lead_hours, 50)),
+        "p90_lead_h": _round(_percentile(lead_hours, 90)),
+        "median_cycle_h": _round(_percentile(cycle_hours, 50)),
+        "p90_cycle_h": _round(_percentile(cycle_hours, 90)),
+    }
 
 
 def _epoch(ts: str | None) -> float:
