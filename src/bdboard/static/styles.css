@@ -264,15 +264,6 @@ code, pre { font-family: var(--mono); }
 pre { margin: 0; }
 
 .muted { color: var(--muted); }
-.kicker {
-  font-family: var(--sans);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 11px;
-  color: var(--brand-blue);
-  font-weight: 700;
-}
-
 /* ============================================================
    Masthead — newspaper-style top. Stays put at top of viewport.
    ============================================================ */
@@ -306,7 +297,7 @@ pre { margin: 0; }
 /* Masthead contents bar (bdboard-9kb, Option A from the bdboard-buq spike).
    Board / Memory / theme read as a single typographic "contents strip" that
    reuses the masthead's own editorial kit — the small-caps letterspacing of
-   .kicker and the hairline vertical rules of the counts strip. No pills,
+   the counts labels and the hairline vertical rules of the counts strip. No pills,
    boxes, borders, or filled backgrounds (the bead's core complaint).
 
    The theme toggle (a <button>) borrows .mh-link so it reads as the last
@@ -323,7 +314,7 @@ pre { margin: 0; }
   margin: 0 auto 8px 0;
 }
 .mh-link {
-  /* Small-caps + letterspacing, matching .kicker / the counts labels. */
+  /* Small-caps + letterspacing, matching the counts labels. */
   font-family: var(--sans);
   text-transform: uppercase;
   letter-spacing: 0.10em;
