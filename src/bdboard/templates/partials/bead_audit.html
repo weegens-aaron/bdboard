@@ -13,22 +13,30 @@
 </div>
 {% else %}
 
-{% if timeline %}
-<h3 class="modal-section-title">Lifecycle</h3>
-<ol class="timeline-list" aria-label="Status-transition timeline">
-  {% for stop in timeline %}
-  <li class="timeline-row">
-    <span class="timeline-marker status-{{ stop.status }}" aria-hidden="true"></span>
-    <span class="timeline-status status-{{ stop.status }}">{{ stop.status }}</span>
-    <span class="timeline-when" title="{{ stop.when }}">{{ stop.when | humanize_ts }}</span>
-    <span class="timeline-dwell muted">
-      {%- if stop.dwell_h is not none %}for {{ stop.dwell_h | humanize_hours }}{% else %}current{% endif -%}
-    </span>
-    <span class="timeline-who muted">{{ stop.who }}</span>
-  </li>
-  {% endfor %}
-</ol>
-{% endif %}
+{# Lifecycle timeline is swapped out-of-band into #lifecycle-slot at the top
+   of the modal scroll region (above 'Bead details'), while the audit trail
+   below renders in place. Both views are driven by the same bd history
+   payload, so this single fetch still makes only one `bd history` call. #}
+<div id="lifecycle-slot" hx-swap-oob="true">
+  {% if timeline %}
+  <section class="modal-body">
+    <h3 class="modal-section-title">Lifecycle</h3>
+    <ol class="timeline-list" aria-label="Status-transition timeline">
+      {% for stop in timeline %}
+      <li class="timeline-row">
+        <span class="timeline-marker status-{{ stop.status }}" aria-hidden="true"></span>
+        <span class="timeline-status status-{{ stop.status }}">{{ stop.status }}</span>
+        <span class="timeline-when" title="{{ stop.when }}">{{ stop.when | humanize_ts }}</span>
+        <span class="timeline-dwell muted">
+          {%- if stop.dwell_h is not none %}for {{ stop.dwell_h | humanize_hours }}{% else %}current{% endif -%}
+        </span>
+        <span class="timeline-who muted">{{ stop.who }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% endif %}
+</div>
 
 <h3 class="modal-section-title">Audit trail</h3>
 {% if not entries %}

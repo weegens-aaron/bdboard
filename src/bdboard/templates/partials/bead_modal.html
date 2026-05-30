@@ -14,6 +14,12 @@
     </header>
 
     <div class="modal-scroll">
+    {# Lifecycle slot: filled via an out-of-band swap from the async
+       /api/bead/<id>/audit response so the status-transition timeline
+       appears at the top of the scroll region, above 'Bead details',
+       for at-a-glance state context. One fetch, two render targets. #}
+    <div id="lifecycle-slot"></div>
+
     <section class="modal-body">
       <h3 class="modal-section-title">Bead details</h3>
       <dl class="field-grid">
