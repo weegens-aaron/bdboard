@@ -8,6 +8,7 @@ import os
 import secrets
 import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -854,6 +855,113 @@ _SHORT_META_FIELDS = {
 }
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Field editability registry (bdboard-o9v.1)
+#
+# Single source of truth mapping each bd field key to *how* (if at all) its
+# VALUE may be manually edited from bdboard. This is the extensibility seam
+# the manual-field-editing epic (bdboard-o9v) is built on: adding a newly-
+# editable field later is ONE entry here, mirroring how the _KIND_* sets
+# above let you add a render kind in one place. DRY + open/closed.
+#
+# IMPORTANT — this bead ships the REGISTRY + display hints ONLY. There is
+# deliberately NO write path and NO UI yet (those are bdboard-o9v.2 and .3).
+# _ordered_fields() consults this to decorate each modal field row with
+# `editable` + `editor` hints; nothing here invokes `bd update`.
+#
+# Scope guardrail (from the bdboard-7q9 spike, see
+# docs/design/bdboard-7q9/manual-field-editing-spike.md §3 & §5): we whitelist
+# only fields whose *existing VALUE* can be edited in place via `bd update`.
+# Fields that edit shape/graph/lifecycle (labels, parent, metadata kv,
+# status) or that have no `bd update` flag at all (story_points, timestamps,
+# id, derived counts) are intentionally NOT editable here. "Edit anything
+# scalar-looking" is a known foot-gun — story_points has no update flag.
+#
+# Editor kinds: "text" | "textarea" | "md" | "select" | "number".
+#   - text:     single-line free string scalar.
+#   - textarea: multi-line plain text.
+#   - md:       multi-line markdown prose (rendered via md.render on display).
+#   - select:   constrained enum; render a dropdown from `enum_options`.
+#   - number:   integer value.
+# `flag` is the exact `bd update` flag the future write path (bdboard-o9v.2)
+# will pass. `enum_options` is populated only for select editors so the
+# dropdown can be built server-side from one source (no enum drift).
+# `append_only` flags fields where the safe edit semantics are append rather
+# than replace — notably `notes`, where `bd update --notes` REPLACES and
+# would destroy agent verification history (spike §3.2, §4). The write path
+# MUST honour this; here it just rides along as a hint.
+
+
+@dataclass(frozen=True)
+class FieldSpec:
+    """How a single bd field's value may be manually edited.
+
+    Frozen so the registry is an immutable source of truth (mirrors the
+    frozen CacheEntry dataclass in bd.py). A field absent from the registry
+    is implicitly non-editable — read-only is the safe default.
+    """
+
+    editable: bool
+    flag: str | None = None  # the `bd update` flag the write path will use
+    editor: str | None = None  # text | textarea | md | select | number
+    enum_options: tuple[str, ...] | None = None  # only for select editors
+    append_only: bool = False  # safe semantics are append, not replace
+
+
+# Priority is an integer enum P0..P4 in bd; expose the option *values* as
+# strings so the future <select> can label them "P0".."P4" while posting the
+# bare int. issue_type enum mirrors bd's built-in set (custom-config aside).
+_PRIORITY_OPTIONS = ("0", "1", "2", "3", "4")
+_ISSUE_TYPE_OPTIONS = ("bug", "feature", "task", "epic", "chore", "decision")
+
+# The registry. Only the v1 whitelist (spike §5) is marked editable; every
+# other field bd emits is intentionally absent (=> read-only). Keep this the
+# ONLY place that knows a field's edit affordances.
+_FIELD_REGISTRY: dict[str, FieldSpec] = {
+    # ─ low-risk scalars / prose (v1 editable set) ─
+    "title": FieldSpec(editable=True, flag="--title", editor="text"),
+    "description": FieldSpec(editable=True, flag="--description", editor="md"),
+    "acceptance_criteria": FieldSpec(editable=True, flag="--acceptance", editor="md"),
+    "design": FieldSpec(editable=True, flag="--design", editor="md"),
+    "priority": FieldSpec(
+        editable=True,
+        flag="--priority",
+        editor="select",
+        enum_options=_PRIORITY_OPTIONS,
+    ),
+    "assignee": FieldSpec(editable=True, flag="--assignee", editor="text"),
+    "issue_type": FieldSpec(
+        editable=True,
+        flag="--type",
+        editor="select",
+        enum_options=_ISSUE_TYPE_OPTIONS,
+    ),
+    "external_ref": FieldSpec(editable=True, flag="--external-ref", editor="text"),
+    "estimate": FieldSpec(editable=True, flag="--estimate", editor="number"),
+    # notes: editable but append-only. `bd update --notes` REPLACES and would
+    # nuke agent verification history; the safe path is `--append-notes`.
+    "notes": FieldSpec(
+        editable=True,
+        flag="--append-notes",
+        editor="md",
+        append_only=True,
+    ),
+}
+
+# Read-only fallback for any field not in the registry. Shared instance so
+# every non-editable row points at the same immutable spec.
+_READONLY_SPEC = FieldSpec(editable=False)
+
+
+def _field_spec(key: str) -> FieldSpec:
+    """Return the FieldSpec for a bd field key, defaulting to read-only.
+
+    Read-only is the safe default: a field nobody has explicitly whitelisted
+    must never be presented as editable.
+    """
+    return _FIELD_REGISTRY.get(key, _READONLY_SPEC)
+
+
 def _classify_field(key: str, val: Any) -> str:
     """Pick a render kind for a (key, value) pair. The template uses this
     to choose between chips / deps-list / paragraph / scalar / json."""
@@ -879,37 +987,49 @@ def _is_short_meta_field(key: str, kind: str) -> bool:
     return kind in {"scalar", "empty", "chips"}
 
 
+def _field_row(key: str, val: Any) -> dict[str, Any]:
+    """Build one modal field row with render + editability hints.
+
+    Single source of the row shape so the two passes in _ordered_fields
+    (ordered keys, then alphabetical leftovers) can't drift apart (DRY).
+    The `editable`/`editor`/`enum_options`/`append_only` hints come straight
+    from the field registry; the template stays declarative and just reads
+    them. NB: this carries the *hints* only — there is no write path wired up
+    yet (bdboard-o9v.2/.3).
+    """
+    kind = _classify_field(key, val)
+    spec = _field_spec(key)
+    return {
+        "key": key,
+        "val": val,
+        "kind": kind,
+        "short_meta": _is_short_meta_field(key, kind),
+        "editable": spec.editable,
+        "editor": spec.editor,
+        "flag": spec.flag,
+        "enum_options": spec.enum_options,
+        "append_only": spec.append_only,
+    }
+
+
 def _ordered_fields(bead: dict[str, Any]) -> list[dict[str, Any]]:
     """Return field rows in display order, exposing every non-hidden bd field.
 
-    Each row carries render hints so the template can stay mostly declarative.
+    Each row carries render hints (kind/short_meta) AND editability hints
+    (editable/editor/flag/enum_options/append_only) so the template can stay
+    mostly declarative. The editability hints are sourced from
+    _FIELD_REGISTRY — the single source of truth for manual editing.
     """
     seen: set[str] = set()
     out: list[dict[str, Any]] = []
     for k in _FIELD_ORDER:
         if k in bead and k not in _HIDDEN:
-            kind = _classify_field(k, bead[k])
-            out.append(
-                {
-                    "key": k,
-                    "val": bead[k],
-                    "kind": kind,
-                    "short_meta": _is_short_meta_field(k, kind),
-                }
-            )
+            out.append(_field_row(k, bead[k]))
             seen.add(k)
     for k in sorted(bead.keys()):
         if k in seen or k in _HIDDEN:
             continue
-        kind = _classify_field(k, bead[k])
-        out.append(
-            {
-                "key": k,
-                "val": bead[k],
-                "kind": kind,
-                "short_meta": _is_short_meta_field(k, kind),
-            }
-        )
+        out.append(_field_row(k, bead[k]))
     return out
 
 
