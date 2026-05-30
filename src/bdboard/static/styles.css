@@ -253,82 +253,81 @@ pre { margin: 0; }
   margin-top: 4px;
 }
 
-/* Masthead nav — links Board (/) and Memory (/memory). Sits between the
-   brand and the counts; minimal pill links with a clear active state.
-   Active link uses ink-on-paper-2 (>=12:1) and a blue underline rule so
-   the current location is signalled by more than color alone. */
+/* Masthead contents bar (bdboard-9kb, Option A from the bdboard-buq spike).
+   Board / Memory / theme read as a single typographic "contents strip" that
+   reuses the masthead's own editorial kit — the small-caps letterspacing of
+   .kicker and the hairline vertical rules of the counts strip. No pills,
+   boxes, borders, or filled backgrounds (the bead's core complaint).
+
+   The theme toggle (a <button>) borrows .mh-link so it reads as the last
+   cell of the same strip, but stays semantically an action outside <nav>. */
 .masthead-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
   margin: 0 auto 2px 0;
 }
-.masthead-nav-link {
+.mh-link {
+  /* Small-caps + letterspacing, matching .kicker / the counts labels. */
   font-family: var(--sans);
-  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--ink-2);            /* gray-140 on paper-3: ~8.9:1 */
+  line-height: 1;
+  color: var(--muted);            /* inactive: de-emphasised. gray-100 on
+                                     paper-3 = 4.74:1 light / 5.79:1 dark */
   text-decoration: none;
-  padding: 5px 12px;
-  border-radius: 4px;
-  border: 1px solid transparent;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  /* Hairline vertical rule between cells, exactly like .counts-cell. */
+  border-left: 1px solid var(--rule);
+  padding: 2px 14px;
+  cursor: pointer;
+  transition: color 0.12s ease;
 }
-.masthead-nav-link:hover {
-  background: var(--paper-2);
+/* First cell in the nav has no leading rule (matches .counts-cell:first). */
+.masthead-nav .mh-link:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+/* Hover affordance is colour-only (muted → ink) so it doesn't double-signal
+   with the active baseline rule. */
+.mh-link:hover {
   color: var(--ink);
-  text-decoration: none;
 }
-.masthead-nav-link:focus-visible {
+.mh-link:focus-visible {
   outline: 2px solid var(--brand-blue);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
-.masthead-nav-link.is-active {
-  color: var(--brand-blue-d);     /* #004f9a on brand-blue-l: ~7.1:1 */
-  background: var(--brand-blue-l);
-  border-color: #9ab8ff;
-  /* Underline so the active page is signalled by more than color alone
-     (the decorative pill border alone is sub-3:1 against the masthead). */
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+/* Active page = ink colour + bold weight + an inset baseline rule. THREE
+   non-colour cues (weight + rule on top of colour) clear WCAG 1.4.1. */
+.mh-link.is-active {
+  color: var(--ink);              /* gray-160 on paper-3 = 13.6:1 light */
+  font-weight: 800;
+  box-shadow: inset 0 -2px 0 var(--brand-blue);
 }
 
-/* Theme toggle (bdboard-35e) — a single pill button that flips the theme.
-   It lives in the masthead next to the nav. The button text/icon swap is
-   driven by CSS attribute selectors keyed off the <html data-theme>, so
-   the JS only has to flip one attribute (single source of truth). */
-.theme-toggle {
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
+/* Theme toggle (bdboard-35e) — borrows .mh-link styling so it reads as the
+   trailing cell of the contents bar, tied in with the same hairline
+   border-left. It is a <button> outside <nav>: an action, not navigation.
+   The label/icon swap is driven by CSS attribute selectors keyed off the
+   <html data-theme>, so the JS only flips one attribute (single source of
+   truth from bdboard-35e). */
+.mh-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--ink-2);
-  background: var(--paper-3);
-  border: 1px solid var(--rule-2);
-  border-radius: 999px;
-  padding: 5px 12px;
-  cursor: pointer;
-  line-height: 1;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  /* Borrows .mh-link's border-left (hairline rule) and padding; nothing to
+     override here beyond the flex layout for the icon + label. */
 }
-.theme-toggle:hover {
-  background: var(--paper-2);
-  color: var(--ink);
-  border-color: var(--rule);
-}
-.theme-toggle:focus-visible {
-  outline: 2px solid var(--brand-blue);
-  outline-offset: 2px;
-}
-.theme-toggle-icon { font-size: 14px; line-height: 1; }
+.mh-toggle-icon { font-size: 13px; line-height: 1; }
 /* Show the icon/label for the theme you'll switch TO, so the affordance
    reads as an action. Default markup is the "dark" prompt (light theme
    active); when dark is active we reveal the "light" prompt instead. */
-.theme-toggle .theme-toggle-to-light { display: none; }
-:root[data-theme="dark"] .theme-toggle .theme-toggle-to-dark { display: none; }
-:root[data-theme="dark"] .theme-toggle .theme-toggle-to-light { display: inline; }
+.mh-toggle .mh-toggle-to-light { display: none; }
+:root[data-theme="dark"] .mh-toggle .mh-toggle-to-dark { display: none; }
+:root[data-theme="dark"] .mh-toggle .mh-toggle-to-light { display: inline; }
 
 .counts {
   display: flex;

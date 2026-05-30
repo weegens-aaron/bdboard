@@ -1,32 +1,42 @@
-{# Masthead nav — links the dashboard (/) and the memory view (/memory).
-   Shared by dashboard.html and memory.html so the two surfaces stay
-   symmetric and the chrome lives in one place (DRY).
+{# Masthead contents bar (bdboard-9kb, Option A from the bdboard-buq spike).
+   Links the dashboard (/) and the memory view (/memory). Shared by
+   dashboard.html and memory.html so the two surfaces stay symmetric and the
+   chrome lives in one place (DRY).
+
+   Treatment: a typographic "contents bar" that reuses the masthead's own
+   editorial kit — small-caps + letterspacing (like .kicker) and hairline
+   vertical rules (like the counts strip). No pills, boxes, or filled
+   surfaces. The active page is signalled by THREE non-colour cues:
+   ink colour + bold weight + an inset baseline rule (.mh-link.is-active).
 
    `active` ("board" | "memory") marks the current page: it both gets the
    .is-active styling hook and an aria-current="page" so assistive tech
    announces the current location. #}
 <nav class="masthead-nav" aria-label="Primary">
   <a href="/"
-     class="masthead-nav-link{% if active == 'board' %} is-active{% endif %}"
+     class="mh-link{% if active == 'board' %} is-active{% endif %}"
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
   <a href="/memory"
-     class="masthead-nav-link{% if active == 'memory' %} is-active{% endif %}"
+     class="mh-link{% if active == 'memory' %} is-active{% endif %}"
      {% if active == 'memory' %}aria-current="page"{% endif %}>Memory</a>
 </nav>
 {# Theme toggle (bdboard-35e). Sits beside the nav as shared masthead chrome
-   so both the board and memory surfaces get it (DRY). Not inside <nav>
-   because switching themes is an action, not navigation. The visible label
-   describes the action (what you'll switch TO); CSS swaps which label shows
-   based on <html data-theme>. aria-pressed is set/maintained in JS. #}
+   so both the board and memory surfaces get it (DRY). It borrows the
+   .mh-link contents-bar styling so it reads as the last cell of the strip
+   (with the same hairline border-left separator the counts strip uses), but
+   it stays a <button> OUTSIDE <nav> because switching themes is an action,
+   not navigation. The visible label describes the action (what you'll switch
+   TO); CSS swaps which label shows based on <html data-theme>. aria-pressed
+   is set/maintained in JS (single source of truth from bdboard-35e). #}
 <button type="button"
         id="theme-toggle"
-        class="theme-toggle"
+        class="mh-link mh-toggle"
         aria-pressed="false"
         aria-label="Toggle dark mode">
-  <span class="theme-toggle-to-dark" aria-hidden="true">
-    <span class="theme-toggle-icon">☽</span> Dark
+  <span class="mh-toggle-to-dark" aria-hidden="true">
+    <span class="mh-toggle-icon">☽</span> Dark
   </span>
-  <span class="theme-toggle-to-light" aria-hidden="true">
-    <span class="theme-toggle-icon">☀</span> Light
+  <span class="mh-toggle-to-light" aria-hidden="true">
+    <span class="mh-toggle-icon">☀</span> Light
   </span>
 </button>

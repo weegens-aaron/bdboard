@@ -94,7 +94,7 @@ def test_memory_page_nav_links_both_surfaces() -> None:
     assert 'href="/memory"' in body
     # Memory is the active page here.
     assert 'aria-current="page"' in body
-    assert 'href="/memory"\n     class="masthead-nav-link is-active"' in body
+    assert 'href="/memory"\n     class="mh-link is-active"' in body
 
 
 def test_dashboard_renders_shared_nav() -> None:
@@ -105,7 +105,7 @@ def test_dashboard_renders_shared_nav() -> None:
     assert 'aria-label="Primary"' in body
     assert 'href="/memory"' in body
     assert 'aria-current="page"' in body
-    assert 'href="/"\n     class="masthead-nav-link is-active"' in body
+    assert 'href="/"\n     class="mh-link is-active"' in body
 
 
 def test_memory_page_surfaces_workspace_error(monkeypatch) -> None:
