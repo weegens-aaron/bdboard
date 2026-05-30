@@ -7,6 +7,12 @@
       <h1 class="title">History</h1>
     </div>
     {% include "partials/nav.html" %}
+    {# Masthead stats host (bdboard-w5z) — symmetric with the board's
+       .masthead-counts. It starts empty; the #history-region's first
+       /api/history load (and every range click / SSE refresh) returns the
+       stats <dl> as an hx-swap-oob fragment that targets #history-stats by id,
+       so the header strip is populated and kept current with no extra fetch. #}
+    <div class="masthead-counts" id="history-stats"></div>
   </div>
 </header>
 

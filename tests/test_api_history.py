@@ -86,6 +86,37 @@ def test_kpi_strip_renders_closed_count_and_labels() -> None:
     assert 'aria-live="polite"' in body
 
 
+def test_stats_render_as_masthead_oob_fragment() -> None:
+    # bdboard-w5z: the consolidated stats row is relocated into the masthead
+    # header and delivered as an out-of-band swap targeting #history-stats,
+    # mirroring the board's .masthead-counts. The same /api/history response
+    # therefore carries BOTH the #history-region body and the OOB stats <dl>.
+    _stub_snapshot([_bead("a", days_ago=1)])
+
+    _, body = _call()
+
+    # The stats <dl> is emitted as an OOB fragment keyed to the masthead host.
+    assert 'id="history-stats"' in body
+    assert 'hx-swap-oob="true"' in body
+    # It reuses the board's bare counts strip idiom for symmetric chrome.
+    assert 'class="counts history-stats"' in body
+
+
+def test_range_scoped_stats_update_in_oob_fragment() -> None:
+    # The OOB stats fragment is range-scoped: switching the range control
+    # re-fetches /api/history and the masthead strip reflects the new window.
+    _stub_snapshot([_bead("old", days_ago=400)])
+
+    _, body_7d = _call(range="7d")
+    # Nothing closed in the last 7 days -> the masthead stat reads zero.
+    assert "Closed in 7 days" in body_7d
+
+    _, body_all = _call(range="all")
+    # Widening to all-time surfaces the old bead in the same OOB strip.
+    assert "Closed in all time" in body_all
+    assert 'hx-swap-oob="true"' in body_all
+
+
 def test_throughput_bars_have_text_aria_labels() -> None:
     _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=1)])
 
