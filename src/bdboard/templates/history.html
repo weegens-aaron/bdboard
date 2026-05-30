@@ -39,9 +39,15 @@
     id="history-region"
     class="history-region"
     aria-label="Bead history"
-    hx-get="/api/history"
+        hx-get="/api/history"
     hx-trigger="load, refresh from:body"
     hx-swap="innerHTML"
-  ></section>
+    hx-indicator="#nav-progress"
+  >
+    {# Instant skeleton (bdboard-2do) so the History page never shows a blank
+       region while the first /api/history fetch is in flight. Replaced on
+       the first swap; it's purely a perceived-performance placeholder. #}
+    {% include "partials/history_skeleton.html" %}
+  </section>
 </main>
 {% endblock %}

@@ -1,0 +1,56 @@
+{# Swim-lanes skeleton (bdboard-2do). Renders the same lane scaffold as
+   lanes.html with shimmer card placeholders so the board paints instantly
+   and hydrates in place from /api/lanes — no blank screen, no layout jump.
+   Purely decorative: aria-hidden so screen readers wait for real content
+   (the live region announces via the hydrated partial). #}
+{% set lane_titles = {"deferred": "Deferred", "blocked": "Blocked", "ready": "Ready", "in_progress": "In Progress", "closed": "Closed"} %}
+
+<section class="epic-lane" aria-hidden="true">
+  <h2 class="epic-lane-title">Epics <span class="skeleton skeleton-text skeleton-count"></span></h2>
+  <ul class="epic-strip" role="list">
+    {% for _ in range(3) %}
+    <li class="epic-chip skeleton-card">
+      <div class="epic-chip-head">
+        <span class="skeleton skeleton-text skeleton-id"></span>
+      </div>
+      <div class="skeleton skeleton-text skeleton-title-line"></div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<div class="lanes" aria-hidden="true">
+  {% for key in ["deferred", "blocked", "ready", "in_progress", "closed"] %}
+  <div class="lane lane-{{ key }}">
+    <h2 class="lane-title">
+      <span class="lane-name">{{ lane_titles[key] }}</span>
+      <span class="skeleton skeleton-text skeleton-count"></span>
+    </h2>
+    <ul class="lane-list">
+      {% for _ in range(3) %}
+      <li class="bead-card skeleton-card">
+        <div class="bead-card-head">
+          <span class="skeleton skeleton-text skeleton-id"></span>
+        </div>
+        <div class="skeleton skeleton-text skeleton-title-line"></div>
+        <div class="skeleton skeleton-text skeleton-meta-line"></div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+
+  <div class="lane lane-activity">
+    <h2 class="lane-title">
+      <span class="lane-name">Activity</span>
+      <span class="skeleton skeleton-text skeleton-count"></span>
+    </h2>
+    <ul class="lane-list">
+      {% for _ in range(4) %}
+      <li class="activity-row skeleton-card">
+        <span class="skeleton skeleton-text skeleton-meta-line"></span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>

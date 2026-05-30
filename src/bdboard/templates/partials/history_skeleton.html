@@ -1,0 +1,18 @@
+{# History region skeleton (bdboard-2do / bdboard-3vp). Reserves the
+   range-control, KPI strip, chart, and list space with shimmer blocks so
+   the History page paints instantly and hydrates from /api/history without
+   a layout jump. Decorative only — aria-hidden so AT waits for real data. #}
+<div class="history-skeleton" aria-hidden="true">
+  <div class="skeleton skeleton-block skeleton-range"></div>
+  <div class="history-kpi-skeleton">
+    {% for _ in range(4) %}
+    <div class="skeleton skeleton-block skeleton-kpi"></div>
+    {% endfor %}
+  </div>
+  <div class="skeleton skeleton-block skeleton-chart"></div>
+  <ul class="history-list-skeleton">
+    {% for _ in range(6) %}
+    <li class="skeleton skeleton-block skeleton-row"></li>
+    {% endfor %}
+  </ul>
+</div>

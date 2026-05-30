@@ -1909,3 +1909,186 @@ pre { margin: 0; }
 .history-empty {
   padding: 18px 0;
 }
+
+/* ============================================================
+   Snappy transitions: skeletons, shimmer, global progress bar
+   (bdboard-2do).
+
+   Every primary navigation (Board/History/Memory) and the bead-detail
+   modal must give an immediate visual response on click — never a frozen
+   UI while a bd-backed fetch resolves. Three coordinated pieces:
+     1. .skeleton placeholders (shimmer) that the page shells render
+        instantly, hydrated in place by HTMX `load` fetches.
+     2. #nav-progress, a global top bar driven by HTMX request lifecycle
+        + full-page nav clicks (see base.html).
+     3. .modal-skeleton, an instant placeholder injected into #bead-modal
+        the moment a bead card is clicked.
+   Tokens stay theme-aware (base vs. shimmer-sweep greys) so the effect
+   reads in both light and dark, and the whole thing respects
+   prefers-reduced-motion.
+   ============================================================ */
+:root {
+  --skeleton-base: var(--gray-20);
+  --skeleton-sheen: var(--gray-10);
+}
+:root[data-theme="dark"] {
+  --skeleton-base: var(--gray-30);
+  --skeleton-sheen: var(--gray-20);
+}
+
+/* Base placeholder: a rounded block that pulses a moving sheen. The
+   gradient is wider than the element and slides across via background-
+   position so we get a smooth shimmer without repainting layout. */
+.skeleton {
+  display: block;
+  border-radius: 4px;
+  background-color: var(--skeleton-base);
+  background-image: linear-gradient(
+    90deg,
+    var(--skeleton-base) 0%,
+    var(--skeleton-sheen) 50%,
+    var(--skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Inline text-line placeholders (sit inside real headings/cards so they
+   inherit the layout the real content will occupy — no jump on swap). */
+.skeleton-text {
+  display: inline-block;
+  height: 0.72em;
+  vertical-align: middle;
+  border-radius: 3px;
+}
+.skeleton-count       { width: 1.6em; }
+.skeleton-num         { width: 1.4em; height: 1.1em; }
+.skeleton-label       { width: 4em; }
+.skeleton-id          { width: 5.5em; }
+.skeleton-key         { width: 7em; height: 1em; }
+.skeleton-title-line  { width: 85%; height: 0.9em; margin-top: 6px; }
+.skeleton-meta-line   { width: 55%; margin-top: 6px; }
+
+/* Block placeholders for larger regions (history range/KPIs/chart/rows). */
+.skeleton-block {
+  display: block;
+  border-radius: 6px;
+}
+.skeleton-card {
+  /* A card shell whose inner .skeleton lines do the shimmering; the card
+     itself just reserves the box so the lane/list keeps its height. */
+  pointer-events: none;
+}
+/* History region skeleton scaffold. */
+.history-skeleton { display: flex; flex-direction: column; gap: 14px; }
+.skeleton-range { width: 220px; height: 30px; }
+.history-kpi-skeleton {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.skeleton-kpi { width: 150px; height: 64px; flex: 1 1 120px; }
+.skeleton-chart { width: 100%; height: 180px; }
+.history-list-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skeleton-row { width: 100%; height: 44px; }
+
+/* Memory list skeleton scaffold. */
+.memory-skeleton { display: flex; flex-direction: column; gap: 12px; }
+
+/* Bead-modal skeleton: mirrors the real modal's head + scroll regions so
+   the swap to real content is a content-fill, not a re-layout. */
+.modal-skeleton .modal-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 22px;
+}
+.skeleton-modal-title { width: 70%; height: 26px; margin-top: 10px; }
+.skeleton-modal-row { width: 100%; height: 56px; }
+.skeleton-modal-row.short { width: 60%; }
+
+/* ----- Global navigation / HTMX progress bar ----- */
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  z-index: 1000;
+  transform-origin: left center;
+  background: var(--brand-blue);
+  /* Hidden until a request is in flight. opacity (not display) so the
+     fade-out on completion is smooth. */
+  opacity: 0;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+/* In flight: an indeterminate sweep that signals activity without
+   pretending to know real progress (we can't — the bd CLI is opaque). */
+.nav-progress.is-active {
+  opacity: 1;
+  animation: nav-progress-indeterminate 1.1s ease-in-out infinite;
+}
+@keyframes nav-progress-indeterminate {
+  0%   { transform: scaleX(0);    transform-origin: left center; }
+  50%  { transform: scaleX(0.65); transform-origin: left center; }
+  100% { transform: scaleX(1);    transform-origin: right center; }
+}
+/* Settle: snap to full then fade out. */
+.nav-progress.is-done {
+  opacity: 0;
+  transform: scaleX(1);
+  transition: opacity 0.25s ease 0.05s;
+}
+
+/* HTMX wires .htmx-request onto an hx-indicator target while its request
+   is in flight; map that to the same active sweep so elements that point
+   hx-indicator="#nav-progress" light the bar even without bespoke JS. */
+.nav-progress.htmx-request {
+  opacity: 1;
+  animation: nav-progress-indeterminate 1.1s ease-in-out infinite;
+}
+
+/* A nav link that has been clicked and is loading the next page — dim it
+   slightly so a rapid double-click reads as "already going" (the JS also
+   blocks the second navigation). */
+.mh-link.is-navigating {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Disabled (in-flight) bead cards: HTMX adds [disabled] via hx-disabled-elt
+   to stop double-submit on rapid clicks. Reflect it so the click reads as
+   "received". */
+.bead-card[disabled],
+.epic-chip[disabled],
+.activity-row[disabled] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    /* Static mid-tone so the placeholder is still visible without motion. */
+    animation: none;
+    background-image: none;
+  }
+  .nav-progress.is-active,
+  .nav-progress.htmx-request {
+    /* No sweep; just show a static full bar as the activity cue. */
+    animation: none;
+    transform: scaleX(1);
+  }
+}

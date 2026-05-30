@@ -1,0 +1,12 @@
+{# Counts strip skeleton (bdboard-2do). Mirrors counts.html's structure so
+   the masthead reserves layout space and shows shimmer placeholders while
+   /api/counts hydrates — no layout shift, instant feedback. aria-hidden +
+   role=presentation: it's a visual placeholder, not content for AT. #}
+<dl class="counts counts-skeleton" aria-hidden="true">
+  {% for _ in range(5) %}
+  <div class="counts-cell">
+    <dt class="counts-label"><span class="skeleton skeleton-text skeleton-label"></span></dt>
+    <dd class="counts-value"><span class="skeleton skeleton-text skeleton-num"></span></dd>
+  </div>
+  {% endfor %}
+</dl>

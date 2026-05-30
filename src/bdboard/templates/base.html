@@ -77,6 +77,14 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
   <body>
+    {# Global navigation/HTMX progress bar (bdboard-2do). A thin top-of-page
+       bar that paints the instant ANY interaction starts — both full-page
+       nav clicks (Board/History/Memory links) and in-page HTMX fetches
+       (lanes, counts, history range, memory search, bead modal). It gives
+       immediate "something is happening" feedback so the UI never feels
+       frozen while a bd-backed fetch is in flight. Driven by JS below:
+       .is-active animates an indeterminate sweep; .is-done fades it out. #}
+    <div id="nav-progress" class="nav-progress" role="presentation" aria-hidden="true"></div>
     {% block body %}{% endblock %}
     {% block footer %}
     <footer class="footer">
@@ -97,6 +105,29 @@
     </footer>
     {% endblock %}
     <div id="bead-modal" class="modal-host" onclick="if(event.target===this)this.innerHTML=''"></div>
+    {# Instant bead-modal skeleton (bdboard-2do). Injected into #bead-modal
+       the moment a bead card is clicked, BEFORE the /api/bead/<id> fetch
+       resolves, so opening a bead is never a frozen click. Replaced wholesale
+       by the real modal on htmx swap. aria-hidden: visual placeholder while
+       the real (labelled) modal loads. #}
+    <template id="bead-modal-skeleton">
+      <div class="modal-backdrop" aria-hidden="true">
+        <article class="modal modal-skeleton">
+          <header class="modal-head">
+            <div class="modal-head-row">
+              <span class="skeleton skeleton-text skeleton-id"></span>
+              <span class="skeleton skeleton-text skeleton-num"></span>
+            </div>
+            <div class="skeleton skeleton-block skeleton-modal-title"></div>
+          </header>
+          <div class="modal-scroll">
+            <div class="skeleton skeleton-block skeleton-modal-row"></div>
+            <div class="skeleton skeleton-block skeleton-modal-row"></div>
+            <div class="skeleton skeleton-block skeleton-modal-row short"></div>
+          </div>
+        </article>
+      </div>
+    </template>
     <script>
       // Esc closes the bead modal.
       document.addEventListener('keydown', (e) => {
@@ -104,6 +135,78 @@
           document.getElementById('bead-modal').innerHTML = '';
         }
       });
+
+      // ----- Snappy navigation/transition feedback (bdboard-2do) -----
+      // Single source of truth for "the UI is responding right now":
+      //   (a) a global top progress bar that animates while any HTMX
+      //       request is in flight (lanes, counts, history range, memory
+      //       search, bead modal) AND while a full-page nav link loads, and
+      //   (b) an instant skeleton injected into the bead modal so clicking
+      //       a bead card paints immediately instead of waiting on the
+      //       bd-backed /api/bead/<id> fetch.
+      // Wired off HTMX lifecycle events so it covers every hx-get/post on
+      // the page without per-element bookkeeping.
+      (function () {
+        const bar = document.getElementById('nav-progress');
+        let inflight = 0;
+
+        function startBar() {
+          if (!bar) return;
+          inflight += 1;
+          bar.classList.remove('is-done');
+          bar.classList.add('is-active');
+        }
+        function stopBar() {
+          if (!bar) return;
+          inflight = Math.max(0, inflight - 1);
+          if (inflight === 0) {
+            bar.classList.remove('is-active');
+            bar.classList.add('is-done');
+          }
+        }
+
+        // Every HTMX request drives the global progress bar.
+        document.body.addEventListener('htmx:beforeRequest', startBar);
+        document.body.addEventListener('htmx:afterRequest', stopBar);
+        // Network failures / timeouts must not leave the bar stuck on.
+        document.body.addEventListener('htmx:sendError', stopBar);
+        document.body.addEventListener('htmx:timeout', stopBar);
+        document.body.addEventListener('htmx:responseError', stopBar);
+
+        // Bead modal: paint an instant skeleton the moment a card is
+        // clicked. We key off the request TARGET being #bead-modal so we
+        // only do this for modal-opening fetches, not the in-modal audit
+        // sub-fetch or dependency drill-downs that also target #bead-modal
+        // (those re-render the whole modal anyway, and a brief skeleton is
+        // still correct feedback there).
+        const modal = document.getElementById('bead-modal');
+        const tpl = document.getElementById('bead-modal-skeleton');
+        document.body.addEventListener('htmx:beforeRequest', (e) => {
+          const t = e.detail.target;
+          if (modal && tpl && t && t.id === 'bead-modal') {
+            modal.replaceChildren(tpl.content.cloneNode(true));
+          }
+        });
+
+        // Full-page navigation (the masthead Board/History/Memory links are
+        // plain <a> hrefs, not HTMX) — show the bar on click so the cross-
+        // page jump also has an immediate affordance, and mark the clicked
+        // link as in-flight to dampen rapid double-clicks. The bar is wiped
+        // when the new document loads (fresh DOM, fresh bar).
+        document.addEventListener('click', (e) => {
+          const link = e.target.closest && e.target.closest('a.mh-link');
+          if (!link) return;
+          // Ignore modified clicks (new tab/window) and the current page.
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          if (link.getAttribute('aria-current') === 'page') return;
+          if (link.classList.contains('is-navigating')) {
+            e.preventDefault();
+            return;
+          }
+          link.classList.add('is-navigating');
+          startBar();
+        });
+      })();
 
       // Parameterized time filter logic.
       // Filters items by timestamp based on configurable time windows.

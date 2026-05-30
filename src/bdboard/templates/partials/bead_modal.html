@@ -43,6 +43,7 @@
                   <a class="dep-id"
                      hx-get="/api/bead/{{ d.depends_on_id or d.target or d.id }}"
                      hx-target="#bead-modal" hx-swap="innerHTML"
+                     hx-indicator="#nav-progress"
                      style="cursor:pointer">{{ d.depends_on_id or d.target or d.id }}</a>
                   {% if d.status %}<span class="dep-status status-{{ d.status }}">{{ d.status }}</span>{% endif %}
                   {% if d.title %}<span class="dep-title">{{ d.title }}</span>{% endif %}

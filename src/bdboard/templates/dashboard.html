@@ -7,17 +7,27 @@
       <h1 class="title">{{ workspace }}</h1>
     </div>
     {% include "partials/nav.html" %}
+    {# Counts strip hydrates via HTMX `load` (bdboard-2do) so the masthead
+       paints instantly instead of blocking on the bd-backed snapshot. The
+       `refresh from:body` trigger keeps the SSE live-update pipeline. #}
     <div class="masthead-counts" id="counts"
-         hx-get="/api/counts" hx-trigger="refresh from:body" hx-swap="innerHTML">
-      {% include "partials/counts.html" %}
+         hx-get="/api/counts" hx-trigger="load, refresh from:body" hx-swap="innerHTML"
+         hx-indicator="#nav-progress">
+      {% include "partials/counts_skeleton.html" %}
     </div>
   </div>
 </header>
 
 <main class="layout">
+  {# Lanes region (bdboard-2do): render an instant skeleton, then hydrate
+     from /api/lanes on `load`. Previously `/` blocked on store.snapshot()
+     + per-epic `bd show` subprocess calls before returning ANY HTML,
+     stalling time-to-first-paint. Now the board shell is symmetric with
+     History and Memory — cheap route, immediate paint, async hydration. #}
   <section class="lanes-region"
-           hx-get="/api/lanes" hx-trigger="refresh from:body" hx-swap="innerHTML">
-    {% include "partials/lanes.html" %}
+           hx-get="/api/lanes" hx-trigger="load, refresh from:body" hx-swap="innerHTML"
+           hx-indicator="#nav-progress">
+    {% include "partials/lanes_skeleton.html" %}
   </section>
 </main>
 {% endblock %}

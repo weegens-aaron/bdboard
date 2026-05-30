@@ -295,6 +295,20 @@ async def sse_events(request: Request) -> StreamingResponse:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
+    """Full-page board view — a cheap, non-blocking shell (bdboard-2do).
+
+    Previously this route awaited ``store.snapshot()`` AND a per-epic
+    ``bd show`` hydration pass before returning ANY HTML, so the board
+    froze on the bd CLI before painting a single pixel — the worst TTFP
+    of the three pages. It is now symmetric with /memory and /history:
+    render base.html + skeleton placeholders instantly, then hydrate the
+    counts strip and swim lanes via HTMX `load` fetches to /api/counts and
+    /api/lanes (which keep the snapshot + epic-hydration cost). The result
+    is an immediate paint with shimmer affordances, no blank screen, and
+    no layout jump when real data arrives. We still surface the workspace
+    validation error here (parity with /memory and /history) so a broken
+    workspace fails visibly rather than rendering an empty board.
+    """
     err = _validate_or_warn()
     if err:
         return TEMPLATES.TemplateResponse(
@@ -303,8 +317,6 @@ async def index(request: Request) -> HTMLResponse:
             {"error": err, "workspace": str(_WORKSPACE)},
             status_code=500,
         )
-    beads = await store.snapshot()
-    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads))
     return TEMPLATES.TemplateResponse(
         request,
         "dashboard.html",
@@ -312,10 +324,6 @@ async def index(request: Request) -> HTMLResponse:
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
             "active": "board",
-            "counts": derive.counts(beads),
-            "epic_lane": epic_lane,
-            "lanes": derive.lanes(beads),
-            "activity": derive.activity(beads),
         },
     )
 

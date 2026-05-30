@@ -34,7 +34,8 @@
         aria-label="Show history for the last {{ range_labels.get(r, r) }}"
         hx-get="/api/history?range={{ r }}&page=1&page_size={{ active_page_size }}"
         hx-target="#history-region"
-        hx-swap="innerHTML">{{ "All" if r == "all" else r }}</button>
+        hx-swap="innerHTML"
+        hx-indicator="#nav-progress">{{ "All" if r == "all" else r }}</button>
       {% endfor %}
     </div>
   </div>
@@ -116,7 +117,9 @@
       <li class="bead-card history-card"
           hx-get="/api/bead/{{ b.id }}"
           hx-target="#bead-modal"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+          hx-indicator="#nav-progress"
+          hx-disabled-elt="this">
         <div class="bead-card-head">
           <span class="bead-id">{{ b.id }}</span>
           {% if b.priority is not none %}
@@ -141,6 +144,7 @@
       <button type="button" class="filter-badge"
               hx-get="/api/history?range={{ range_key }}&page={{ page - 1 }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
+              hx-indicator="#nav-progress"
               aria-label="Previous page">‹ Newer</button>
       {% endif %}
       <span class="history-page-indicator">Page {{ page }}</span>
@@ -148,6 +152,7 @@
       <button type="button" class="filter-badge"
               hx-get="/api/history?range={{ range_key }}&page={{ page + 1 }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
+              hx-indicator="#nav-progress"
               aria-label="Next page">Older ›</button>
       {% endif %}
       {# Page-size selector (bdboard-3jj). Changing it resets to page 1 and
