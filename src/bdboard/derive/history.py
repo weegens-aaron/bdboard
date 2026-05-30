@@ -224,6 +224,80 @@ def created(
     return series
 
 
+def _percentile(sorted_vals: list[float], pct: float) -> float | None:
+    """Linear-interpolated percentile of an already-sorted list.
+
+    ``pct`` in [0, 100]. Returns None for an empty list. Single-element lists
+    return that element. Matches the common "linear interpolation between
+    closest ranks" definition (numpy's default).
+    """
+    if not sorted_vals:
+        return None
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    rank = (pct / 100.0) * (len(sorted_vals) - 1)
+    low = int(rank)
+    high = min(low + 1, len(sorted_vals) - 1)
+    frac = rank - low
+    return sorted_vals[low] + (sorted_vals[high] - sorted_vals[low]) * frac
+
+
+def lead_time_stats(
+    beads: list[dict[str, Any]],
+    range_key: str = DEFAULT_HISTORY_RANGE,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Lead-time / cycle-time stats over closed beads in a range (design §D2a).
+
+    - **lead time**  = created_at → closed_at (how long from filing to done)
+    - **cycle time** = started_at → closed_at (how long actively in flight)
+
+    Returns ``{n, median_lead_h, p90_lead_h, median_cycle_h, p90_cycle_h,
+    avg_cycle_h}`` with hour-valued floats (rounded to 1 dp) or None when
+    there is no data for that metric. ``n`` is the count of closed beads in
+    the window. ``avg_cycle_h`` is the **mean** claim-to-close cycle time
+    (bdboard-98o): the editorial "Avg lead time" headline reports active
+    work time (started_at → closed_at) rather than bd's workspace-global
+    backlog-age lead time (created → closed). Beads lacking a parseable
+    ``started_at`` are excluded from the cycle metrics; negative/zero
+    durations from clock skew or odd data are dropped.
+    """
+    cutoff = _range_to_cutoff(range_key, now=now)
+    windowed = _closed_in_window(beads, cutoff)
+    lead_hours: list[float] = []
+    cycle_hours: list[float] = []
+    for b in windowed:
+        closed = _parse_dt(b.get("closed_at"))
+        if closed is None:
+            continue
+        created = _parse_dt(b.get("created_at"))
+        if created is not None:
+            h = (closed - created).total_seconds() / 3600.0
+            if h >= 0:
+                lead_hours.append(h)
+        started = _parse_dt(b.get("started_at"))
+        if started is not None:
+            h = (closed - started).total_seconds() / 3600.0
+            if h >= 0:
+                cycle_hours.append(h)
+    lead_hours.sort()
+    cycle_hours.sort()
+
+    def _round(v: float | None) -> float | None:
+        return None if v is None else round(v, 1)
+
+    avg_cycle_h = sum(cycle_hours) / len(cycle_hours) if cycle_hours else None
+
+    return {
+        "n": len(windowed),
+        "median_lead_h": _round(_percentile(lead_hours, 50)),
+        "p90_lead_h": _round(_percentile(lead_hours, 90)),
+        "median_cycle_h": _round(_percentile(cycle_hours, 50)),
+        "p90_cycle_h": _round(_percentile(cycle_hours, 90)),
+        "avg_cycle_h": _round(avg_cycle_h),
+    }
+
+
 def status_timeline(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Derive a per-bead status-transition timeline from ``bd history <id>``.
 
