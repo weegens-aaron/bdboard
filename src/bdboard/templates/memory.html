@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Memory{% endblock %}
+{% block body %}
+<header class="masthead">
+  <div class="masthead-row">
+    <div class="masthead-brand">
+      <h1 class="title">Memory</h1>
+    </div>
+    {% include "partials/nav.html" %}
+  </div>
+</header>
+
+<main class="layout layout-memory">
+  <section class="memory-region">
+    {# Toolbar: search + new memory button #}
+    <div class="memory-toolbar">
+      {# Search strip. role=search + a programmatic label on the input so the
+         control is announced and reachable. Debounced server-side search:
+         keyup (changed) at 250ms posts q to /api/memory and swaps the list
+         region; the native search "clear" (x) also re-fires via the search
+         event so clearing returns to the full list. #}
+      <form class="memory-search" role="search" onsubmit="return false;">
+        <label class="memory-search-label" for="memory-q">Search memories</label>
+        <input
+          type="search"
+          id="memory-q"
+          name="q"
+          class="memory-search-input"
+          aria-label="Search memories"
+          placeholder="Search memories…"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          hx-get="/api/memory"
+          hx-trigger="keyup changed delay:250ms, search"
+          hx-target="#memory-list"
+          hx-swap="innerHTML"
+        />
+      </form>
+      <button
+        type="button"
+        class="memory-new-btn"
+        aria-haspopup="dialog"
+        onclick="document.getElementById('memory-form-dialog').showModal()"
+      >
+        + New Memory
+      </button>
+    </div>
+
+    {# List region — loads the full list on page load, then HTMX swaps it
+       on every search. SSE wiring: `refresh from:body` fires when the
+       watcher detects a .beads/ change, so other tabs' mutations appear
+       live without polling. #}
+    <div
+      id="memory-list"
+      class="memory-list-region"
+      hx-get="/api/memory"
+      hx-trigger="load, refresh from:body"
+      hx-swap="innerHTML"
+    ></div>
+  </section>
+</main>
+
+{# Create / Edit memory dialog — a native <dialog> (modal) keeps keyboard
+   focus trapped automatically. Opens via the "+ New Memory" button or the
+   edit button on each card. The form posts to /api/memory and swaps the
+   list region on success, then closes itself via JS. #}
+<dialog id="memory-form-dialog" class="memory-dialog" aria-labelledby="memory-dialog-title">
+  <form
+    method="dialog"
+    class="memory-dialog-form"
+    hx-post="/api/memory"
+    hx-target="#memory-list"
+    hx-swap="innerHTML"
+    hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+    onsubmit="setTimeout(() => this.closest('dialog').close(), 50)"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <h2 id="memory-dialog-title" class="memory-dialog-title">
+      <span id="memory-dialog-title-text">New Memory</span>
+    </h2>
+    <div class="memory-dialog-field">
+      <label for="memory-key-input">Key</label>
+      <input
+        type="text"
+        id="memory-key-input"
+        name="key"
+        class="memory-input"
+        required
+        autocomplete="off"
+        autocapitalize="none"
+        spellcheck="false"
+        placeholder="short-key-slug"
+      />
+      <p class="memory-dialog-hint">
+        A short identifier (e.g., <code>dev-workflow</code>). If it exists, the body is updated.
+      </p>
+    </div>
+    <div class="memory-dialog-field">
+      <label for="memory-body-input">Body</label>
+      <textarea
+        id="memory-body-input"
+        name="body"
+        class="memory-textarea"
+        required
+        rows="6"
+        placeholder="The memory content (markdown supported)…"
+      ></textarea>
+    </div>
+    <div class="memory-dialog-actions">
+      <button type="button" class="memory-btn memory-btn-secondary" onclick="this.closest('dialog').close()">
+        Cancel
+      </button>
+      <button type="submit" class="memory-btn memory-btn-primary">
+        Save Memory
+      </button>
+    </div>
+  </form>
+</dialog>
+
+{# Confirm-before-forget dialog — a separate modal so the warning is
+   prominent and requires explicit confirmation. A stray forget silently
+   degrades every future agent session, so we want friction. #}
+<dialog id="memory-forget-dialog" class="memory-dialog memory-dialog-confirm" aria-labelledby="forget-dialog-title">
+  <form method="dialog" class="memory-dialog-form">
+    <h2 id="forget-dialog-title" class="memory-dialog-title memory-dialog-title-danger">
+      Forget Memory?
+    </h2>
+    <p class="memory-dialog-warning">
+      This will permanently delete the memory with key <code id="forget-key-display"></code>.
+      Memories are injected at <code>bd prime</code>, so forgetting one silently degrades
+      every future agent session that relied on it. This cannot be undone.
+    </p>
+    <div class="memory-dialog-actions">
+      <button type="button" class="memory-btn memory-btn-secondary" onclick="this.closest('dialog').close()">
+        Cancel
+      </button>
+      <button
+        type="button"
+        id="forget-confirm-btn"
+        class="memory-btn memory-btn-danger"
+        hx-delete=""
+        hx-target="#memory-list"
+        hx-swap="innerHTML"
+        hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+        onclick="this.closest('dialog').close()"
+      >
+        Yes, Forget It
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  // Wire up forget confirmation dialog.
+  // When the "forget" button on a memory card is clicked, we open the
+  // confirm dialog with the key pre-filled, and set hx-delete to the
+  // correct URL so HTMX can fire the request on confirmation.
+  function confirmForget(key) {
+    const dialog = document.getElementById('memory-forget-dialog');
+    const keyDisplay = document.getElementById('forget-key-display');
+    const confirmBtn = document.getElementById('forget-confirm-btn');
+    keyDisplay.textContent = key;
+    confirmBtn.setAttribute('hx-delete', '/api/memory/' + encodeURIComponent(key));
+    // Re-process the button so HTMX sees the new hx-delete URL.
+    htmx.process(confirmBtn);
+    dialog.showModal();
+  }
+
+  // Wire up edit dialog: pre-fill the form with the memory's current values.
+  function editMemory(key, body) {
+    const dialog = document.getElementById('memory-form-dialog');
+    const titleText = document.getElementById('memory-dialog-title-text');
+    const keyInput = document.getElementById('memory-key-input');
+    const bodyInput = document.getElementById('memory-body-input');
+    titleText.textContent = 'Edit Memory';
+    keyInput.value = key;
+    // Key should be readonly when editing (can't rename a key via bd remember)
+    keyInput.setAttribute('readonly', 'readonly');
+    bodyInput.value = body;
+    dialog.showModal();
+    bodyInput.focus();
+  }
+
+  // Reset the form when the dialog is closed so "New Memory" starts fresh.
+  document.getElementById('memory-form-dialog').addEventListener('close', function() {
+    const titleText = document.getElementById('memory-dialog-title-text');
+    const keyInput = document.getElementById('memory-key-input');
+    const bodyInput = document.getElementById('memory-body-input');
+    titleText.textContent = 'New Memory';
+    keyInput.value = '';
+    keyInput.removeAttribute('readonly');
+    bodyInput.value = '';
+  });
+</script>
+{% endblock %}

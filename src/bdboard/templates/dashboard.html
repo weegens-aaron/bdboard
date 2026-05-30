@@ -4,10 +4,9 @@
 <header class="masthead">
   <div class="masthead-row">
     <div class="masthead-brand">
-      <span class="kicker">bdboard</span>
       <h1 class="title">{{ workspace }}</h1>
-      <div class="dateline">{{ workspace_path }}</div>
     </div>
+    {% include "partials/nav.html" %}
     <div class="masthead-counts" id="counts"
          hx-get="/api/counts" hx-trigger="refresh from:body" hx-swap="innerHTML">
       {% include "partials/counts.html" %}

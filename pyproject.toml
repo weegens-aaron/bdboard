@@ -1,7 +1,7 @@
 [project]
 name = "bdboard"
 version = "0.1.0"
-description = "Python+FastAPI+HTMX dashboard for bd (beads) workspaces — Python replacement for bcc"
+description = "Python+FastAPI+HTMX dashboard for bd (beads) workspaces"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,10 +10,14 @@ dependencies = [
     "jinja2>=3.1",
     "typer>=0.12",
     "markdown-it-py>=3.0",
+    "watchfiles>=0.21",
+    "python-multipart>=0.0.7",
+    "pytest>=8.0",
 ]
 
 [project.scripts]
 bdboard = "bdboard.cli:main"
+pytest = "bdboard.pytest_shim:main"
 
 [build-system]
 requires = ["hatchling"]

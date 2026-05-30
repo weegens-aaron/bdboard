@@ -1,14 +1,52 @@
-{% set lane_titles = {"backlog": "Backlog", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked", "closed": "Closed"} %}
+{% set lane_titles = {"deferred": "Deferred", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked", "closed": "Closed"} %}
+
+<section class="epic-lane" aria-label="Epic lane">
+  <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
+  <ul class="epic-strip" role="list">
+    {% for e in epic_lane %}
+    <li class="epic-chip"
+        hx-get="/api/bead/{{ e.id }}"
+        hx-target="#bead-modal"
+        hx-swap="innerHTML">
+      <div class="epic-chip-head">
+        <span class="bead-id">{{ e.id }}</span>
+        {% if e.priority is not none %}
+        <span class="bead-priority p{{ e.priority }}">P{{ e.priority }}</span>
+        {% endif %}
+      </div>
+      <div class="bead-title">{{ e.title }}</div>
+      <div class="epic-meta">
+        <span class="epic-status status-{{ e.status_key }}" aria-label="Status: {{ e.status_label }}">
+          <span class="epic-status-icon" aria-hidden="true">{{ e.status_icon }}</span>
+          <span class="epic-status-text">{{ e.status_label }}</span>
+        </span>
+        {% if e.assignee %}<span class="bead-assignee">{{ e.assignee }}</span>{% endif %}
+      </div>
+    </li>
+    {% else %}
+    <li class="lane-empty muted">(no active epics)</li>
+    {% endfor %}
+  </ul>
+</section>
+
 <div class="lanes">
-  {% for key in ["backlog", "blocked", "ready", "in_progress", "closed"] %}
-  <div class="lane lane-{{ key }}">
+  {% for key in ["deferred", "blocked", "ready", "in_progress", "closed"] %}
+  <div class="lane lane-{{ key }}" {% if key == "closed" %}data-lane="closed"{% endif %}>
     <h2 class="lane-title">
       <span class="lane-name">{{ lane_titles[key] }}</span>
-      <span class="lane-count">{{ lanes[key]|length }}</span>
+      {% if key == "closed" %}
+      <div class="closed-filters">
+        <button class="filter-badge" data-filter="12h" aria-label="Show beads closed in the last 12 hours">12h</button>
+        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
+        <button class="filter-badge" data-filter="3d" aria-label="Show beads closed in the last 3 days">3d</button>
+      </div>
+      {% endif %}
+      <span class="lane-count" {% if key == "closed" %}data-closed-count="total"{% endif %}>{{ lanes[key]|length }}</span>
     </h2>
     <ul class="lane-list">
       {% for b in lanes[key] %}
       <li class="bead-card"
+          {% if key == "closed" and b.closed_at %}data-closed-at="{{ b.closed_at }}"{% endif %}
           hx-get="/api/bead/{{ b.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML">
@@ -32,17 +70,20 @@
   </div>
   {% endfor %}
 
-  {# Activity is now a regular lane, not a sidebar pane. Same .lane chrome,
-     activity-row contents. Items are clickable just like bead cards and
-     pop the same bead modal. #}
-  <div class="lane lane-activity">
+  <div class="lane lane-activity" data-lane="activity">
     <h2 class="lane-title">
       <span class="lane-name">Activity</span>
-      <span class="lane-count">{{ activity|length }}</span>
+      <div class="activity-filters">
+        <button class="filter-badge" data-filter="12h" aria-label="Show activity from the last 12 hours">12h</button>
+        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show activity from the last 24 hours">1d</button>
+        <button class="filter-badge" data-filter="3d" aria-label="Show activity from the last 3 days">3d</button>
+      </div>
+      <span class="lane-count" data-activity-count="total">{{ activity|length }}</span>
     </h2>
     <ul class="lane-list">
       {% for it in activity %}
       <li class="activity-row"
+          {% if it.ts %}data-activity-ts="{{ it.ts }}"{% endif %}
           hx-get="/api/bead/{{ it.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML">

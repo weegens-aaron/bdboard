@@ -1,0 +1,56 @@
+{# History stats strip — relocated into the masthead header (bdboard-w5z),
+   mirroring the board's .masthead-counts (dashboard.html → partials/counts.html)
+   so the two surfaces share symmetric chrome.
+
+   This fragment is delivered as an hx-swap-oob element by /api/history. Every
+   range button + the SSE `refresh from:body` re-fetch of #history-region returns
+   this same response, so HTMX swaps the charts/list into #history-region AND
+   swaps this <dl> out-of-band into the masthead's #history-stats placeholder in
+   one round-trip. That keeps the range-scoped values live without a second
+   endpoint or any client JS (DRY).
+
+   It remains a SINGLE editorial row (bdboard-4zk) combining two data sources:
+     1. bd's workspace-global, point-in-time totals (NOT range-scoped), tagged
+        "via bd" so they never imply they react to the range control. Rendered
+        only when bd status is available (bd_summary set) — pure sugar.
+     2. the range-derived KPIs that DO react to the active range control.
+   One <dl class="counts"> keeps the typography/spacing/zero-muting identical to
+   the board's masthead counts strip. aria-live announces range changes (§5).
+
+   The masthead host (#history-stats) is rendered by history.html so the strip
+   exists on first paint; this OOB fragment then keeps it current on every
+   range change and SSE refresh. #}
+<dl class="counts history-stats" id="history-stats" hx-swap-oob="true"
+    role="status" aria-live="polite" aria-label="History statistics">
+  {% if bd_summary %}
+  <div class="counts-cell{% if not bd_summary.total_issues %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Total beads <span class="history-stat-src">via bd</span></dt>
+    <dd class="counts-value">{{ bd_summary.total_issues }}</dd>
+  </div>
+  <div class="counts-cell{% if not bd_summary.closed_issues %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Closed (all time) <span class="history-stat-src">via bd</span></dt>
+    <dd class="counts-value">{{ bd_summary.closed_issues }}</dd>
+  </div>
+  {% endif %}
+  {# 'Avg lead time' is the mean claim-to-close cycle time (bdboard-98o):
+     started_at -> closed_at over closed beads in the active range, NOT bd's
+     workspace-global created->closed lead time. It reflects active work
+     time, reacts to the range control, so it lives among the range-derived
+     KPIs (no "via bd" tag). #}
+  <div class="counts-cell{% if stats.avg_cycle_h is none %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Avg lead time <span class="history-stat-src">claim→close, {{ range_human }}</span></dt>
+    <dd class="counts-value">{{ stats.avg_cycle_h | humanize_hours }}</dd>
+  </div>
+  <div class="counts-cell{% if stats.n == 0 %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Closed in {{ range_human }}</dt>
+    <dd class="counts-value">{{ stats.n }}</dd>
+  </div>
+  <div class="counts-cell{% if stats.median_lead_h is none %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Median lead time</dt>
+    <dd class="counts-value">{{ stats.median_lead_h | humanize_hours }}</dd>
+  </div>
+  <div class="counts-cell{% if not avg_per_day %} counts-cell-zero{% endif %}">
+    <dt class="counts-label">Throughput / day</dt>
+    <dd class="counts-value">{{ avg_per_day }}</dd>
+  </div>
+</dl>

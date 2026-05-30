@@ -4,6 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{% block title %}bdboard{% endblock %} · {{ workspace or "bd" }}</title>
+    <script>
+      // Anti-FOUC theme resolution (bdboard-35e). Runs BEFORE the
+      // stylesheet/body paint so the page never flashes the wrong theme.
+      // Single source of truth = the data-theme attribute on <html>:
+      //   1. An explicit, persisted choice in localStorage wins.
+      //   2. Otherwise fall back to the OS prefers-color-scheme.
+      // We always set an explicit attribute so the CSS has one code path
+      // (no @media duplication) and native controls get color-scheme.
+      (function () {
+        try {
+          var saved = localStorage.getItem('bdboard-theme');
+          var theme = (saved === 'dark' || saved === 'light')
+            ? saved
+            : (window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
@@ -15,9 +37,9 @@
         <span class="footer-brand">bdboard</span>
         <span class="footer-sep">·</span>
         <span class="footer-version">v{{ version or "?" }}</span>
-        {% if workspace %}
+        {% if workspace_path %}
         <span class="footer-sep">·</span>
-        <span class="footer-workspace">{{ workspace }}</span>
+        <span class="footer-workspace">{{ workspace_path }}</span>
         {% endif %}
       </div>
       <div class="footer-cell footer-center">
@@ -26,8 +48,6 @@
       </div>
       <div class="footer-cell footer-right">
         <a href="/docs" class="footer-link">API</a>
-        <span class="footer-sep">·</span>
-        <span class="footer-tip">esc to close modal</span>
       </div>
     </footer>
     {% endblock %}
@@ -40,8 +60,157 @@
         }
       });
 
+      // Parameterized time filter logic.
+      // Filters items by timestamp based on configurable time windows.
+      // Selection persists via sessionStorage across SSE refreshes.
+      //
+      // config: {
+      //   laneDataAttr: string (e.g., 'closed' or 'activity'),
+      //   itemSelector: string (e.g., '.bead-card[data-closed-at]'),
+      //   timestampAttr: string (e.g., 'data-closed-at'),
+      //   timeWindows: object mapping filter names to milliseconds (e.g., { '1d': 86400000, '7d': 604800000, 'all': null }),
+      //   countAttr: string (e.g., 'data-closed-count'),
+      //   storageKey: string (e.g., 'bdboard-closed-filter')
+      // }
+      function applyTimeFilter(config) {
+        const lane = document.querySelector(`[data-lane="${config.laneDataAttr}"]`);
+        if (!lane) return;
+
+        const now = Date.now();
+        const items = lane.querySelectorAll(config.itemSelector);
+        let visibleCount = 0;
+
+        items.forEach(item => {
+          const timestamp = item.getAttribute(config.timestampAttr);
+          if (!timestamp) {
+            item.style.display = '';
+            visibleCount++;
+            return;
+          }
+
+          const itemDate = new Date(timestamp.replace('Z', '+00:00'));
+          const ageMs = now - itemDate.getTime();
+
+          // Determine visibility based on configured time window
+          const filterValue = config.timeWindows[config.currentFilter];
+          const show = filterValue === null || ageMs <= filterValue;
+
+          item.style.display = show ? '' : 'none';
+          if (show) visibleCount++;
+        });
+
+        // Update count to reflect filtered total
+        const countEl = lane.querySelector(`[${config.countAttr}]`);
+        if (countEl) countEl.textContent = visibleCount;
+
+        // Update active badge styling
+        lane.querySelectorAll('.filter-badge').forEach(badge => {
+          if (badge.getAttribute('data-filter') === config.currentFilter) {
+            badge.classList.add('filter-badge-active');
+            badge.setAttribute('aria-pressed', 'true');
+          } else {
+            badge.classList.remove('filter-badge-active');
+            badge.setAttribute('aria-pressed', 'false');
+          }
+        });
+
+        // Persist selection
+        sessionStorage.setItem(config.storageKey, config.currentFilter);
+      }
+
+      // Unified time windows shared by the Closed and Activity lanes so the
+      // filter strip is predictable when the eye moves between lanes (bdboard-ah3).
+      const oneHourMs = 60 * 60 * 1000;
+      const oneDayMs = 24 * oneHourMs;
+      const UNIFIED_TIME_WINDOWS = {
+        '12h': 12 * oneHourMs,
+        '1d': oneDayMs,
+        '3d': 3 * oneDayMs
+      };
+
+      // Closed lane filter: wrapper around applyTimeFilter.
+      function applyClosedFilter(filter) {
+        applyTimeFilter({
+          laneDataAttr: 'closed',
+          itemSelector: '.bead-card[data-closed-at]',
+          timestampAttr: 'data-closed-at',
+          timeWindows: UNIFIED_TIME_WINDOWS,
+          countAttr: 'data-closed-count',
+          storageKey: 'bdboard-closed-filter',
+          currentFilter: filter
+        });
+      }
+
+      // Activity lane filter: wrapper around applyTimeFilter.
+      function applyActivityFilter(filter) {
+        applyTimeFilter({
+          laneDataAttr: 'activity',
+          itemSelector: '.activity-row[data-activity-ts]',
+          timestampAttr: 'data-activity-ts',
+          timeWindows: UNIFIED_TIME_WINDOWS,
+          countAttr: 'data-activity-count',
+          storageKey: 'bdboard-activity-filter',
+          currentFilter: filter
+        });
+      }
+
+      // Wire up filter badge clicks and restore saved filters.
+      // Shared helper to eliminate duplication between initial load and SSE refresh.
+      function wireFilterBadges() {
+        // Wire up Closed lane filter badges
+        const closedLane = document.querySelector('[data-lane="closed"]');
+        if (closedLane) {
+          closedLane.querySelectorAll('.filter-badge').forEach(badge => {
+            badge.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyClosedFilter(badge.getAttribute('data-filter'));
+            });
+            badge.setAttribute('role', 'radio');
+          });
+
+          // Restore saved filter or default to 1d
+          const savedFilter = sessionStorage.getItem('bdboard-closed-filter') || '1d';
+          applyClosedFilter(savedFilter);
+        }
+
+        // Wire up Activity lane filter badges
+        const activityLane = document.querySelector('[data-lane="activity"]');
+        if (activityLane) {
+          activityLane.querySelectorAll('.filter-badge').forEach(badge => {
+            badge.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              applyActivityFilter(badge.getAttribute('data-filter'));
+            });
+            badge.setAttribute('role', 'radio');
+          });
+
+          // Restore saved filter or default to 1d
+          const savedFilter = sessionStorage.getItem('bdboard-activity-filter') || '1d';
+          applyActivityFilter(savedFilter);
+        }
+      }
+
+      // Wire up filter badges after SSE-triggered lane refresh
+      document.addEventListener('htmx:afterSettle', (e) => {
+        // Only run when lanes partial loads
+        if (!e.detail.target.classList || !e.detail.target.classList.contains('lanes-region')) {
+          // Also handle full page load (dashboard.html)
+          const lanesRegion = document.querySelector('.lanes-region');
+          if (!lanesRegion) return;
+        }
+
+        wireFilterBadges();
+      });
+
+      // Wire up filter badges on initial page load
+      document.addEventListener('DOMContentLoaded', () => {
+        wireFilterBadges();
+      });
+
       // SSE live-update wiring. Server pushes a 'beads_changed' event
-      // whenever .beads/issues.jsonl changes. We fire a synthetic
+      // whenever watched workspace data changes under .beads/. We fire a synthetic
       // 'refresh' DOM event on body; every region that wants live data
       // listens via hx-trigger="load, refresh from:body".
       //
@@ -62,6 +231,50 @@
           // regions will re-fetch their HTML partials.
           document.body.dispatchEvent(new CustomEvent('refresh'));
         });
+      })();
+
+      // Theme toggle wiring (bdboard-35e). The initial theme is already
+      // applied by the anti-FOUC script in <head>; this only handles the
+      // click-to-flip + persistence. We keep the persisted value and the
+      // <html data-theme> attribute as the single source of truth.
+      (function () {
+        function currentTheme() {
+          return document.documentElement.getAttribute('data-theme') === 'dark'
+            ? 'dark' : 'light';
+        }
+        function applyTheme(theme) {
+          document.documentElement.setAttribute('data-theme', theme);
+          const btn = document.getElementById('theme-toggle');
+          if (btn) {
+            // Announce the resulting state for assistive tech.
+            btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+          }
+          try { localStorage.setItem('bdboard-theme', theme); } catch (e) {}
+        }
+        const btn = document.getElementById('theme-toggle');
+        if (btn) {
+          btn.setAttribute('aria-pressed',
+            currentTheme() === 'dark' ? 'true' : 'false');
+          btn.addEventListener('click', () => {
+            applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+          });
+        }
+        // If the user has NOT made an explicit choice, follow live OS
+        // changes (e.g. the OS flips to dark at sunset).
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)')
+            .addEventListener('change', (e) => {
+              let saved = null;
+              try { saved = localStorage.getItem('bdboard-theme'); } catch (err) {}
+              if (saved !== 'dark' && saved !== 'light') {
+                document.documentElement.setAttribute(
+                  'data-theme', e.matches ? 'dark' : 'light');
+                const b = document.getElementById('theme-toggle');
+                if (b) b.setAttribute('aria-pressed',
+                  e.matches ? 'true' : 'false');
+              }
+            });
+        }
       })();
     </script>
   </body>

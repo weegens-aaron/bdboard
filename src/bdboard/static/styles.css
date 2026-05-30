@@ -1,5 +1,5 @@
 /* ============================================================
-   bdboard — editorial dashboard, Walmart LD-token palette.
+   bdboard — editorial dashboard, design-token palette.
    Sourced from docs/diagrams/dashboard-mockup.html and trimmed
    to what bdboard actually renders. Keep design tokens in :root;
    keep visual decisions semantic (no raw hex outside :root).
@@ -28,19 +28,91 @@
   --paper-3:  #ffffff;
 
   /* Brand */
-  --brand-blue:   #0071dc;
+  --brand-blue:   #0053e2;
   --brand-blue-d: #004f9a;
   --brand-blue-l: #e6f1fc;
   --brand-green:  #2a8703;
-  --brand-red:    #de1c24;
+  --brand-red:    #ea1100;
   --brand-yellow: #ffc220;
+  --blue-100: #0053e2;
+  --spark-100: #ffc220;
+  --spark-10: #fff7e0;
+  --spark-140: #995213;
+  --green-100: #2a8703;
+  --red-100: #ea1100;
   --warning-text: #b36a16;
   --violet:       #63327e;
+  --red-pressed:  #c40e00;
+
+  /* Fills that carry text — white reads on the brand-blue / red / green
+     fills in BOTH themes, so this stays constant across light and dark. */
+  --on-brand:  #ffffff;
+
+  /* Inline danger callouts (error strips, audit failures). */
+  --danger-bg: #fde6e7;
+  --danger-fg: var(--red-100);
+
+  /* Subtle inline-code chip background (used inside callouts). */
+  --code-chip-bg: rgba(0, 0, 0, 0.06);
+
+  /* Soft elevation tint for inset shadows on active controls. */
+  --shadow-inset: rgba(0, 0, 0, 0.15);
 
   --accent:    var(--brand-red);
   --accent-2:  var(--warning-text);
   --ok:        var(--brand-green);
   --info:      var(--brand-blue);
+
+  /* Status badge colors — consolidated for epic-status and bead-status */
+  --status-open-bg: var(--brand-blue-l);
+  --status-open-fg: var(--brand-blue-d);
+  --status-open-border: #9ab8ff;
+  
+  --status-in-progress-bg: var(--brand-blue);
+  --status-in-progress-fg: #ffffff;
+  --status-in-progress-border: var(--brand-blue);
+  
+  --status-blocked-bg: #ffeceb;
+  --status-blocked-fg: #7f0d00;
+  --status-blocked-border: #f2a79f;
+  
+  --status-deferred-bg: var(--spark-10);
+  --status-deferred-fg: var(--spark-140);
+  --status-deferred-border: #edcf86;
+  
+  --status-closed-bg: #e6f3e0;
+  --status-closed-fg: #1f5e00;
+  --status-closed-border: #c5e5ba;
+  
+  --status-unknown-bg: var(--paper-2);
+  --status-unknown-fg: var(--ink-2);
+  --status-unknown-border: var(--rule-2);
+
+  /* Priority badge colors (bdboard-97z) — urgency gradient hot->cool,
+     strong->faint, so all five levels are mutually distinguishable by
+     HUE + TREATMENT, not lightness alone. See bdboard-tsu --design for
+     the palette decision and computed WCAG AA proof (both themes).
+     P0 solid red / P1 solid amber / P2 blue tint / P3 neutral fill /
+     P4 ghost outline. Re-pointed for the dark canvas below. */
+  --priority-p0-bg: var(--brand-red);
+  --priority-p0-fg: var(--on-brand);
+  --priority-p0-border: transparent;
+
+  --priority-p1-bg: var(--brand-yellow);
+  --priority-p1-fg: var(--ink);
+  --priority-p1-border: transparent;
+
+  --priority-p2-bg: var(--brand-blue-l);
+  --priority-p2-fg: var(--brand-blue-d);
+  --priority-p2-border: var(--status-open-border);
+
+  --priority-p3-bg: var(--gray-20);
+  --priority-p3-fg: var(--ink);
+  --priority-p3-border: var(--rule-2);
+
+  --priority-p4-bg: transparent;
+  --priority-p4-fg: var(--ink-2);
+  --priority-p4-border: var(--muted);
 
   /* Typography */
   --serif:   "Source Serif 4", "Iowan Old Style", Georgia, serif;
@@ -48,6 +120,124 @@
   --sans:    "Bogle", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --mono:    "BogleMono", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
+
+/* ============================================================
+   Dark theme (bdboard-35e).
+   Only the *semantic aliases* are re-pointed here — every component
+   references those aliases (no raw hex outside :root), so flipping
+   data-theme="dark" on <html> recolors the whole surface. Greys are
+   inverted (paper goes dark, ink goes light) and brand fills are
+   lightened just enough to clear WCAG AA on the dark canvas.
+
+   Activation: <html data-theme="dark">. The OS preference
+   (prefers-color-scheme) is resolved once in JS by the inline anti-FOUC
+   script in base.html, which sets an explicit data-theme before first
+   paint — so there is exactly ONE dark token recipe here (DRY) instead
+   of duplicating it inside an @media block that CSS can't share with the
+   attribute selector.
+   ============================================================ */
+:root[data-theme="dark"] {
+  /* Dark greys — paper end is near-black, ink end is near-white. */
+  --gray-5:   #1b1c1f;   /* darkest "paper" */
+  --gray-10:  #232427;
+  --gray-20:  #303237;
+  --gray-30:  #3c3e44;
+  --gray-70:  #8a8c92;
+  --gray-100: #a8aab0;
+  --gray-140: #d4d5d9;
+  --gray-160: #f1f1f2;   /* lightest "ink" */
+
+  /* Semantic aliases re-pointed for the dark canvas. */
+  --ink:      var(--gray-160);
+  --ink-2:    var(--gray-140);
+  --muted:    var(--gray-100);
+  --muted-2:  var(--gray-70);
+  --rule:     #34363c;
+  --rule-2:   #41434a;
+  --paper:    #16171a;
+  --paper-2:  #202125;
+  --paper-3:  #26282c;
+
+  /* Brand fills lightened for contrast against the dark canvas. */
+  --brand-blue:   #4f9bff;
+  --brand-blue-d: #8bbcff;
+  --brand-blue-l: #16314f;
+  --brand-green:  #5fc23a;
+  --brand-red:    #ff6b5e;
+  --brand-yellow: #ffc220;
+  --blue-100:  #4f9bff;
+  --spark-10:  #3a2e12;
+  --spark-140: #ffd27a;
+  --green-100: #5fc23a;
+  --red-100:   #ff6b5e;
+  --warning-text: #ffce7a;
+  --violet:       #c79fe0;
+  --red-pressed:  #ff8a80;
+
+  /* Text that sits on a brand-colored fill. On the dark theme the
+     blue/green/red fills are light, so dark ink reads on them. */
+  --on-brand:  #16171a;
+
+  /* Inline danger callout: tinted dark-red panel, light-red text. */
+  --danger-bg: #3a1c1b;
+  --danger-fg: var(--red-100);
+
+  /* Code chips / inset shadows need light/dark-aware alpha. */
+  --code-chip-bg: rgba(255, 255, 255, 0.10);
+  --shadow-inset: rgba(0, 0, 0, 0.45);
+
+  /* Status badges — dark-friendly tinted panels with light text. */
+  --status-open-bg: #16314f;
+  --status-open-fg: #bcd6ff;
+  --status-open-border: #2f5688;
+
+  --status-in-progress-bg: #1e5fbf;
+  --status-in-progress-fg: #ffffff;
+  --status-in-progress-border: #2f72d6;
+
+  --status-blocked-bg: #3a1c1b;
+  --status-blocked-fg: #ffb3aa;
+  --status-blocked-border: #6e2f2a;
+
+  --status-deferred-bg: #3a2e12;
+  --status-deferred-fg: #ffd27a;
+  --status-deferred-border: #6b531f;
+
+  --status-closed-bg: #16321a;
+  --status-closed-fg: #a6e29a;
+  --status-closed-border: #2f5e33;
+
+  --status-unknown-bg: var(--paper-2);
+  --status-unknown-fg: var(--ink-2);
+  --status-unknown-border: var(--rule-2);
+
+  /* Priority badges — re-pointed for the dark canvas (bdboard-97z).
+     P0/P1 fills auto-lighten via --brand-red/--brand-yellow; on the
+     dark theme dark ink reads on those light fills, so P1 fg flips to
+     --on-brand (#16171a). P2 reuses the dark open-status panel/text. */
+  --priority-p0-bg: var(--brand-red);
+  --priority-p0-fg: var(--on-brand);
+  --priority-p0-border: transparent;
+
+  --priority-p1-bg: var(--brand-yellow);
+  --priority-p1-fg: var(--on-brand);
+  --priority-p1-border: transparent;
+
+  --priority-p2-bg: var(--brand-blue-l);
+  --priority-p2-fg: var(--status-open-fg);
+  --priority-p2-border: var(--status-open-border);
+
+  --priority-p3-bg: var(--gray-20);
+  --priority-p3-fg: var(--ink);
+  --priority-p3-border: var(--rule-2);
+
+  --priority-p4-bg: transparent;
+  --priority-p4-fg: var(--ink-2);
+  --priority-p4-border: var(--muted);
+}
+
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -74,15 +264,6 @@ code, pre { font-family: var(--mono); }
 pre { margin: 0; }
 
 .muted { color: var(--muted); }
-.kicker {
-  font-family: var(--sans);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 11px;
-  color: var(--brand-blue);
-  font-weight: 700;
-}
-
 /* ============================================================
    Masthead — newspaper-style top. Stays put at top of viewport.
    ============================================================ */
@@ -113,6 +294,96 @@ pre { margin: 0; }
   margin-top: 4px;
 }
 
+/* Masthead contents bar (bdboard-9kb, Option A from the bdboard-buq spike).
+   Board / Memory / theme read as a single typographic "contents strip" that
+   reuses the masthead's own editorial kit — the small-caps letterspacing of
+   the counts labels and the hairline vertical rules of the counts strip. No pills,
+   boxes, borders, or filled backgrounds (the bead's core complaint).
+
+   The theme toggle (a <button>) borrows .mh-link so it reads as the last
+   cell of the same strip, but stays semantically an action outside <nav>. */
+.masthead-nav {
+  display: flex;
+  align-items: center;
+  /* margin-right:auto keeps the strip left, just after the wordmark. The
+     bottom margin ties the contents strip to the wordmark's OPTICAL baseline:
+     the row bottom-aligns line boxes (align-items:flex-end), but the 38px
+     wordmark carries far more descender + leading below its baseline than the
+     small nav text, so without this lift the strip reads as "dropped".
+     Shared verbatim with .mh-toggle so the nav and toggle stay co-planar. */
+  margin: 0 auto 8px 0;
+}
+.mh-link {
+  /* Small-caps + letterspacing, matching the counts labels. */
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  /* Sized up from 12px so BOARD/MEMORY read as balanced against the wordmark
+     and counts strip rather than undersized (bdboard-dmp). */
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);            /* inactive: de-emphasised. gray-100 on
+                                     paper-3 = 4.74:1 light / 5.79:1 dark */
+  text-decoration: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  /* Hairline vertical rule between cells, exactly like .counts-cell. */
+  border-left: 1px solid var(--rule);
+  padding: 2px 14px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+/* First cell in the nav drops only the leading hairline rule (matches
+   .counts-cell:first). Its horizontal padding stays SYMMETRIC with the other
+   cells on purpose: the active baseline rule (box-shadow) spans the padding
+   box, so zeroing padding-left here used to make BOARD's underline span a
+   different width/offset than MEMORY's. Keeping padding uniform makes the
+   active underline read identically across every cell (bdboard-dmp). */
+.masthead-nav .mh-link:first-child {
+  border-left: 0;
+}
+/* Hover affordance is colour-only (muted → ink) so it doesn't double-signal
+   with the active baseline rule. */
+.mh-link:hover {
+  color: var(--ink);
+}
+.mh-link:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 3px;
+}
+/* Active page = ink colour + bold weight + an inset baseline rule. THREE
+   non-colour cues (weight + rule on top of colour) clear WCAG 1.4.1. */
+.mh-link.is-active {
+  color: var(--ink);              /* gray-160 on paper-3 = 13.6:1 light */
+  font-weight: 800;
+  box-shadow: inset 0 -2px 0 var(--brand-blue);
+}
+
+/* Theme toggle (bdboard-35e) — borrows .mh-link styling so it reads as the
+   trailing cell of the contents bar, tied in with the same hairline
+   border-left. It is a <button> outside <nav>: an action, not navigation.
+   The label/icon swap is driven by CSS attribute selectors keyed off the
+   <html data-theme>, so the JS only flips one attribute (single source of
+   truth from bdboard-35e). */
+.mh-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Borrows .mh-link's border-left (hairline rule) and padding for the flex
+     layout. The bottom margin matches .masthead-nav so the toggle shares the
+     nav's baseline lift and the whole strip stays co-planar (bdboard-dmp). */
+  margin-bottom: 8px;
+}
+.mh-toggle-icon { font-size: 13px; line-height: 1; }
+/* Show the icon/label for the theme you'll switch TO, so the affordance
+   reads as an action. Default markup is the "dark" prompt (light theme
+   active); when dark is active we reveal the "light" prompt instead. */
+.mh-toggle .mh-toggle-to-light { display: none; }
+:root[data-theme="dark"] .mh-toggle .mh-toggle-to-dark { display: none; }
+:root[data-theme="dark"] .mh-toggle .mh-toggle-to-light { display: inline; }
+
 .counts {
   display: flex;
   gap: 20px;
@@ -140,6 +411,13 @@ pre { margin: 0; }
   color: var(--ink);
   margin: 0;
 }
+/* De-emphasize zero counts to reduce visual noise while maintaining layout stability */
+.counts-cell-zero .counts-label {
+  color: var(--muted);
+}
+.counts-cell-zero .counts-value {
+  color: var(--muted);
+}
 
 /* ============================================================
    Layout — single full-width lanes region. Claims all remaining
@@ -162,14 +440,115 @@ pre { margin: 0; }
    bead list scrolls inside it — canonical kanban behavior.
    ============================================================ */
 .lanes-region {
+  /* Fill all horizontal space regardless of content density.
+     Without explicit flex growth, this flex child can size to
+     intrinsic content width, which makes empty-lane states look
+     collapsed on wide viewports. */
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
+.epic-lane {
+  border-bottom: 1px solid var(--rule-2);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+}
+.epic-lane-title {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-family: var(--display);
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.epic-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 2px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-2) transparent;
+}
+.epic-strip::-webkit-scrollbar { height: 6px; }
+.epic-strip::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
+.epic-strip > * { flex-shrink: 0; }
+.epic-chip {
+  min-width: 250px;
+  max-width: 320px;
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.epic-chip:hover {
+  border-color: var(--blue-100);
+  box-shadow: 0 1px 3px rgba(0, 83, 226, 0.15);
+}
+.epic-chip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.epic-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.epic-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  padding: 1px 6px;
+}
+.epic-status-icon { font-size: 12px; line-height: 1; }
+.epic-status.status-open {
+  background: var(--status-open-bg);
+  color: var(--status-open-fg);
+  border-color: var(--status-open-border);
+}
+.epic-status.status-in_progress {
+  background: var(--status-in-progress-bg);
+  color: var(--status-in-progress-fg);
+  border-color: var(--status-in-progress-border);
+}
+.epic-status.status-blocked {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  border-color: var(--status-blocked-border);
+}
+.epic-status.status-deferred {
+  background: var(--status-deferred-bg);
+  color: var(--status-deferred-fg);
+  border-color: var(--status-deferred-border);
+}
+.epic-status.status-unknown {
+  background: var(--status-unknown-bg);
+  color: var(--status-unknown-fg);
+  border-color: var(--status-unknown-border);
+}
+
 .lanes {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
 }
 @media (max-width: 1600px) {
@@ -200,11 +579,54 @@ pre { margin: 0; }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--rule);
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .lane-count {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
+}
+
+/* Closed lane filter badges — small, pressable, WCAG AA compliant */
+.closed-filters,
+.activity-filters {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 0 auto 0 0;
+}
+.filter-badge {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1.5px solid var(--rule-2);
+  background: var(--paper-3);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-transform: lowercase;
+}
+.filter-badge:hover {
+  border-color: var(--blue-100);
+  color: var(--blue-100);
+  background: var(--brand-blue-l);
+}
+.filter-badge-active {
+  background: var(--blue-100);
+  color: var(--on-brand);
+  border-color: var(--blue-100);
+  font-weight: 800;
+  /* Visual weight change (not just color) for accessibility */
+  box-shadow: inset 0 1px 2px var(--shadow-inset);
+}
+.filter-badge-active:hover {
+  background: var(--brand-blue-d);
+  border-color: var(--brand-blue-d);
+  color: var(--on-brand);
 }
 .lane-list {
   list-style: none;
@@ -236,7 +658,7 @@ pre { margin: 0; }
 .lane-ready     .lane-title { color: var(--ok); }
 .lane-in_progress .lane-title { color: var(--brand-blue); }
 .lane-blocked   .lane-title { color: var(--accent); }
-.lane-backlog   .lane-title { color: var(--muted); }
+.lane-deferred  .lane-title { color: var(--muted); }
 .lane-activity  .lane-title { color: var(--violet); }
 
 /* ============================================================
@@ -274,10 +696,11 @@ pre { margin: 0; }
   border-radius: 3px;
   letter-spacing: 0.04em;
 }
-.bead-priority.p0 { background: var(--accent); color: white; }
-.bead-priority.p1 { background: var(--accent-2); color: white; }
-.bead-priority.p2 { background: var(--paper-2); color: var(--ink-2); border: 1px solid var(--rule-2); }
-.bead-priority.p3, .bead-priority.p4 { background: transparent; color: var(--muted); border: 1px solid var(--rule); }
+.bead-priority.p0 { background: var(--priority-p0-bg); color: var(--priority-p0-fg); border: 1px solid var(--priority-p0-border); }
+.bead-priority.p1 { background: var(--priority-p1-bg); color: var(--priority-p1-fg); border: 1px solid var(--priority-p1-border); }
+.bead-priority.p2 { background: var(--priority-p2-bg); color: var(--priority-p2-fg); border: 1px solid var(--priority-p2-border); }
+.bead-priority.p3 { background: var(--priority-p3-bg); color: var(--priority-p3-fg); border: 1px solid var(--priority-p3-border); }
+.bead-priority.p4 { background: var(--priority-p4-bg); color: var(--priority-p4-fg); border: 1px solid var(--priority-p4-border); }
 
 .bead-title {
   font-family: var(--serif);
@@ -302,6 +725,326 @@ pre { margin: 0; }
   letter-spacing: 0.06em;
   font-weight: 600;
   color: var(--ink-2);
+}
+
+/* ============================================================
+   Memory view — browse + search bd memories.
+   The list region is a vertical stack of memory cards, swapped
+   into place by HTMX from /api/memory. Mirrors the bead-card
+   chrome (paper background, hairline rule) but each card is a
+   key heading + a markdown-rendered body (.prose), not a click
+   target. The result count lives in an aria-live region.
+   ============================================================ */
+/* Memory page layout: a single scrollable column (search strip pinned,
+   list scrolls). The .layout-memory modifier lets the memory page use a
+   block column instead of the dashboard's flex lanes row. */
+.layout-memory {
+  display: block;
+  overflow: auto;
+}
+.memory-region {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+.memory-search {
+  margin: 0;
+}
+.memory-search-label {
+  display: block;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.memory-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 9px 12px;
+}
+.memory-search-input::placeholder {
+  color: var(--muted);
+}
+.memory-search-input:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+  border-color: var(--brand-blue);
+}
+.memory-count {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.memory-card {
+  background: var(--paper-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.memory-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.memory-key {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-blue);
+  margin: 0 0 8px;
+  word-break: break-word;
+  flex: 1;
+}
+.memory-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.12s ease;
+}
+.memory-card:hover .memory-card-actions {
+  opacity: 1;
+}
+.memory-action-btn {
+  background: transparent;
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.memory-action-btn:hover {
+  background: var(--paper-2);
+  border-color: var(--rule);
+}
+.memory-action-btn:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+}
+.memory-edit-btn:hover {
+  border-color: var(--brand-blue);
+}
+.memory-forget-btn:hover {
+  border-color: var(--red-100);
+}
+.memory-body {
+  font-size: 13px;
+}
+.memory-empty {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 12px 4px;
+}
+.memory-error {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--red-100);
+  background: var(--danger-bg);
+  padding: 10px 14px;
+  border-radius: 4px;
+  border-left: 3px solid var(--red-100);
+}
+
+/* Memory toolbar — search + new memory button side by side. */
+.memory-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.memory-toolbar .memory-search {
+  flex: 1;
+}
+.memory-new-btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--brand-blue);
+  color: var(--on-brand);
+  border: none;
+  border-radius: 4px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.memory-new-btn:hover {
+  background: var(--brand-blue-d);
+}
+.memory-new-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Memory dialog (native <dialog>) — create/edit/confirm modals. */
+.memory-dialog {
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  max-width: 520px;
+  width: 90vw;
+}
+.memory-dialog::backdrop {
+  background: rgba(46, 47, 50, 0.55);
+}
+.memory-dialog-form {
+  padding: 20px 24px;
+}
+.memory-dialog-title {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: var(--ink);
+}
+.memory-dialog-title-danger {
+  color: var(--red-100);
+}
+.memory-dialog-field {
+  margin: 0 0 14px;
+}
+.memory-dialog-field label {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.memory-dialog-hint {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+.memory-dialog-hint code {
+  background: var(--paper-2);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+.memory-dialog-warning {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  background: var(--spark-10);
+  border-left: 3px solid var(--spark-100);
+  border-radius: 0 4px 4px 0;
+}
+.memory-dialog-warning code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--code-chip-bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.memory-input,
+.memory-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 9px 12px;
+}
+.memory-input[readonly] {
+  background: var(--paper-2);
+  color: var(--muted);
+}
+.memory-textarea {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 100px;
+}
+.memory-input:focus-visible,
+.memory-textarea:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+  border-color: var(--brand-blue);
+}
+.memory-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.memory-btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.memory-btn-primary {
+  background: var(--brand-blue);
+  color: var(--on-brand);
+  border: 1px solid var(--brand-blue);
+}
+.memory-btn-primary:hover {
+  background: var(--brand-blue-d);
+  border-color: var(--brand-blue-d);
+}
+.memory-btn-secondary {
+  background: var(--paper-3);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-2);
+}
+.memory-btn-secondary:hover {
+  background: var(--paper-2);
+  border-color: var(--rule);
+}
+.memory-btn-danger {
+  background: var(--red-100);
+  color: var(--on-brand);
+  border: 1px solid var(--red-100);
+}
+.memory-btn-danger:hover {
+  background: var(--red-pressed);
+  border-color: var(--red-pressed);
+}
+.memory-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Confirm dialog is narrower and more focused. */
+.memory-dialog-confirm {
+  max-width: 440px;
 }
 
 /* ============================================================
@@ -419,7 +1162,7 @@ pre { margin: 0; }
 .modal-warning {
   margin-top: 6px;
   padding: 6px 10px;
-  background: #fff7e0;
+  background: var(--spark-10);
   border-left: 3px solid var(--brand-yellow);
   color: var(--warning-text);
   font-size: 12px;
@@ -458,35 +1201,64 @@ pre { margin: 0; }
   background: var(--paper-2);
   color: var(--ink-2);
 }
-.status-open        { background: var(--brand-blue-l); color: var(--brand-blue-d); }
-.status-in_progress { background: var(--brand-blue); color: white; }
-.status-blocked     { background: #fde6e7; color: var(--accent); }
+.status-open {
+  background: var(--status-open-bg);
+  color: var(--status-open-fg);
+}
+.status-in_progress {
+  background: var(--status-in-progress-bg);
+  color: var(--status-in-progress-fg);
+}
+.status-blocked {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+}
 .status-closed,
 .status-resolved,
-.status-done        { background: #e6f3e0; color: var(--brand-green); }
+.status-done {
+  background: var(--status-closed-bg);
+  color: var(--status-closed-fg);
+}
 
-/* Field grid in modal */
+/* Field grid in modal
+   - Short metadata rows render 2-up (field-short)
+   - Long/prose/structured fields span full width (field-wide)
+*/
 .field-grid {
   display: grid;
-  grid-template-columns: 160px 1fr;
-  row-gap: 8px;
-  column-gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 14px;
   margin: 0;
 }
 .field {
-  display: contents;
+  margin: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+  min-width: 0;
 }
+.field-short { grid-column: span 1; }
+.field-wide { grid-column: 1 / -1; }
 .field-key {
+  margin: 0 0 4px;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
-  padding-top: 2px;
 }
 .field-val {
   margin: 0;
   font-family: var(--serif);
   font-size: 14px;
   word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+  .field-short,
+  .field-wide {
+    grid-column: 1 / -1;
+  }
 }
 .field-json {
   font-family: var(--mono);
@@ -589,15 +1361,58 @@ pre { margin: 0; }
 .audit-what { color: var(--ink); }
 .audit-commit { font-family: var(--mono); font-size: 10px; color: var(--muted-2); text-align: right; }
 
+/* Lifecycle status-transition timeline (bdboard-7r8). A vertical rail of
+   status stops; each row shows the status badge, when it was entered, how
+   long the bead dwelt in it, and who committed the change. The marker dot
+   reuses the same status colour tokens as the badges so colour is never the
+   only cue (the badge text carries the status name). */
+.timeline-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 2px solid var(--rule-2);
+  padding-left: 12px;
+}
+.timeline-row {
+  display: grid;
+  grid-template-columns: 12px auto 90px auto 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.timeline-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  align-self: center;
+  margin-left: -18px;
+  border: 2px solid var(--paper);
+  background: var(--muted-2);
+}
+.timeline-marker.status-in_progress { background: var(--accent); }
+.timeline-marker.status-closed { background: var(--ok); }
+.timeline-status {
+  font-family: var(--sans);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.timeline-when { font-family: var(--mono); color: var(--muted); }
+.timeline-dwell { font-size: 11px; }
+.timeline-who { font-size: 11px; text-align: right; }
+
 .audit-error {
   padding: 10px 12px;
   border-left: 3px solid var(--accent);
-  background: #fde6e7;
+  background: var(--danger-bg);
   font-size: 13px;
   color: var(--ink);
 }
 .audit-error code {
-  background: rgba(0,0,0,0.06);
+  background: var(--code-chip-bg);
   padding: 1px 4px;
   border-radius: 3px;
 }
@@ -616,7 +1431,7 @@ pre { margin: 0; }
   font-family: var(--mono);
   font-size: 13px;
   color: var(--accent);
-  background: #fde6e7;
+  background: var(--danger-bg);
   padding: 10px 12px;
   border-radius: 4px;
 }
@@ -663,11 +1478,6 @@ pre { margin: 0; }
   text-decoration: none;
 }
 .footer-link:hover { color: var(--brand-blue); text-decoration: underline; }
-.footer-tip {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted-2);
-}
 
 /* Live indicator — small pulsing dot proves polling is alive. */
 .live-dot {
@@ -839,3 +1649,178 @@ pre { margin: 0; }
 /* Live status dot — green when SSE connected, amber when reconnecting. */
 .live-dot.live-on  { background: var(--ok); box-shadow: 0 0 0 2px rgba(42, 135, 3, 0.18); }
 .live-dot.live-off { background: var(--spark, #ffc220); box-shadow: 0 0 0 2px rgba(255, 194, 32, 0.22); }
+
+/* ============================================================
+   History page (bdboard-ej5) — KPI strip, throughput chart,
+   paginated closed list. Reuses the counts strip + filter-badge
+   idioms so the surface stays visually consistent with the board.
+   ============================================================ */
+.layout-history {
+  display: block;
+  overflow-y: auto;
+  padding: 18px 24px 32px;
+}
+.history-region-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.history-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.history-ranges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+/* The "All" preset reads better un-lowercased than the others. */
+.history-ranges .filter-badge { text-transform: none; }
+
+/* History stats — a SINGLE editorial row (bdboard-4zk) combining bd's
+   workspace-global totals ("via bd") with the range-derived KPIs. Relocated
+   into the masthead header (bdboard-w5z) to mirror the board's .masthead-counts
+   strip, so it now reuses the bare counts idiom (typography, hairline rules,
+   zero-muting) with NO box/border/background — visually symmetric with the
+   board's header counts. flex-wrap + row-gap keep it graceful at narrow widths
+   instead of overflowing the masthead row. */
+.history-stats {
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+/* "via bd" source tag — small-caps muted suffix marking the bd-sourced cells
+   so they never read as range-scoped alongside the range-derived ones. */
+.history-stat-src {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.history-section-title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* Throughput chart — FIXED-HEIGHT container so it can never collapse
+   (Chart.js convention carried over even though this is a CSS bar strip). */
+.throughput-chart {
+  height: 140px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 4px;
+}
+.throughput-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 100%;
+  overflow-x: auto;
+}
+.throughput-bar-cell {
+  flex: 1 0 14px;
+  min-width: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 2px;
+}
+.throughput-count {
+  font-family: var(--sans);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1;
+}
+.throughput-bar {
+  width: 100%;
+  min-height: 2px;
+  background: var(--blue-100);
+  border-radius: 2px 2px 0 0;
+  align-self: stretch;
+}
+/* Beads-created bars use a distinct hue (violet) so the created strip reads
+   as a different metric from the blue closed strip at a glance. Both are
+   non-text UI fills, so 3:1 against paper is the bar (design §5 / WCAG). */
+.throughput-bar-created {
+  background: var(--violet);
+}
+.throughput-day {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history-card .bead-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.history-closed-when {
+  margin-left: auto;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+}
+.history-close-reason {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.history-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+.history-page-indicator {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--blue-100);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.history-empty {
+  padding: 18px 0;
+}
+.history-foot-summary {
+  border-top: 1px solid var(--rule);
+  padding-top: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+}

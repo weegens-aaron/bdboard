@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Priority badge contrast — light</title>
+<link rel="stylesheet" href="../../../src/bdboard/static/styles.css">
+<style>
+  body { padding: 28px 32px; }
+  h1 { font-family: var(--display); font-size: 22px; margin: 0 0 4px; color: var(--ink); }
+  p.sub { font-family: var(--sans); font-size: 12px; color: var(--muted); margin: 0 0 22px; }
+  .row { display: flex; align-items: center; gap: 14px; margin: 10px 0; }
+  .badge-cell { width: 70px; }
+  .meta { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .ratio { font-family: var(--mono); font-size: 12px; color: var(--brand-blue); font-weight: 700; }
+  .surfaces { display: flex; gap: 10px; margin-left: 6px; }
+  .surf { padding: 6px 10px; border-radius: 4px; }
+  .surf.s1 { background: var(--paper); }
+  .surf.s2 { background: var(--paper-2); }
+  .surf.s3 { background: var(--paper-3); }
+  .label { font-family: var(--sans); font-size: 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <h1>Priority badges — light theme</h1>
+  <p class="sub">Distinct, accessible P0–P4 palette · WCAG AA verified (bdboard-rld)</p>
+
+  <div class="row"><div class="badge-cell"><span class="bead-priority p0">P0</span></div>
+    <span class="meta">solid red · on-brand text</span><span class="ratio">4.59:1 (L) / 6.42:1 (D)</span></div>
+  <div class="row"><div class="badge-cell"><span class="bead-priority p1">P1</span></div>
+    <span class="meta">solid amber · ink text</span><span class="ratio">8.28:1 (L) / 11.09:1 (D)</span></div>
+  <div class="row"><div class="badge-cell"><span class="bead-priority p2">P2</span></div>
+    <span class="meta">blue tint · blue-d text</span><span class="ratio">7.10:1 (L) / 8.95:1 (D)</span></div>
+  <div class="row"><div class="badge-cell"><span class="bead-priority p3">P3</span></div>
+    <span class="meta">neutral fill · ink text</span><span class="ratio">10.51:1 (L) / 11.36:1 (D)</span></div>
+  <div class="row"><div class="badge-cell"><span class="bead-priority p4">P4</span></div>
+    <span class="meta">ghost outline · ink-2 text</span><span class="ratio">8.23:1 (L) / 10.07:1 (D) worst surface</span></div>
+
+  <p class="label" style="margin-top:18px">P4 (transparent) shown across all three surfaces:</p>
+  <div class="surfaces">
+    <div class="surf s1"><span class="bead-priority p4">P4</span></div>
+    <div class="surf s2"><span class="bead-priority p4">P4</span></div>
+    <div class="surf s3"><span class="bead-priority p4">P4</span></div>
+  </div>
+</body>
+</html>

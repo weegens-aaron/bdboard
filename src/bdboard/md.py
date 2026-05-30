@@ -36,9 +36,23 @@ def _renderer() -> MarkdownIt:
     )
 
 
+_ESCAPED_NEWLINE_SENTINEL = "__BDBOARD_ESCAPED_NEWLINE__"
+
+
+def _normalize_escaped_newlines(text: str) -> str:
+    """Convert single escaped newline sequences (``\\n``) to real newlines.
+
+    We intentionally leave double-escaped forms (``\\\\n``) alone so callers can
+    still render a literal ``\\n`` when they mean to.
+    """
+    protected = text.replace("\\\\n", _ESCAPED_NEWLINE_SENTINEL)
+    normalized = protected.replace("\\n", "\n")
+    return normalized.replace(_ESCAPED_NEWLINE_SENTINEL, "\\n")
+
+
 def render(text: str | None) -> str:
     """Render markdown to HTML. Empty / None input returns empty string
     so templates can `{{ field | md }}` without guarding."""
     if not text:
         return ""
-    return _renderer().render(text)
+    return _renderer().render(_normalize_escaped_newlines(text))

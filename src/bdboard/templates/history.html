@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block body %}
+<header class="masthead">
+  <div class="masthead-row">
+    <div class="masthead-brand">
+      <h1 class="title">History</h1>
+    </div>
+    {% include "partials/nav.html" %}
+    {# Masthead stats host (bdboard-w5z) — symmetric with the board's
+       .masthead-counts. It starts empty; the #history-region's first
+       /api/history load (and every range click / SSE refresh) returns the
+       stats <dl> as an hx-swap-oob fragment that targets #history-stats by id,
+       so the header strip is populated and kept current with no extra fetch. #}
+    <div class="masthead-counts" id="history-stats"></div>
+  </div>
+</header>
+
+<main class="layout layout-history">
+  {# History region — the single HTMX swap target (design §4/D4/D7).
+     `partials/history.html` (loaded via /api/history) renders its range
+     control, KPI strip, throughput chart, and paginated closed list into
+     this element; every range button and pager re-fetches /api/history with
+     hx-target="#history-region", so the whole control surface stays
+     server-driven with zero client framework.
+
+     Triggers:
+       - load          → fill the region on first paint (default 30d window).
+       - refresh from:body → SSE live-update. The base.html EventSource fires
+         a synthetic `refresh` event on <body> whenever the watcher detects a
+         .beads/ change, so a bead closing while you watch History appears
+         live — inheriting the board's pipeline, no new event type (D7).
+
+     NOTE: an SSE-driven refresh re-fetches the DEFAULT window (no query
+     params), which is the same read-only "snap back to fresh data" behaviour
+     the board's lanes region has. Range/page selection lives in the URL the
+     buttons fire, not in this element, keeping the wiring DRY. #}
+  <section
+    id="history-region"
+    class="history-region"
+    aria-label="Bead history"
+    hx-get="/api/history"
+    hx-trigger="load, refresh from:body"
+    hx-swap="innerHTML"
+  ></section>
+</main>
+{% endblock %}

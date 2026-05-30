@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import socket
-import sys
 import threading
 import time
 import webbrowser
@@ -23,9 +22,7 @@ def _run(
     addr: str = typer.Option("127.0.0.1:7332", help="HTTP listen address"),
     no_browser: bool = typer.Option(False, "--no-browser", help="don't auto-launch"),
     bd_bin: str = typer.Option("bd", "--bd", help="path to bd binary"),
-    workspace: Path = typer.Option(
-        None, "--dir", help="workspace dir (default: cwd)"
-    ),
+    workspace: Path = typer.Option(None, "--dir", help="workspace dir (default: cwd)"),
     strict_port: bool = typer.Option(
         False,
         "--strict-port",
@@ -114,8 +111,12 @@ def _pick_port(host: str, start_port: int, strict: bool) -> int:
         )
     else:
         typer.echo(
-            f"no free port in range {start_port}..{end - 1} — "
-            "is something hoarding ports? try `lsof -iTCP -sTCP:LISTEN`",
+            f"no free port in range {start_port}..{end - 1}. "
+            "Close another local server or pick a different --addr port.",
+            err=True,
+        )
+        typer.echo(
+            "Advanced check: list listeners with `lsof -iTCP -sTCP:LISTEN`.",
             err=True,
         )
     raise SystemExit(1)
