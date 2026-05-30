@@ -436,6 +436,7 @@ async def api_history(
         beads, range_key=range_key, page=page, page_size=size
     )
     series = derive.throughput(beads, range_key=range_key)
+    stats = derive.lead_time_stats(beads, range_key=range_key)
     # Beads created per day (bdboard-5t5): day-bucketed by created_at,
     # complementing the closed-by-closed_at throughput series. Range-scoped
     # the same way so both charts read against the same window.
@@ -443,6 +444,15 @@ async def api_history(
     peak = max((d["count"] for d in series), default=0)
     created_peak = max((d["count"] for d in created_series), default=0)
     created_total = sum(d["count"] for d in created_series)
+    avg_per_day = round(stats["n"] / len(series), 1) if series else 0
+    # Optional headline KPI (design §6, bead F): bd's own aggregate summary
+    # (incl. average_lead_time_hours). These are workspace-global, point-in-
+    # time totals — NOT range-scoped — so we surface them as a distinct
+    # "via bd" headline in the masthead stats strip. It's pure sugar:
+    # status_summary() returns None on any bd hiccup and the template simply
+    # omits the headline cells, leaving the range-derived KPIs as the primary
+    # surface so the masthead degrades gracefully when bd is unavailable.
+    bd_summary = await store.bd.status_summary()
     return TEMPLATES.TemplateResponse(
         request,
         "partials/history.html",
@@ -457,6 +467,9 @@ async def api_history(
             "created_series": created_series,
             "created_peak": created_peak,
             "created_total": created_total,
+            "stats": stats,
+            "avg_per_day": avg_per_day,
+            "bd_summary": bd_summary,
         },
     )
 

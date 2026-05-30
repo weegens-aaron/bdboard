@@ -81,13 +81,13 @@ def _call(
     return resp.status_code, resp.body.decode()
 
 
-def test_no_kpi_stats_strip_rendered() -> None:
-    # bdboard-2qf: the editorial KPI stats strip (Total / Closed / Avg lead /
-    # Median lead / Throughput + the closed-per-day foot summary) was removed
-    # entirely. /api/history must no longer emit the history_stats OOB fragment
-    # nor any of those labels, in the masthead or the body. A stubbed bd_summary
-    # would have populated the old 'via bd' cells, so set one to prove they're
-    # gone regardless of bd availability.
+def test_masthead_stats_present_foot_summary_absent() -> None:
+    # bdboard-9jt: the header/masthead KPI stats strip is RESTORED (it was
+    # over-removed alongside the bottom foot summary by bdboard-2qf). The
+    # masthead stats <dl> must come back as an hx-swap-oob fragment with its
+    # labels, while the bottom-of-page foot summary ("N closed/day on average")
+    # stays removed. A stubbed bd_summary populates the 'via bd' Total/Closed
+    # cells to prove the graceful headline path renders when bd is available.
     async def fake_summary():
         return {"total_issues": 5, "closed_issues": 3}
 
@@ -96,13 +96,39 @@ def test_no_kpi_stats_strip_rendered() -> None:
 
     _, body = _call()
 
-    # No stats surface: no OOB fragment, no host class, no stat labels/icons.
-    assert "history-stats" not in body
-    assert 'hx-swap-oob="true"' not in body
-    assert "stat-info" not in body
-    assert "history-foot-summary" not in body
+    # Masthead stats surface IS back: OOB fragment, host id, stat labels/icons.
+    assert "history-stats" in body
+    assert 'hx-swap-oob="true"' in body
+    assert "stat-info" in body
     for label in ("Avg lead", "Median lead", "Throughput", "Closed (range)"):
-        assert label not in body
+        assert label in body
+    # The 'via bd' workspace totals render when bd_summary is available.
+    assert "Total" in body
+
+    # The bottom foot summary stays removed (bdboard-2qf intent preserved).
+    assert "history-foot-summary" not in body
+    assert "closed/day on average" not in body
+
+
+def test_masthead_stats_degrade_without_bd_summary() -> None:
+    # bdboard-9jt: the masthead must degrade gracefully when bd's status
+    # summary is unavailable (status_summary returns None). The range-derived
+    # KPIs still render; only the optional 'via bd' Total/Closed cells drop.
+    async def fake_summary():
+        return None
+
+    app_module.store.bd.status_summary = fake_summary  # type: ignore[assignment]
+    _stub_snapshot([_bead("a", days_ago=1), _bead("b", days_ago=2)])
+
+    _, body = _call()
+
+    # The strip still renders with the range-derived KPIs.
+    assert "history-stats" in body
+    assert 'hx-swap-oob="true"' in body
+    for label in ("Avg lead", "Median lead", "Throughput", "Closed (range)"):
+        assert label in body
+    # Foot summary stays gone regardless of bd availability.
+    assert "history-foot-summary" not in body
     assert "closed/day on average" not in body
 
 

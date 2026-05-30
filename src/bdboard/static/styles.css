@@ -1679,6 +1679,99 @@ pre { margin: 0; }
 /* The "All" preset reads better un-lowercased than the others. */
 .history-ranges .filter-badge { text-transform: none; }
 
+/* History stats — a SINGLE editorial row (bdboard-4zk) combining bd's
+   workspace-global totals ("via bd") with the range-derived KPIs. Relocated
+   into the masthead header (bdboard-w5z) to mirror the board's .masthead-counts
+   strip, so it now reuses the bare counts idiom (typography, hairline rules,
+   zero-muting) with NO box/border/background — visually symmetric with the
+   board's header counts. flex-wrap + row-gap keep it graceful at narrow widths
+   instead of overflowing the masthead row. */
+.history-stats {
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+/* Info-icon popover (bdboard-5wt) — terse stat labels delegate their fuller
+   explanation (data source, claim→close vs created→close definition, range
+   scope) to this CSS-only popover. The <button> reveals the tooltip on
+   hover/focus (keyboard-accessible: focus alone triggers it); aria-describedby
+   ties the always-present tooltip text to the button so assistive tech reads
+   the explanation regardless of the visual hover/focus state. No JS. */
+.counts-label { position: relative; }
+.stat-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+}
+.stat-info:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.stat-info:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+/* Tooltip: in the DOM at all times for aria-describedby, but visually hidden
+   until its trigger is hovered/focused. Clipped (not display:none) so screen
+   readers can still resolve the aria-describedby reference.
+
+   Anchored BELOW the trigger (bdboard-r1h): the stats strip sits at the very
+   top of the masthead, so an upward-anchored popover was clipped off the top
+   edge of the viewport. Opening downward keeps the whole panel in view since
+   the masthead has the entire page below it. */
+.stat-info-pop {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  background: var(--paper-3);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: 0 4px 12px var(--shadow-inset);
+  /* visually hidden but accessible (not display:none) */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+/* Right-edge cell (e.g. "Throughput", last in the row): anchor the popover's
+   RIGHT edge to the trigger so a 240px panel grows leftward INTO the row
+   instead of overflowing past the right edge of the viewport (bdboard-r1h). */
+.history-stats .counts-cell:last-child .stat-info-pop {
+  left: auto;
+  right: 0;
+}
+.stat-info:hover + .stat-info-pop,
+.stat-info:focus-visible + .stat-info-pop,
+.stat-info-pop:hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .history-section-title {
   font-family: var(--display);
   font-size: 18px;

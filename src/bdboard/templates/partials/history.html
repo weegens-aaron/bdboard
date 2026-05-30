@@ -3,6 +3,8 @@
    Symmetric with partials/lanes.html. Pure render over the snapshot-derived
    views handed in by app.api_history():
      - range control (7d / 30d / 90d / All), default 30d
+     - single editorial stats row (bd totals + range-derived KPIs), emitted as
+       an hx-swap-oob fragment into the masthead host (#history-stats)
      - beads-created-per-day and beads-closed-per-day bar strips (fixed height)
      - paginated closed list (clicking a card opens the shared bead modal)
 
@@ -36,6 +38,15 @@
       {% endfor %}
     </div>
   </div>
+
+  {# Stats row — relocated into the masthead header (bdboard-w5z) to mirror the
+     board's .masthead-counts. It is NOT rendered inline here in the body;
+     instead partials/history_stats.html is emitted as an hx-swap-oob fragment
+     (see the include at the foot of this region) so the SAME /api/history
+     response that swaps this region also updates the masthead stats out-of-
+     band. One fetch keeps both surfaces in sync on every range change and SSE
+     refresh — no second endpoint, no client JS (DRY). bdboard-9jt restored
+     this header strip while keeping the bottom foot-summary line removed. #}
 
   {# Beads closed chart — a day-bucketed bar strip in a FIXED-HEIGHT container
      so it can never collapse. Each bar carries a text aria-label ("N closed
@@ -175,4 +186,14 @@
     </p>
     {% endif %}
   </section>
+
+  {# OOB masthead stats (bdboard-w5z, restored bdboard-9jt). Emitting the stats
+     <dl> here with hx-swap-oob="true" makes HTMX peel it off the response and
+     swap it into #history-stats in the masthead, while the rest of this
+     response fills #history-region. Same fetch, both surfaces — so the
+     range-scoped stats in the header stay live on every range click and SSE
+     refresh. NOTE: the bottom-of-page foot-summary line ("N closed in range;
+     median lead ...; N closed/day on average") stays removed per bdboard-2qf;
+     only the masthead strip is restored here. #}
+  {% include "partials/history_stats.html" %}
 </div>
