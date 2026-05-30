@@ -123,6 +123,12 @@ TEMPLATES.env.globals["csrf_token"] = _CSRF_TOKEN
 _WORKSPACE = Path(os.environ.get("BDBOARD_WORKSPACE") or _safe_cwd())
 _BD_BIN = os.environ.get("BDBOARD_BD_BIN", "bd")
 
+# Optional actor override for the audit trail on manual field edits. When unset
+# bd falls back to $BEADS_ACTOR / git user.name / $USER, so this is just a way
+# to force a human-edit attribution distinct from any agent identity that may
+# also be writing to the same workspace (spike bdboard-7q9 §4 — auditability).
+_ACTOR = os.environ.get("BDBOARD_ACTOR") or None
+
 bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE)
 store = Store(bd)
 
@@ -645,6 +651,96 @@ async def api_memory_delete(
         request,
         "partials/memory_list.html",
         {"memories": memories, "query": ""},
+    )
+
+
+# ----- field edits (manual value editing, bdboard-o9v.2) -----
+
+
+@app.post("/api/bead/{bead_id}/field", response_class=HTMLResponse)
+async def api_bead_field_update(
+    request: Request,
+    bead_id: str,
+    field: str = Form(...),
+    value: str = Form(""),
+    csrf: str = Form(None, alias="csrf_token"),
+    x_csrf_token: str | None = Header(None),
+) -> HTMLResponse:
+    """Edit one bead field VALUE via `bd update`, return the re-rendered row.
+
+    The write half of manual field editing (epic bdboard-o9v, spike
+    bdboard-7q9 §5). Reuses the exact remember/forget plumbing: CSRF guard,
+    serialized bd mutation, SSE broadcast, optimistic re-render.
+
+    Safety: the `field` name is validated against _FIELD_REGISTRY and rejected
+    unless it is explicitly `editable`. Read-only is the default for anything
+    not whitelisted, so non-editable / shape / lifecycle / immutable fields
+    (status, parent, id, story_points, timestamps, ...) can never be written
+    here even if a crafted request asks for them. The registry's `flag` is the
+    ONLY flag passed to bd — we never let the client choose the flag.
+
+    On success we return the freshly re-rendered field row (partials/
+    field_row.html) for an in-place HTMX swap of `#field-row-<field>`.
+    """
+    _check_csrf(x_csrf_token, csrf)
+    field = field.strip()
+    spec = _field_spec(field)
+    if not spec.editable or not spec.flag:
+        # Not whitelisted (or whitelisted but missing a flag, which would be a
+        # registry bug). Either way: refuse to write a non-editable field.
+        return HTMLResponse(
+            f'<p class="field-error" role="alert">Field “{field}” is not editable.</p>',
+            status_code=400,
+        )
+    # Append-only fields (notes) must never be sent with --notes (which
+    # REPLACES and would nuke agent verification history). The registry pins
+    # the safe flag (--append-notes); an append with no content is a no-op we
+    # reject rather than silently swallow.
+    new_value = value if spec.editor == "md" else value.strip()
+    if spec.append_only and not new_value.strip():
+        return HTMLResponse(
+            '<p class="field-error" role="alert">Nothing to add.</p>',
+            status_code=400,
+        )
+    try:
+        await bd.update_field(bead_id, spec.flag, new_value, actor=_ACTOR)
+    except RuntimeError as err:
+        log.warning("bd update %s %s failed: %s", bead_id, spec.flag, err)
+        return HTMLResponse(
+            f'<p class="field-error" role="alert">Could not save: {err}</p>',
+            status_code=500,
+        )
+    # Broadcast SSE so other tabs/clients refresh too.
+    await bus.broadcast("beads_changed")
+    # Optimistic re-render: fetch the post-edit bead and return JUST the
+    # affected field row for an in-place swap. Falls back to the cached
+    # snapshot if the live read momentarily fails, so the user still sees a
+    # row (it will reconcile on the SSE-driven refresh).
+    full, _err = await bd.show_long(bead_id)
+    bead: dict[str, Any] | None = full
+    if bead is None:
+        await store.snapshot()
+        bead = store.bead(bead_id)
+    if bead is None:
+        # The edit succeeded but we can't re-read — nudge the client to reload
+        # the whole modal rather than leaving a stale row.
+        return HTMLResponse(
+            '<p class="field-error" role="alert">Saved, but could not refresh — '
+            "reopen the bead to see the change.</p>",
+            status_code=200,
+        )
+    row = next((r for r in _ordered_fields(bead) if r["key"] == field), None)
+    if row is None:
+        # Field saved but no longer present in the rendered set (e.g. cleared
+        # to empty and filtered): re-render is best-effort, so acknowledge.
+        return HTMLResponse(
+            '<p class="field-saved" role="status">Saved.</p>',
+            status_code=200,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/field_row.html",
+        {"f": row},
     )
 
 

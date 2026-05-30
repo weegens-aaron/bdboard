@@ -32,6 +32,7 @@ SHOW_TIMEOUT_S = 8.0
 MEMORIES_TIMEOUT_S = 8.0
 REMEMBER_TIMEOUT_S = 10.0  # writes may be slower (dolt commit)
 FORGET_TIMEOUT_S = 10.0
+UPDATE_TIMEOUT_S = 10.0  # field edits: dolt commit, possibly long markdown
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
 
@@ -350,32 +351,97 @@ class BdClient:
         )
         self._memories_cache.clear()
 
-    async def _run_mutate(self, args: list[str], timeout: float) -> None:
+    # ----- field edits: manual value editing (bdboard-o9v.2) -----
+
+    # Flags whose value bd can read from a file/stdin instead of a positional
+    # arg. Long markdown (description, design) goes through stdin via these
+    # *-file variants with '-' to dodge shell-arg length limits and any
+    # quoting fragility (spike bdboard-7q9 §4). Every other flag (title,
+    # priority, append-notes, ...) takes its value directly as an arg — which
+    # is already shell-safe because we use create_subprocess_exec (no shell).
+    _STDIN_FLAG_ALIASES = {
+        "--description": "--body-file",
+        "--design": "--design-file",
+    }
+
+    async def update_field(
+        self,
+        bead_id: str,
+        flag: str,
+        value: str,
+        actor: str | None = None,
+    ) -> None:
+        """Edit a single bead field value via `bd update <id> <flag> <value>`.
+
+        Thin sibling of remember/forget: serialized on the same
+        _subprocess_gate (bd's dolt store is single-writer), surfaces bd's
+        stderr on failure, and invalidates caches so the next read returns
+        post-edit state instead of an up-to-10s-stale snapshot.
+
+        `flag` is the exact `bd update` flag the caller pulled from the field
+        registry (e.g. '--title', '--priority', '--append-notes'). For long
+        markdown flags (description/design) the value is streamed on stdin
+        via the file-flag variant rather than passed as a positional arg.
+        `actor` (when set) is forwarded as --actor so the audit trail
+        attributes the human edit correctly rather than to an agent identity;
+        when None, bd falls back to $BEADS_ACTOR / git user.name / $USER.
+
+        Raises RuntimeError on subprocess failure (bd's stderr surfaced).
+        """
+        args = ["update", bead_id]
+        stdin_data: str | None = None
+        file_flag = self._STDIN_FLAG_ALIASES.get(flag)
+        if file_flag is not None:
+            args += [file_flag, "-"]
+            stdin_data = value
+        else:
+            args += [flag, value]
+        if actor:
+            args += ["--actor", actor]
+        await self._run_mutate(args, timeout=UPDATE_TIMEOUT_S, stdin_data=stdin_data)
+        # Drop the per-bead detail cache immediately so the route's follow-up
+        # show_long returns the freshly-edited value (the watcher will also
+        # fire, but may lose the race against the optimistic re-render). We
+        # also invalidate the sibling caches the edit may have shifted.
+        self._show_cache.clear()
+        self.invalidate_caches()
+
+    async def _run_mutate(
+        self,
+        args: list[str],
+        timeout: float,
+        stdin_data: str | None = None,
+    ) -> None:
         """Run a bd mutation command (no --json, no parse, check exit only).
 
         Serialized via _subprocess_gate like read commands; mutations are
         single-writer so we must avoid concurrent writes from multiple
-        browser tabs / users on the same workspace.
+        browser tabs / users on the same workspace. When stdin_data is
+        provided it is written to the child's stdin (used to stream long
+        markdown via bd's --body-file -/--design-file - so we never hit
+        shell-arg length limits).
         """
         async with self._subprocess_gate:
             proc = await asyncio.create_subprocess_exec(
                 self.bd_bin,
                 *args,
                 cwd=str(self.workspace),
+                stdin=asyncio.subprocess.PIPE if stdin_data is not None else None,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
+            input_bytes = stdin_data.encode() if stdin_data is not None else None
             try:
-                _stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+                _stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(input=input_bytes), timeout=timeout
+                )
             except TimeoutError as err:
                 proc.kill()
                 await proc.wait()
-                raise RuntimeError(
-                    "Request timed out while saving memory. Please try again."
-                ) from err
+                raise RuntimeError("Request timed out while saving. Please try again.") from err
             if proc.returncode != 0:
-                # bd forget on a non-existent key exits non-zero with a
-                # descriptive stderr; surface it.
+                # bd forget on a non-existent key (or update on a bad value)
+                # exits non-zero with a descriptive stderr; surface it.
                 err_text = stderr.decode(errors="replace").strip()
                 raise RuntimeError(
                     err_text or f"bd {args[0]} failed (exit {proc.returncode}). Please try again."

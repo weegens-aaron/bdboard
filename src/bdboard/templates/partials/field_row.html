@@ -1,0 +1,63 @@
+{# One bead-detail field row.
+
+   Single source of the row markup so the modal grid and the field-edit
+   write path (POST /api/bead/{id}/field, bdboard-o9v.2) render byte-identical
+   rows — the route returns exactly this partial for the HTMX swap after a
+   save. The template stays declarative: it dispatches on `f.kind` for display
+   and carries the editability hints (`f.editable`/`f.editor`/...) sourced from
+   the field registry for the inline-edit UI (bdboard-o9v.3) to attach to.
+
+   The stable `id` (field-row-<key>) gives HTMX a deterministic swap target so
+   a saved field can replace just its own row in place. #}
+<div id="field-row-{{ f.key }}"
+     class="field field-kind-{{ f.kind }} {% if f.short_meta %}field-short{% else %}field-wide{% endif %}"
+     data-field-key="{{ f.key }}"
+     {% if f.editable %}data-editable="1"{% endif %}>
+  <dt class="field-key">{{ f.key }}</dt>
+  <dd class="field-val">
+    {% if f.kind == "empty" %}
+      <span class="muted">—</span>
+    {% elif f.kind == "chips" %}
+      <ul class="chip-list">
+        {% for item in f.val %}<li class="chip chip-label">{{ item }}</li>{% endfor %}
+      </ul>
+    {% elif f.kind == "deps" %}
+      <ul class="dep-list">
+        {% for d in f.val %}
+        <li class="dep-row">
+          <span class="dep-rel">
+            {{ (d.dependency_type or d.type or d.rel) | dep_label(f.key) }}
+          </span>
+          <a class="dep-id"
+             hx-get="/api/bead/{{ d.depends_on_id or d.target or d.id }}"
+             hx-target="#bead-modal" hx-swap="innerHTML"
+             hx-indicator="#nav-progress"
+             style="cursor:pointer">{{ d.depends_on_id or d.target or d.id }}</a>
+          {% if d.status %}<span class="dep-status status-{{ d.status }}">{{ d.status }}</span>{% endif %}
+          {% if d.title %}<span class="dep-title">{{ d.title }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% elif f.kind == "comments" %}
+      <ul class="comment-list">
+        {% for c in f.val %}
+        <li class="comment-card">
+          <header class="comment-meta">
+            <span class="comment-author">{{ c.author or "—" }}</span>
+            <span class="comment-when">{{ c.created_at | humanize_ts }}</span>
+          </header>
+          <div class="comment-body">{{ c.text or c.body or "" }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+    {% elif f.kind == "markdown" %}
+      <div class="prose">{{ f.val | md | safe }}</div>
+    {% elif f.kind == "para" %}
+      <div class="field-para">{{ f.val }}</div>
+    {% elif f.kind == "json" %}
+      <pre class="field-json">{{ f.val | tojson(indent=2) }}</pre>
+    {% else %}
+      {{ f.val }}
+    {% endif %}
+  </dd>
+</div>
