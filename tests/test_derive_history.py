@@ -14,6 +14,7 @@ from bdboard.derive import (
     _percentile,
     _range_to_cutoff,
     history_window,
+    humanize_hours,
     lead_time_stats,
     throughput,
 )
@@ -316,3 +317,27 @@ def test_lead_time_stats_respects_range():
     ]
     stats = lead_time_stats(beads, "7d", now=NOW)
     assert stats["n"] == 1  # only the recent close is in the 7d window
+
+
+# ----- humanize_hours (History KPI strip, bdboard-ej5) -----
+
+
+def test_humanize_hours_none_and_negative():
+    assert humanize_hours(None) == "\u2014"
+    assert humanize_hours(-3.0) == "\u2014"
+
+
+def test_humanize_hours_sub_hour_renders_minutes():
+    assert humanize_hours(0.5) == "30m"
+    assert humanize_hours(0.0) == "0m"
+
+
+def test_humanize_hours_hours_trim_trailing_zero():
+    assert humanize_hours(3.0) == "3h"
+    assert humanize_hours(2.5) == "2.5h"
+
+
+def test_humanize_hours_days_past_48h():
+    assert humanize_hours(48.0) == "2d"
+    assert humanize_hours(36.0) == "36h"
+    assert humanize_hours(60.0) == "2.5d"

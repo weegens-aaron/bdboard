@@ -656,3 +656,24 @@ def humanize_ts(ts: str | None) -> str:
     if sec < 604800:
         return f"{sec // 86400}d ago"
     return dt.strftime("%b %d")
+
+
+def humanize_hours(hours: float | None) -> str:
+    """Render an hour-valued duration as a compact human string.
+
+    Examples: ``None`` -> '\u2014', 0.4 -> '24m', 2.5 -> '2.5h',
+    36.0 -> '1.5d'. Used by the History KPI strip for lead/cycle times.
+    """
+    if hours is None:
+        return "\u2014"
+    if hours < 0:
+        return "\u2014"
+    if hours < 1:
+        minutes = int(round(hours * 60))
+        return f"{minutes}m"
+    if hours < 48:
+        # Trim a trailing .0 so whole hours read cleanly (e.g. '3h' not '3.0h').
+        val = round(hours, 1)
+        return f"{val:g}h"
+    days = round(hours / 24.0, 1)
+    return f"{days:g}d"

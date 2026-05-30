@@ -87,6 +87,7 @@ def _dep_label(dep_type: str | None, direction: str) -> str:
 
 TEMPLATES = Jinja2Templates(directory=str(_PKG_DIR / "templates"))
 TEMPLATES.env.filters["humanize_ts"] = derive.humanize_ts
+TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
 # md filter: renders markdown to HTML. Marked safe via Jinja's |safe in the
 # template so we don't double-escape. Source content is bd-authored prose
 # and the renderer has html=False, so script-injection is not possible.
@@ -368,6 +369,48 @@ async def api_lanes(request: Request) -> HTMLResponse:
             "epic_lane": epic_lane,
             "lanes": derive.lanes(beads),
             "activity": derive.activity(beads),
+        },
+    )
+
+
+@app.get("/api/history", response_class=HTMLResponse)
+async def api_history(
+    request: Request,
+    range: str = derive.DEFAULT_HISTORY_RANGE,
+    page: int = 1,
+) -> HTMLResponse:
+    """Render the History swap region (HTMX target), symmetric with /api/lanes.
+
+    Pure derivation over the existing snapshot (design §4): no new bd call.
+    ``range`` selects the window (7d/30d/90d/all, default 30d; unknown values
+    degrade to the default inside derive). ``page`` drives server-side
+    pagination of the closed list (design §D5). We compute three views from
+    one snapshot — the paginated closed list, the throughput-per-day series,
+    and lead-time stats — and hand them to partials/history.html.
+    """
+    beads = await store.snapshot()
+    # Normalise the range once so the template's active-state cues and the
+    # derive calls agree on the same key (a bad ?range= degrades to default).
+    range_key = (range or "").strip().lower()
+    if range_key not in derive.HISTORY_RANGES:
+        range_key = derive.DEFAULT_HISTORY_RANGE
+    page = max(1, page)
+    window = derive.history_window(beads, range_key=range_key, page=page)
+    series = derive.throughput(beads, range_key=range_key)
+    stats = derive.lead_time_stats(beads, range_key=range_key)
+    peak = max((d["count"] for d in series), default=0)
+    avg_per_day = round(stats["n"] / len(series), 1) if series else 0
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/history.html",
+        {
+            "range_key": range_key,
+            "ranges": list(derive.HISTORY_RANGES.keys()),
+            "window": window,
+            "series": series,
+            "peak": peak,
+            "stats": stats,
+            "avg_per_day": avg_per_day,
         },
     )
 

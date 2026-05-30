@@ -1,0 +1,150 @@
+{# History swap region — HTMX target for /api/history (design §4/§5).
+
+   Symmetric with partials/lanes.html. Pure render over the snapshot-derived
+   views handed in by app.api_history():
+     - range control (7d / 30d / 90d / All), default 30d
+     - KPI strip (closed in range, median lead time, throughput/day avg)
+     - throughput-per-day bar strip in a fixed-height container
+     - paginated closed list (clicking a card opens the shared bead modal)
+     - one-line summary echoed at the foot (reports convention)
+
+   All range buttons + the pager re-fetch /api/history and re-swap this whole
+   region (#history-region lives on the full page, bead C), so the control
+   surface stays server-driven with zero client framework. #}
+
+{% set items = window["items"] %}
+{% set total = window["total"] %}
+{% set page = window["page"] %}
+{% set has_more = window["has_more"] %}
+
+{% set range_labels = {"7d": "7 days", "30d": "30 days", "90d": "90 days", "all": "all time"} %}
+{% set range_human = range_labels.get(range_key, range_key) %}
+
+<div class="history-region-inner">
+  {# Range control — mirrors the board's filter-badge idiom for visual + a11y
+     consistency (same button semantics, aria-pressed for the active window). #}
+  <div class="history-toolbar">
+    <div class="history-ranges" role="group" aria-label="History time range">
+      {% for r in ranges %}
+      <button
+        type="button"
+        class="filter-badge{% if r == range_key %} filter-badge-active{% endif %}"
+        aria-pressed="{{ 'true' if r == range_key else 'false' }}"
+        aria-label="Show history for the last {{ range_labels.get(r, r) }}"
+        hx-get="/api/history?range={{ r }}&page=1"
+        hx-target="#history-region"
+        hx-swap="innerHTML">{{ "All" if r == "all" else r }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# KPI strip — reuses the counts strip treatment. Wrapped in an aria-live
+     region so range changes are announced to screen readers (design §5). #}
+  <dl class="counts history-kpis" role="status" aria-live="polite">
+    <div class="counts-cell{% if stats.n == 0 %} counts-cell-zero{% endif %}">
+      <dt class="counts-label">Closed in {{ range_human }}</dt>
+      <dd class="counts-value">{{ stats.n }}</dd>
+    </div>
+    <div class="counts-cell{% if stats.median_lead_h is none %} counts-cell-zero{% endif %}">
+      <dt class="counts-label">Median lead time</dt>
+      <dd class="counts-value">{{ stats.median_lead_h | humanize_hours }}</dd>
+    </div>
+    <div class="counts-cell{% if not avg_per_day %} counts-cell-zero{% endif %}">
+      <dt class="counts-label">Throughput / day</dt>
+      <dd class="counts-value">{{ avg_per_day }}</dd>
+    </div>
+  </dl>
+
+  {# Throughput chart — a day-bucketed bar strip in a FIXED-HEIGHT container
+     so it can never collapse. Each bar carries a text aria-label ("N closed
+     on <date>") and a visible count so it is not colour-only (design §5). #}
+  <section class="history-throughput" aria-label="Beads closed per day">
+    <h2 class="history-section-title">Throughput</h2>
+    {% if series %}
+    <div class="throughput-chart" role="img"
+         aria-label="Closed-per-day from {{ series[0].day }} to {{ series[-1].day }}, peak {{ peak }} in a day">
+      <ul class="throughput-bars" role="list">
+        {% for d in series %}
+        <li class="throughput-bar-cell">
+          <span class="throughput-count" aria-hidden="true">{{ d.count if d.count else "" }}</span>
+          <span class="throughput-bar"
+                style="height: {{ (d.count / peak * 100) | round(1) if peak else 0 }}%"
+                aria-label="{{ d.count }} closed on {{ d.day }}"></span>
+          <span class="throughput-day" aria-hidden="true">{{ d.day[5:] }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <p class="history-empty muted">No throughput to chart in {{ range_human }}.</p>
+    {% endif %}
+  </section>
+
+  {# Closed list — vertical cards, newest-closed first. Clicking opens the
+     existing bead modal (reuse, don't rebuild). #}
+  <section class="history-list-section" aria-label="Closed beads">
+    <h2 class="history-section-title">
+      Closed beads
+      <span class="lane-count">{{ total }}</span>
+    </h2>
+    {% if items %}
+    <ul class="history-list" role="list">
+      {% for b in items %}
+      <li class="bead-card history-card"
+          hx-get="/api/bead/{{ b.id }}"
+          hx-target="#bead-modal"
+          hx-swap="innerHTML">
+        <div class="bead-card-head">
+          <span class="bead-id">{{ b.id }}</span>
+          {% if b.priority is not none %}
+          <span class="bead-priority p{{ b.priority }}">P{{ b.priority }}</span>
+          {% endif %}
+          <span class="history-closed-when" title="{{ b.closed_at }}">{{ b.closed_at | humanize_ts }}</span>
+        </div>
+        <div class="bead-title">{{ b.title }}</div>
+        <div class="bead-meta">
+          {% if b.assignee %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
+          {% if b.close_reason %}<span class="history-close-reason">{{ b.close_reason }}</span>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {# Pager — server-side pagination (design §D5). Prev/Next re-fetch this
+       region for the adjacent page within the current range. #}
+    <nav class="history-pager" aria-label="History pages">
+      {% if page > 1 %}
+      <button type="button" class="filter-badge"
+              hx-get="/api/history?range={{ range_key }}&page={{ page - 1 }}"
+              hx-target="#history-region" hx-swap="innerHTML"
+              aria-label="Previous page">‹ Newer</button>
+      {% endif %}
+      <span class="history-page-indicator">Page {{ page }}</span>
+      {% if has_more %}
+      <button type="button" class="filter-badge"
+              hx-get="/api/history?range={{ range_key }}&page={{ page + 1 }}"
+              hx-target="#history-region" hx-swap="innerHTML"
+              aria-label="Next page">Older ›</button>
+      {% endif %}
+    </nav>
+    {% elif page > 1 %}
+    <p class="history-empty muted">
+      Nothing on page {{ page }} —
+      <button type="button" class="link-button"
+              hx-get="/api/history?range={{ range_key }}&page=1"
+              hx-target="#history-region" hx-swap="innerHTML">back to page 1</button>.
+    </p>
+    {% else %}
+    <p class="history-empty muted">
+      Nothing closed in the last {{ range_human }} — try a wider range.
+    </p>
+    {% endif %}
+  </section>
+
+  {# Foot summary — echoes the headline per the reports convention. #}
+  <p class="history-foot-summary muted" role="status" aria-live="polite">
+    {{ stats.n }} bead{{ "" if stats.n == 1 else "s" }} closed in {{ range_human }};
+    median lead time {{ stats.median_lead_h | humanize_hours }},
+    {{ avg_per_day }} closed/day on average.
+  </p>
+</div>
