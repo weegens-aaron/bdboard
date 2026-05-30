@@ -98,20 +98,24 @@ Then fix the bug as part of this bead's work (scope expansion), finish the origi
 
 **The bug-discovery protocol is about *filing*, not closing.** Do NOT close any bead yourself (see Critical Don'ts).
 
-## Bug Artifact SOP
+## Bead Artifact SOP
 
-When filing a bug with attached evidence (screenshots, logs, traces, repro recordings):
+When filing or working ANY bead (bug, task, feature, spike, decision, chore, etc.) that has attached evidence — screenshots, mockups, logs, traces, repro recordings, diagrams, design exports, data dumps:
 
-1. Create the stub bead first — you need the bead ID for the directory name.
-2. `mkdir -p docs/bugs/<bead-id>/`
-3. Move artifacts into that dir using non-interactive flags: `mv -f <artifact> docs/bugs/<bead-id>/`
+1. Create (or identify) the bead first — you need the bead ID for the directory name.
+2. `mkdir -p docs/<type>/<bead-id>/` where `<type>` matches the bead category:
+   - bugs → `docs/bugs/<bead-id>/`
+   - tasks / features / chores / spikes / decisions / stories → `docs/tasks/<bead-id>/`
+   (If your project already groups artifacts under a single dir, follow the existing convention — the invariant is one subdir per bead ID, never loose files.)
+3. Move artifacts into that dir using non-interactive flags: `mv -f <artifact> docs/<type>/<bead-id>/`
+   - Rename cryptic/auto-generated filenames (e.g. `Screenshot 2026-... PM.png`) to something descriptive (`masthead-light.png`). Avoid spaces and non-breaking spaces in filenames — they break tooling and image loaders.
 4. Reference every artifact path explicitly in the bead's notes:
    ```bash
-   bd update <bead-id> --append-notes "Artifact: docs/bugs/<bead-id>/screenshot.png"
+   bd update <bead-id> --append-notes "Artifact: docs/<type>/<bead-id>/screenshot.png"
    ```
-5. `git add docs/bugs/<bead-id>/` and commit alongside the bead filing.
+5. `git add docs/<type>/<bead-id>/` and commit alongside the bead filing/update.
 
-Do NOT leave artifacts at the repo root or in `docs/bugs/` itself — they get orphaned from their bead.
+Do NOT leave artifacts at the repo root, in `docs/`, or directly in `docs/bugs/` / `docs/tasks/` (i.e. NOT inside the category dir but outside a bead-ID subdir) — they get orphaned from their bead.
 
 ## Tool Conventions (summary)
 

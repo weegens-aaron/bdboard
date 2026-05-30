@@ -3,6 +3,9 @@
 .dolt/
 *.db
 .beads-credential-key
+# Local interaction log — machine-local telemetry, not source of truth
+.beads/interactions.json
+.beads/interactions.jsonl
 
 # Python
 __pycache__/
