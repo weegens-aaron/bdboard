@@ -2,14 +2,12 @@
 {% block title %}History{% endblock %}
 {% block body %}
 <header class="masthead">
-  {# TOP ROW (bdboard-vbz): brand left, actions (theme + stats) right-aligned.
-     The page nav drops to its own second row below. #}
+  {# TOP ROW (bdboard-xgu) brand left, stats strip right-aligned. The page nav
+     and theme toggle move to the second row below. #}
   <div class="masthead-row">
     <div class="masthead-brand">
       <h1 class="title">History</h1>
     </div>
-    <div class="masthead-actions">
-    {% include "partials/theme_toggle.html" %}
     {# Masthead stats host (bdboard-w5z) — symmetric with the board's
        .masthead-counts. The #history-region's first /api/history load (and
        every range click / SSE refresh) returns the stats <dl> as an
@@ -26,11 +24,13 @@
     <div class="masthead-counts" id="history-stats" aria-busy="true">
       {% with cells = 6 %}{% include "partials/counts_skeleton.html" %}{% endwith %}
     </div>
-    </div>
   </div>
-  {# SECOND ROW (bdboard-vbz): page nav alone, left-aligned. #}
+  {# SECOND ROW (bdboard-xgu) page nav left, theme toggle right-aligned. #}
   <div class="masthead-row masthead-nav-row">
     {% include "partials/nav.html" %}
+    <div class="masthead-actions">
+      {% include "partials/theme_toggle.html" %}
+    </div>
   </div>
 </header>
 

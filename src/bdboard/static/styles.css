@@ -275,46 +275,45 @@ pre { margin: 0; }
 }
 .masthead-row {
   display: flex;
-  /* Top row keeps the brand + actions group on a SINGLE line (bdboard-9y7).
-     nowrap stops the actions group from dropping below the brand and — as a
-     lone wrapped flex item — getting left-aligned by the old
-     justify-content:space-between (that was the bug: theme toggle + Pour
-     Formula reflowed left under the brand instead of sitting right-aligned up
-     top). Graceful degradation at narrow widths is preserved because the
-     actions group wraps INTERNALLY via its own flex-wrap (folds in
-     bdboard-c52) and the brand title wraps its words — neither overflows. */
+  /* Both masthead rows split their contents left vs right (bdboard-xgu):
+     TOP row    = brand (left) + counts/stats strip (right);
+     SECOND row = page nav (left) + actions, i.e. theme toggle + Pour Formula
+                  (right).
+     nowrap is essential: it stops the right-hand group from wrapping ABOVE
+     its row-mate at narrow widths (the bdboard-9y7 / bdboard-xgu bug where
+     the actions reflowed over the brand). Graceful degradation is preserved
+     because the inner groups (.masthead-counts, .masthead-actions) wrap
+     INTERNALLY via their own flex-wrap (folds in bdboard-c52) and the brand
+     title wraps its words — nothing overflows the row. */
   flex-wrap: nowrap;
+  justify-content: space-between;
   align-items: flex-end;
   gap: 8px 32px;
 }
-/* TOP-ROW actions group (bdboard-vbz): theme toggle + Pour Formula + counts,
-   right-aligned via its own margin-left:auto on the nowrap top row (brand is
-   the only thing to its left). align-items:flex-end keeps the cells sharing
-   the counts strip's baseline; flex-wrap so the group reflows within itself at
-   narrow widths instead of clipping (folds in bdboard-c52). */
+/* Right-hand actions group (bdboard-xgu): theme toggle + Pour Formula, living
+   on the SECOND row opposite the page nav. It's right-aligned by the row's
+   justify-content:space-between, reinforced by margin-left:auto so it hugs the
+   right edge even if the nav is ever absent. align-items:flex-end keeps the
+   cells co-planar; flex-wrap lets the group reflow within itself at narrow
+   widths instead of clipping or pushing above the nav (folds in bdboard-c52). */
 .masthead-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
-  /* Pin the actions group hard-right on the top row regardless of how the
-     brand title sizes — the auto margin absorbs all leading free space. This
-     replaces the parent row's old justify-content:space-between, which
-     left-aligned the group the moment it wrapped to its own line (bdboard-9y7).
-     The auto margin keeps the group right-aligned in any residual wrap. */
   margin-left: auto;
   gap: 8px 24px;
 }
-/* SECOND ROW (bdboard-vbz): the page nav alone, left-aligned. A hairline
+/* SECOND ROW (bdboard-xgu): page nav (left) + actions (right). A hairline
    rule separates it from the top row, echoing the masthead's editorial rules.
-   margin-top ties it under the brand/actions row without crowding. */
+   margin-top ties it under the brand/counts row without crowding. It inherits
+   the parent .masthead-row's justify-content:space-between, so the nav sits
+   hard-left and the actions group sits hard-right — no override needed. */
 .masthead-nav-row {
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--rule);
-  /* Nav is the only child and should sit hard-left; set flex-start explicitly
-     so it never drifts toward centre when it's the lone item. */
-  justify-content: flex-start;
+  align-items: center;
 }
 .masthead-brand .title {
   font-family: var(--display);
@@ -434,12 +433,12 @@ pre { margin: 0; }
   margin-bottom: 8px;
 }
 
-/* Two-row masthead (bdboard-vbz): inside the right-aligned actions group the
-   theme toggle + Pour Formula button no longer sit beside the 38px wordmark —
-   they share a row with the counts strip (which has no baseline lift). Drop the
-   8px lift here so all actions-group cells bottom-align cleanly with the counts
-   labels. (The lift was only ever to clear the wordmark's deep descender on the
-   old single shared row.) */
+/* Second-row actions group (bdboard-xgu): the theme toggle + Pour Formula
+   button sit on the SECOND masthead row opposite the page nav, not beside the
+   wordmark. The .masthead-nav-row centre-aligns its items (align-items:center),
+   so neither cell needs the 8px baseline lift the old shared single row used to
+   clear the 38px wordmark's descender. Zero it out so the toggle, Pour Formula,
+   and nav links all sit on a clean shared centre line. */
 .masthead-actions .mh-toggle,
 .masthead-actions .formula-open-btn {
   margin-bottom: 0;
