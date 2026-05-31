@@ -37,9 +37,7 @@
         "code-health",
         "DRY"
       ],
-      "depends_on": [
-        "audit-root"
-      ]
+      "parent": "audit-root"
     },
     {
       "id": "solid-review",
@@ -51,9 +49,7 @@
         "code-health",
         "SOLID"
       ],
-      "depends_on": [
-        "audit-root"
-      ]
+      "parent": "audit-root"
     },
     {
       "id": "dead-code-triage",
@@ -65,9 +61,7 @@
         "code-health",
         "dead-code"
       ],
-      "depends_on": [
-        "audit-root"
-      ]
+      "parent": "audit-root"
     },
     {
       "id": "dep-hygiene-triage",
@@ -79,9 +73,7 @@
         "code-health",
         "dependencies"
       ],
-      "depends_on": [
-        "audit-root"
-      ]
+      "parent": "audit-root"
     }
   ]
 }
