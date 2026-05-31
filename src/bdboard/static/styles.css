@@ -332,7 +332,7 @@ pre { margin: 0; }
 
    The theme toggle (a <button>) borrows .mh-link so it reads as the last
    cell of the same strip, but stays semantically an action outside <nav>. */
-..masthead-nav {
+.masthead-nav {
   display: flex;
   align-items: center;
   /* The nav now owns its own second row (bdboard-vbz), so it no longer needs
