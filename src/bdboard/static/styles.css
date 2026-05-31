@@ -384,6 +384,21 @@ pre { margin: 0; }
 :root[data-theme="dark"] .mh-toggle .mh-toggle-to-dark { display: none; }
 :root[data-theme="dark"] .mh-toggle .mh-toggle-to-light { display: inline; }
 
+/* Pour-formula entry point (bdboard-ain.1 / bdboard-rip). It borrows .mh-link
+   so it reads as a contents-strip action cell (hairline border-left, small-caps
+   label) — but, unlike the nav and theme toggle, it has no wrapper carrying the
+   baseline lift. The .masthead-row bottom-aligns line boxes (align-items:
+   flex-end), and the .masthead-nav / .mh-toggle both lift themselves 8px to sit
+   on the 38px wordmark's OPTICAL baseline. Without the matching lift the bare
+   button dropped ~8px below its neighbours (the misalignment). Sharing the same
+   margin-bottom keeps the whole strip co-planar. inline-flex + align-items:center
+   mirrors .mh-toggle so the "+" glyph and label centre cleanly. */
+.formula-open-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .counts {
   display: flex;
   gap: 20px;
