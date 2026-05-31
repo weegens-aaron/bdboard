@@ -49,7 +49,7 @@ bdboard                        # binds 127.0.0.1:7332 and opens a browser
 ## Test
 
 ```sh
-make test              # pytest (268 tests; runs against this repo's own .beads workspace)
+make test              # runs the full pytest suite against this repo's own .beads workspace
 ```
 
 ## Code health (CI gates)
