@@ -421,7 +421,7 @@ pre { margin: 0; }
    button dropped ~8px below its neighbours (the misalignment). Sharing the same
    margin-bottom keeps the whole strip co-planar. inline-flex + align-items:center
    mirrors .mh-toggle so the "+" glyph and label centre cleanly. */
-..formula-open-btn {
+.formula-open-btn {
   display: inline-flex;
   align-items: center;
   margin-bottom: 8px;
