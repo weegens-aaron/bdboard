@@ -189,28 +189,40 @@ async def lifespan(app: FastAPI):
 
 
 async def _watch_beads() -> None:
-    """React to ANY change inside .beads/ (dolt files included).
+    """React to bd writes inside .beads/ (dolt files included).
 
     Implementation mirrors mantoni/beads-ui server/watcher.js: a trailing
     debounce window absorbs burst-writes from one logical bd command;
     a cooldown after each refresh prevents back-to-back refreshes from
     sustained activity.
 
-    Why recursive .beads/ instead of just issues.jsonl:
-    dolt writes happen inside .beads/embeddeddolt/jira_beads/.dolt/noms/
-    on every bd update — INSTANTLY, no throttle. The legacy issues.jsonl
-    is a throttled secondary export that can lag up to export.interval
-    (default 60s). Watching dolt's storage directly gives us sub-second
-    latency for free.
+    Watch scope (bdboard-3sf): we watch a SMALL, fixed set of directories
+    NON-recursively (bd.watch_targets() — the per-db dolt noms/ dirs plus
+    .beads/ itself) instead of the whole .beads/ tree recursively. The
+    recursive whole-tree watch opened one kqueue fd per directory on macOS
+    and, with dolt's churning noms/ object store, exhausted RLIMIT_NOFILE
+    — which then broke `bd list --json` and `bd show` subprocess spawning
+    (OSError [Errno 24] Too many open files). Every meaningful bd write
+    still touches manifest/journal.idx in a noms/ dir, so we keep
+    sub-second latency without the fd blowup.
     """
-    target_dir = bd.beads_dir
     while True:
         try:
+            targets = bd.watch_targets()
+            if not targets:
+                # .beads dir not there yet — wait and retry
+                await asyncio.sleep(2)
+                continue
+            log.info(
+                "watcher observing %d target(s) (non-recursive): %s",
+                len(targets),
+                ", ".join(str(t) for t in targets),
+            )
             # watchfiles.awatch yields a batch (set of (change, path))
             # roughly every 50ms of FS activity — it already does light
             # batching for us. Our debounce sits on top of that to collapse
             # multi-batch bursts (a bd update often spans 2-3 batches).
-            async for _changes in awatch(target_dir, recursive=True):
+            async for _changes in awatch(*targets, recursive=False):
                 await _settle_then_refresh()
         except FileNotFoundError:
             # .beads dir not there yet — wait and retry

@@ -84,10 +84,44 @@ class BdClient:
 
     @property
     def beads_dir(self) -> Path:
-        """The .beads/ directory we observe. Watcher walks this recursively
-        so dolt-internal writes (manifest, journal.idx, ...) trigger
-        refresh, not the throttled issues.jsonl export."""
+        """The .beads/ directory we observe. We do NOT watch this whole tree
+        recursively (see watch_targets for why) — only the dolt noms/
+        directories whose manifest/journal.idx mutate on every bd write."""
         return self.workspace / ".beads"
+
+    def watch_targets(self) -> list[Path]:
+        """Directories the watcher should observe NON-recursively.
+
+        Why not recursive .beads/: dolt's content-addressed object store
+        (.beads/embeddeddolt/<db>/.dolt/noms/) contains a large, constantly
+        churning set of files. On macOS the watchfiles kqueue backend opens
+        one fd PER watched directory/file when recursive=True, so watching
+        the whole .beads/ tree (hundreds of dirs) exhausts the process's
+        RLIMIT_NOFILE soft limit (often 256). Once fds run out, EVERYTHING
+        needing a new fd fails — most visibly asyncio.create_subprocess_exec
+        can no longer open pipes, so `bd list --json` (snapshot refresh) and
+        `bd show` (bead detail) both crash with OSError [Errno 24]. See
+        bdboard-3sf.
+
+        Every meaningful bd write touches manifest + journal.idx inside each
+        database's noms/ dir, so watching those directories NON-recursively
+        (a fixed, tiny handful of fds) gives the same sub-second latency
+        without the fd blowup. We also include .beads/ itself so a workspace
+        that adds a new dolt db (or recreates noms/) is picked up on the
+        next refresh.
+        """
+        targets: list[Path] = []
+        embedded = self.beads_dir / "embeddeddolt"
+        if embedded.is_dir():
+            for db_dir in sorted(embedded.iterdir()):
+                noms = db_dir / ".dolt" / "noms"
+                if noms.is_dir():
+                    targets.append(noms)
+        # Always include .beads/ itself (non-recursive) as a cheap catch-all
+        # for new dbs / the legacy issues.jsonl export landing.
+        if self.beads_dir.is_dir():
+            targets.append(self.beads_dir)
+        return targets
 
     def validate(self) -> None:
         """Raise a helpful error if the workspace isn't a bd workspace.
