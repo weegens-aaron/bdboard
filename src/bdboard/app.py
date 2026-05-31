@@ -671,6 +671,40 @@ def _short_pour_id(new_epic_id: str) -> str:
     return suffix or new_epic_id
 
 
+def _pour_counts(result: dict[str, Any]) -> tuple[int, int, bool]:
+    """Reconcile what bd *created* with what the board will actually *show*.
+
+    bd's ``created`` counts every node it materialized, INCLUDING the molecule
+    wrapper that bdboard deliberately hides from the board (Option A,
+    bdboard-ain.2). Reporting the raw ``created`` therefore over-counts by one
+    and tells the user '6 beads added' when only 5 are ever visible — the
+    bdboard-98e count-honesty bug.
+
+    We also guard against *partial* materialization. ``id_mapping`` maps every
+    step (plus the wrapper) to a real bead id, so a healthy pour has
+    ``len(id_mapping) == created``. A mismatch means not every node landed
+    (a bd-layer vapor-pour regression, or a formula that lost its top-level
+    ``pour: true``) — exactly the failure mode that used to leave empty
+    wrapper epics accumulating while the UI still cried success. We surface it
+    instead of masking it.
+
+    Returns ``(visible_count, created, fully_materialized)``:
+      - ``visible_count`` = beads the board will show (``created`` minus the
+        one hidden wrapper, floored at 0).
+      - ``created`` = bd's raw node count (echoed for diagnostics).
+      - ``fully_materialized`` = whether every reported node has a real id.
+    """
+    created = int(result.get("created", 0) or 0)
+    id_mapping = result.get("id_mapping")
+    mapped = len(id_mapping) if isinstance(id_mapping, dict) else 0
+    # Healthy pour: id_mapping has an entry per created node. If id_mapping is
+    # absent we can't prove a shortfall, so we don't cry wolf (treat as full).
+    fully_materialized = mapped == created if isinstance(id_mapping, dict) else True
+    # One hidden wrapper, but never report a negative count.
+    visible_count = max(created - 1, 0)
+    return visible_count, created, fully_materialized
+
+
 @app.get("/api/formulas", response_class=HTMLResponse)
 async def api_formulas(request: Request) -> HTMLResponse:
     """Render the formula picker (HTMX swap target).
@@ -847,17 +881,29 @@ async def api_formula_pour(
                 " (poured, but couldn\u2019t rename the grouping node — "
                 "it will show under the bare formula name)."
             )
+    # Reconcile bd's raw node count with what the board will actually show:
+    # the molecule wrapper is hidden (so visible == created - 1), and a
+    # shortfall between id_mapping and created means a partial materialization
+    # we must NOT report as a clean success (bdboard-98e).
+    visible_count, created, fully_materialized = _pour_counts(result)
     # Optimistic SSE so the acting tab refreshes immediately; the watcher
     # pipeline also fires for everyone else.
     await bus.broadcast("beads_changed")
-    created = result.get("created", 0)
+    if not fully_materialized:
+        log.warning(
+            "pour of %s under-materialized: created=%s but id_mapping has %s entries",
+            name,
+            created,
+            len(result.get("id_mapping") or {}),
+        )
     return TEMPLATES.TemplateResponse(
         request,
         "partials/formula_pour_result.html",
         {
             "name": name,
-            "created": created,
+            "created": visible_count,
             "rename_warning": rename_warning,
+            "fully_materialized": fully_materialized,
         },
     )
 

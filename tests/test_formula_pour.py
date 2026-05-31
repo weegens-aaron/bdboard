@@ -231,7 +231,21 @@ def test_pour_success_renames_and_broadcasts() -> None:
             }
         ]
     )
-    pour_calls = _stub_pour({"new_epic_id": "bd-abc-mol-u72", "created": 4, "id_mapping": {}})
+    # A healthy pour: id_mapping has one entry per created node (here the
+    # molecule wrapper + 3 step beads == 4). The wrapper is hidden, so the
+    # board shows created - 1 == 3 (bdboard-98e count honesty).
+    pour_calls = _stub_pour(
+        {
+            "new_epic_id": "bd-abc-mol-u72",
+            "created": 4,
+            "id_mapping": {
+                "demo": "bd-abc-mol-u72",
+                "demo.root": "bd-abc-mol-aa1",
+                "demo.a": "bd-abc-mol-bb2",
+                "demo.b": "bd-abc-mol-cc3",
+            },
+        }
+    )
     rename_calls = _stub_rename()
     broadcasts = _stub_broadcast()
 
@@ -247,7 +261,9 @@ def test_pour_success_renames_and_broadcasts() -> None:
     assert rename_calls == [("bd-abc-mol-u72", "demo u72")]
     assert "beads_changed" in broadcasts
     assert "Poured" in body
-    assert "4" in body
+    # Reports the VISIBLE count (4 created - 1 hidden wrapper), not the raw 4.
+    assert "3" in body
+    assert "4 beads" not in body
 
 
 def test_pour_uses_default_when_field_blank() -> None:
