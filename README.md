@@ -23,18 +23,26 @@ web view of a workspace's beads without leaving their terminal-driven workflow.
 
 ```sh
 cd bdboard
-make install           # uv venv + editable install (carries the corp --index-url)
+make install           # uv venv + editable install (resolves against public PyPI)
 ```
 
-Prefer the raw commands? They're equivalent, but on a Walmart machine you must
-pass the corp index or the install can fail to resolve packages:
+Prefer the raw commands? They're equivalent:
 
 ```sh
 cd bdboard
 uv venv
-uv pip install --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple \
-  --allow-insecure-host pypi.ci.artifacts.walmart.com -e .
+uv pip install -e .
 ```
+
+> **Behind a private package mirror?** `make install` reads two optional
+> environment variables and passes them through to `uv` — nothing is
+> hard-coded, so the public default stays clean:
+>
+> ```sh
+> export PY_INDEX_URL=https://mirror.example.com/simple
+> export PY_TRUSTED_HOST=mirror.example.com   # only if the mirror is self-signed
+> make install
+> ```
 
 ## Run
 

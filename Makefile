@@ -1,4 +1,16 @@
-PY_INDEX := --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple --allow-insecure-host pypi.ci.artifacts.walmart.com
+# Package index configuration.
+#
+# Default: resolve against public PyPI — no extra flags, nothing to configure.
+# Opt-in private/corporate mirror: export PY_INDEX_URL (and, only if the mirror
+# serves a self-signed cert, PY_TRUSTED_HOST) before running make, e.g.:
+#
+#   export PY_INDEX_URL=https://mirror.example.com/simple
+#   export PY_TRUSTED_HOST=mirror.example.com
+#
+# No project file encodes a private URL, so internal use stays a local override.
+PY_INDEX_URL ?=
+PY_TRUSTED_HOST ?=
+PY_INDEX := $(if $(PY_INDEX_URL),--index-url $(PY_INDEX_URL))$(if $(PY_TRUSTED_HOST), --allow-insecure-host $(PY_TRUSTED_HOST))
 
 PHONY: help venv install dev run fmt fmt-check lint test clean dead-code duplication audit outdated code-health links
 

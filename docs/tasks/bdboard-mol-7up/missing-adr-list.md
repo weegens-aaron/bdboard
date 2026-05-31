@@ -100,7 +100,7 @@ Process gaps also unchanged:
   rationale — `uv pip install --system` crashed on GitHub's externally-managed
   runner Python (PEP 668), which had silently turned the pip-audit/pytest steps
   into **no-ops** (a security-relevant CI gap). The fix (use a uv venv; add
-  `--no-sync` so CI ignores the Walmart-pinned `uv.lock`) encodes two
+  `--no-sync` so CI ignores a privately-pinned `uv.lock`) encodes two
   environment-specific constraints worth remembering before someone "simplifies"
   the workflow back to `--system`.
 - **Gap:** PARTIAL — captured in bead notes + the YAML, but a future editor
