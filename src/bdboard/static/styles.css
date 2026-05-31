@@ -275,27 +275,34 @@ pre { margin: 0; }
 }
 .masthead-row {
   display: flex;
-  /* flex-wrap lets the crowded masthead (brand / + Pour Formula / counts /
-     theme) reflow onto extra lines as width shrinks instead of overflowing
-     or compressing off-screen (bdboard-c52). The inner regions
-     (.masthead-counts, .masthead-actions) already wrap; this brings the
-     top-level row in line. row-gap is tighter than the 32px column-gap so
-     wrapped lines sit close together rather than spreading out vertically. */
-  flex-wrap: wrap;
-  justify-content: space-between;
+  /* Top row keeps the brand + actions group on a SINGLE line (bdboard-9y7).
+     nowrap stops the actions group from dropping below the brand and — as a
+     lone wrapped flex item — getting left-aligned by the old
+     justify-content:space-between (that was the bug: theme toggle + Pour
+     Formula reflowed left under the brand instead of sitting right-aligned up
+     top). Graceful degradation at narrow widths is preserved because the
+     actions group wraps INTERNALLY via its own flex-wrap (folds in
+     bdboard-c52) and the brand title wraps its words — neither overflows. */
+  flex-wrap: nowrap;
   align-items: flex-end;
   gap: 8px 32px;
 }
 /* TOP-ROW actions group (bdboard-vbz): theme toggle + Pour Formula + counts,
-   right-aligned via the parent .masthead-row's justify-content:space-between
-   (brand is the only thing to its left). align-items:flex-end keeps the cells
-   sharing the counts strip's baseline; flex-wrap so the group reflows within
-   itself at narrow widths instead of clipping (folds in bdboard-c52). */
+   right-aligned via its own margin-left:auto on the nowrap top row (brand is
+   the only thing to its left). align-items:flex-end keeps the cells sharing
+   the counts strip's baseline; flex-wrap so the group reflows within itself at
+   narrow widths instead of clipping (folds in bdboard-c52). */
 .masthead-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
+  /* Pin the actions group hard-right on the top row regardless of how the
+     brand title sizes — the auto margin absorbs all leading free space. This
+     replaces the parent row's old justify-content:space-between, which
+     left-aligned the group the moment it wrapped to its own line (bdboard-9y7).
+     The auto margin keeps the group right-aligned in any residual wrap. */
+  margin-left: auto;
   gap: 8px 24px;
 }
 /* SECOND ROW (bdboard-vbz): the page nav alone, left-aligned. A hairline
@@ -305,8 +312,8 @@ pre { margin: 0; }
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--rule);
-  /* Nav is the only child and should sit hard-left; override the default
-     space-between so it never drifts toward centre when it's the lone item. */
+  /* Nav is the only child and should sit hard-left; set flex-start explicitly
+     so it never drifts toward centre when it's the lone item. */
   justify-content: flex-start;
 }
 .masthead-brand .title {
