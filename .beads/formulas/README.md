@@ -15,17 +15,20 @@ audit trail, not running checks (formulas spawn work; they don't run it).
 **Run it (recommended — persistent / pour):**
 
 ```bash
-bd mol pour docs-validation --var repo=bdboard
+bd mol pour docs-validation
 ```
 
 `pour` is persistent (git-synced, audit trail) and is the recommended path for
 this formula — docs drift is worth a permanent record. Use `--dry-run` first to
-preview the 6 issues without creating them.
+preview the 6 issues without creating them. The formula declares no variables,
+so no `--var` flags are needed; it's poured from within whatever repo needs it,
+so the repo is implicit.
 
-### Chosen cadence
+### Invocation policy
 
-- **Cadence: quarterly**, invoked **manually** via `bd mol pour` at the start of
-  each quarter (lowest-friction starting point; no scheduler dependency).
+- Invoked **manually** via `bd mol pour` (lowest-friction starting point; no
+  scheduler dependency). How often to run it is an operational choice, not
+  baked into the formula text.
 - Automation / invoker was **decided in bdboard-ace**: stay manual for now, no
   scheduler shipped, with explicit revisit triggers. See the full rationale,
   runbook, and revisit criteria in
@@ -46,7 +49,7 @@ materialize instead of a silently-empty root. Verified: both
 
 ## code-health-audit
 
-A quarterly code-health audit that spawns an epic + 4 task children
+A code-health audit that spawns an epic + 4 task children
 (DRY triage, SOLID review, dead-code triage, dependency-hygiene triage).
 
 The key design point (bdboard-jyf): the **mechanical** pass/fail checks
@@ -63,19 +66,21 @@ unless blocking.
 **Run it (recommended — persistent / pour):**
 
 ```bash
-bd mol pour code-health-audit --var repo=bdboard --var quarter=2026-Q2
+bd mol pour code-health-audit
 ```
 
 Use `--dry-run` first to preview the 6 issues (proto + epic + 4 children)
 without creating them — bd counts the formula root proto alongside the
-epic and its 4 task children. Variables: `repo` (default `bdboard`), `quarter`
-(default `this-cycle`).
+epic and its 4 task children. The formula declares no variables, so no `--var`
+flags are needed; it's poured from within whatever repo needs it, so the repo
+is implicit.
 
-### Chosen cadence
+### Invocation policy
 
-- **Cadence: quarterly**, invoked **manually** via `bd mol pour` — same
-  policy as `docs-validation`. Automation / invoker was **decided in
-  bdboard-ace** (stay manual, no scheduler; revisit triggers documented in
+- Invoked **manually** via `bd mol pour` — same policy as `docs-validation`.
+  How often to run it is an operational choice, not baked into the formula
+  text. Automation / invoker was **decided in bdboard-ace** (stay manual, no
+  scheduler; revisit triggers documented in
   `docs/design/bdboard-ace/cadence-invoker-decision.md`).
 
 ### Note on phase / the vapor↔pour gotcha
