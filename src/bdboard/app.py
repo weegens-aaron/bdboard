@@ -714,17 +714,45 @@ async def api_bead_field_update(
             '<p class="field-error" role="alert">Nothing to add.</p>',
             status_code=400,
         )
-    # Optimistic-lock precondition (bdboard-o9v.5). Only meaningful for
-    # replace-semantics edits where a stale form would clobber a concurrent
-    # change; append-only edits (notes) can never clobber so we skip the
-    # check for them. We read LIVE (fresh=True) so a stale cache can't mask a
-    # conflict, and we compare against the form's expected_updated_at. A
-    # missing/empty token (older form, or a client that didn't send it) skips
-    # the check rather than hard-failing — degrade gracefully to the prior
-    # last-write-wins behaviour rather than blocking edits outright.
-    if expected_updated_at and not spec.append_only:
-        current, lock_err = await bd.show_long(bead_id, fresh=True)
-        if current is not None:
+    # Status gate (bdboard-1lf) + optimistic-lock precondition (bdboard-o9v.5)
+    # share a single LIVE read of the bead so we never double-shell bd.
+    #
+    # Status gate: manual field editing only applies to OPEN beads. Once a
+    # bead is in_progress (claimed / work-in-flight) or closed (historical
+    # record), its fields are read-only — editing invites clobbering an
+    # agent's in-flight change or rewriting completed history. The UI already
+    # hides the edit affordances (see _bead_is_editable / _field_row), but a
+    # crafted POST could still reach here, so we enforce server-side too. We
+    # read LIVE (fresh=True) so a freshly-claimed bead can't slip an edit
+    # through a stale cache. If the live read fails we degrade gracefully
+    # rather than blocking — the registry whitelist already bounds the blast
+    # radius to value edits on whitelisted fields.
+    #
+    # Optimistic lock: only meaningful for replace-semantics edits where a
+    # stale form would clobber a concurrent change; append-only edits (notes)
+    # can never clobber so we skip that check for them. A missing/empty token
+    # (older form, or a client that didn't send it) skips the lock and
+    # degrades to last-write-wins rather than blocking edits outright.
+    current, _lock_err = await bd.show_long(bead_id, fresh=True)
+    if current is not None:
+        # Status gate first: a locked (in_progress / closed) bead rejects ALL
+        # field writes, value-edit or append alike, before we even look at the
+        # optimistic-lock token.
+        if not _bead_is_editable(current):
+            live_status = (current.get("status") or "").lower()
+            log.info(
+                "locked field edit rejected: %s %s status=%s",
+                bead_id,
+                field,
+                live_status,
+            )
+            return HTMLResponse(
+                '<p class="field-error" role="alert">This bead is '
+                f"{live_status or 'no longer open'} and can no longer be "
+                "edited — only open beads are editable.</p>",
+                status_code=403,
+            )
+        if expected_updated_at and not spec.append_only:
             live_updated_at = str(current.get("updated_at") or "")
             if live_updated_at and live_updated_at != expected_updated_at.strip():
                 log.info(
@@ -1108,6 +1136,30 @@ def _field_spec(key: str) -> FieldSpec:
     return _FIELD_REGISTRY.get(key, _READONLY_SPEC)
 
 
+# Statuses that LOCK a bead against manual field editing (bdboard-1lf).
+# Manual editing (epic bdboard-o9v) only applies while a bead is still open:
+#   - in_progress => work is in-flight / claimed; editing risks clobbering
+#     a change an agent is actively making.
+#   - closed/resolved/done => the bead is historical record; editing rewrites
+#     completed work.
+# Everything else (open, and pre-work states like blocked / deferred that are
+# neither claimed nor completed) stays editable. CLOSED_STATUSES is reused
+# from derive so the closed set has ONE definition (DRY).
+_LOCKED_EDIT_STATUSES: frozenset[str] = derive.CLOSED_STATUSES | {"in_progress"}
+
+
+def _bead_is_editable(bead: dict[str, Any]) -> bool:
+    """Whether a bead's fields may be manually edited, gated by status.
+
+    Single source of truth for the open-vs-locked decision so the UI hint
+    pass (_ordered_fields) and the server-side write guard
+    (api_bead_field_update) can never disagree. A bead with no status falls
+    back to editable — absence of a lifecycle marker is treated as "open".
+    """
+    status = (bead.get("status") or "").lower()
+    return status not in _LOCKED_EDIT_STATUSES
+
+
 def _classify_field(key: str, val: Any) -> str:
     """Pick a render kind for a (key, value) pair. The template uses this
     to choose between chips / deps-list / paragraph / scalar / json."""
@@ -1133,15 +1185,19 @@ def _is_short_meta_field(key: str, kind: str) -> bool:
     return kind in {"scalar", "empty", "chips"}
 
 
-def _field_row(key: str, val: Any) -> dict[str, Any]:
+def _field_row(key: str, val: Any, *, bead_editable: bool = True) -> dict[str, Any]:
     """Build one modal field row with render + editability hints.
 
     Single source of the row shape so the two passes in _ordered_fields
     (ordered keys, then alphabetical leftovers) can't drift apart (DRY).
-    The `editable`/`editor`/`enum_options`/`append_only` hints come straight
-    from the field registry; the template stays declarative and just reads
-    them. NB: this carries the *hints* only — there is no write path wired up
-    yet (bdboard-o9v.2/.3).
+    The `editor`/`enum_options`/`append_only` hints come straight from the
+    field registry; the template stays declarative and just reads them.
+
+    `bead_editable` (bdboard-1lf) gates the per-field `editable` hint by the
+    bead's lifecycle status: even a registry-editable field renders read-only
+    once the bead is in_progress or closed, so the modal exposes no edit
+    affordances for claimed / completed work. The registry still decides
+    WHICH fields are ever editable; status decides WHEN.
     """
     kind = _classify_field(key, val)
     spec = _field_spec(key)
@@ -1150,7 +1206,7 @@ def _field_row(key: str, val: Any) -> dict[str, Any]:
         "val": val,
         "kind": kind,
         "short_meta": _is_short_meta_field(key, kind),
-        "editable": spec.editable,
+        "editable": spec.editable and bead_editable,
         "editor": spec.editor,
         "flag": spec.flag,
         "enum_options": spec.enum_options,
@@ -1166,16 +1222,17 @@ def _ordered_fields(bead: dict[str, Any]) -> list[dict[str, Any]]:
     mostly declarative. The editability hints are sourced from
     _FIELD_REGISTRY — the single source of truth for manual editing.
     """
+    bead_editable = _bead_is_editable(bead)
     seen: set[str] = set()
     out: list[dict[str, Any]] = []
     for k in _FIELD_ORDER:
         if k in bead and k not in _HIDDEN:
-            out.append(_field_row(k, bead[k]))
+            out.append(_field_row(k, bead[k], bead_editable=bead_editable))
             seen.add(k)
     for k in sorted(bead.keys()):
         if k in seen or k in _HIDDEN:
             continue
-        out.append(_field_row(k, bead[k]))
+        out.append(_field_row(k, bead[k], bead_editable=bead_editable))
     return out
 
 
