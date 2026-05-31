@@ -51,9 +51,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      # uv won't install into the runner's externally-managed system Python
+      # (PEP 668). Create a project venv and install into that instead of
+      # using --system, which uv refuses. (bdboard-b6i)
       - name: install project
-        run: uv pip install --system -e .
-      - run: python -m pytest -q
+        run: |
+          uv venv
+          uv pip install -e .
+      - name: pytest
+        run: uv run python -m pytest -q
 
   duplication:
     name: jscpd (copy-paste detector)
@@ -72,9 +78,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      # Install into a project venv (not --system; uv refuses to touch the
+      # runner's externally-managed Python, PEP 668). pip-audit must run
+      # against THIS venv so it sees the resolved dependency tree — hence
+      # `uv run --with pip-audit` rather than an isolated `uvx pip-audit`,
+      # which would audit an empty throwaway env and silently find nothing.
+      # (bdboard-b6i: the old --system install crashed, skipping the scan.)
       - name: install project (so pip-audit sees the resolved env)
-        run: uv pip install --system -e .
+        run: |
+          uv venv
+          uv pip install -e .
       - name: pip-audit (CVE scan) — hard gate
-        run: uvx pip-audit
+        run: uv run --with pip-audit pip-audit
       - name: uv pip list --outdated (advisory, never fails)
         run: uv pip list --outdated || true
