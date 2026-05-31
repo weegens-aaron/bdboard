@@ -9,6 +9,26 @@
 
    The stable `id` (field-row-<key>) gives HTMX a deterministic swap target so
    a saved field can replace just its own row in place. #}
+
+{# Shared HTMX field-form wrapper (bdboard-rhv). Both the inline edit-field
+   form and the add-note form POST to the SAME endpoint with the SAME swap
+   target and CSRF boilerplate; only the <form> class and inner body differ.
+   This `{% call %}` macro is the single source of that HTMX header + the two
+   hidden inputs (csrf_token, field), so the wire contract can never drift
+   between the two write paths. Callers supply just the unique body via
+   {% call field_form(...) %}...{% endcall %}. #}
+{% macro field_form(bead_id, key, csrf_token, form_class) %}
+<form class="{{ form_class }}"
+      hx-post="/api/bead/{{ bead_id }}/field"
+      hx-target="#field-row-{{ key }}"
+      hx-swap="outerHTML"
+      hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <input type="hidden" name="field" value="{{ key }}" />
+  {{ caller() }}
+</form>
+{% endmacro %}
+
 <div id="field-row-{{ f.key }}"
      class="field field-kind-{{ f.kind }} {% if f.short_meta %}field-short{% else %}field-wide{% endif %}"
      data-field-key="{{ f.key }}"
@@ -78,13 +98,7 @@
     <summary class="field-edit-summary">
       <span class="field-edit-summary-label">Edit {{ f.key }}</span>
     </summary>
-    <form class="field-edit-form"
-          hx-post="/api/bead/{{ bead_id }}/field"
-          hx-target="#field-row-{{ f.key }}"
-          hx-swap="outerHTML"
-          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <input type="hidden" name="field" value="{{ f.key }}" />
+    {% call field_form(bead_id, f.key, csrf_token, "field-edit-form") %}
       {# Optimistic-lock token (bdboard-o9v.5): the bead's updated_at at render
          time. The route re-reads the bead LIVE before writing and rejects
          the submit if updated_at moved on, so a stale tab can't silently
@@ -138,7 +152,7 @@
            role="status"
            aria-live="polite"
            data-edit-feedback></div>
-    </form>
+    {% endcall %}
   </details>
   {% endif %}
 
@@ -155,13 +169,7 @@
   {% if f.editable and f.append_only %}
   <details class="note-add">
     <summary class="note-add-summary">+ Add a note</summary>
-    <form class="note-add-form"
-          hx-post="/api/bead/{{ bead_id }}/field"
-          hx-target="#field-row-{{ f.key }}"
-          hx-swap="outerHTML"
-          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <input type="hidden" name="field" value="{{ f.key }}" />
+    {% call field_form(bead_id, f.key, csrf_token, "note-add-form") %}
       <p class="note-add-hint" id="note-add-hint-{{ f.key }}">
         Appended below the existing {{ f.key }} — your note is
         <strong>added</strong>, never replacing the history above.
@@ -179,7 +187,7 @@
                 onclick="this.closest('details').open = false">Cancel</button>
         <button type="submit" class="memory-btn memory-btn-primary">Add note</button>
       </div>
-    </form>
+    {% endcall %}
   </details>
   {% endif %}
 </div>
