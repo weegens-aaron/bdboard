@@ -1,6 +1,6 @@
 PY_INDEX := --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple --allow-insecure-host pypi.ci.artifacts.walmart.com
 
-PHONY: help venv install dev run fmt lint test clean dead-code duplication audit outdated code-health
+PHONY: help venv install dev run fmt lint test clean dead-code duplication audit outdated code-health links
 
 help:
 	@echo "Targets:"
@@ -15,6 +15,7 @@ help:
 	@echo "  duplication - jscpd copy-paste detector (config: .jscpd.json)"
 	@echo "  audit       - pip-audit dependency CVE scan"
 	@echo "  outdated    - uv pip list --outdated (advisory, never fails)"
+	@echo "  links       - lychee broken-link sweep over all markdown (config: lychee.toml)"
 	@echo "  code-health - run all mechanical code-health gates (CI parity)"
 	@echo "  clean       - rm caches and venv"
 
@@ -66,6 +67,12 @@ outdated:
 # Aggregate gate — mirror of the CI workflow so contributors can repro locally.
 code-health: lint dead-code duplication audit
 	@echo "\n✅ mechanical code-health gates passed (outdated is advisory; run 'make outdated')"
+
+# Broken-link sweep (bdboard-mol-003): scan all markdown for dead
+# internal/external links and anchors. Requires lychee (brew install lychee).
+links:
+	@command -v lychee >/dev/null 2>&1 || { echo "lychee not found — install with: brew install lychee"; exit 1; }
+	lychee --config lychee.toml './**/*.md'
 
 clean:
 	rm -rf .venv __pycache__ src/bdboard/__pycache__ .ruff_cache build dist *.egg-info
