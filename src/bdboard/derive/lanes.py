@@ -87,6 +87,21 @@ def _is_epic(bead: dict[str, Any]) -> bool:
     return (bead.get("issue_type") or "").lower() == "epic"
 
 
+def _is_molecule(bead: dict[str, Any]) -> bool:
+    """True for a formula-pour grouping WRAPPER (issue_type == 'molecule').
+
+    `bd mol pour` creates a `molecule`-typed wrapper (the returned
+    `new_epic_id`) that parents the whole poured tree, PLUS the formula's own
+    `epic`-typed root step. Per the bdboard-ain.2 decision (Option A in spike
+    bdboard-9n4 §3.3), the human-readable `<formula> <id>` name is carried by
+    the epic root step (which already surfaces in the epic strip), so the bare
+    wrapper is redundant on the board. We hide it from the swim lanes rather
+    than render it as a stray ready-lane card. See
+    docs/design/bdboard-ain.2/grouping-node-display-decision.md.
+    """
+    return (bead.get("issue_type") or "").lower() == "molecule"
+
+
 def _is_closed(status: str) -> bool:
     return status in CLOSED_STATUSES
 
@@ -291,7 +306,10 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     Open lanes sorted by priority asc (P0 first) then updated_at desc.
     Closed lane sorted by closed_at desc (most recent first) and capped.
     """
-    non_epics = [b for b in beads if not _is_epic(b)]
+    # Exclude epics (they live in the strip) AND molecule wrappers (the
+    # redundant formula-pour grouping node — bdboard-ain.2 / Option A). The
+    # wrapper still parents the tree in bd; it just doesn't earn a card here.
+    non_epics = [b for b in beads if not _is_epic(b) and not _is_molecule(b)]
     by_id = {b.get("id"): b for b in non_epics if b.get("id")}
     buckets: dict[str, list[dict[str, Any]]] = {k: [] for k in LANES}
     for b in non_epics:

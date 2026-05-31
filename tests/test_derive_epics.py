@@ -35,6 +35,50 @@ def test_lanes_excludes_epics_from_main_columns():
     assert "epic-2" not in all_ids
 
 
+def test_lanes_excludes_molecule_wrapper_from_main_columns():
+    """Formula-pour grouping wrappers (issue_type == 'molecule') must NOT
+    render as stray ready-lane cards.
+
+    bdboard-ain.2 / Option A (spike bdboard-9n4 §3.3): the human-readable
+    `<formula> <id>` name is carried by the formula's epic root step (which
+    surfaces in the epic strip); the bare `molecule` wrapper is redundant and
+    is hidden from the swim lanes.
+    """
+    beads = [
+        _bead("task-1", issue_type="task", status="open"),
+        _bead("wrapper-1", issue_type="molecule", status="open"),
+    ]
+
+    buckets = derive.lanes(beads)
+    all_ids = [b["id"] for lane in buckets.values() for b in lane]
+
+    assert "task-1" in all_ids
+    assert "wrapper-1" not in all_ids
+
+
+def test_epic_lane_excludes_molecule_wrapper():
+    """The molecule wrapper is not an epic, so it must not appear in the epic
+    strip either — only the formula's epic root step does (Option A)."""
+    beads = [
+        _bead("real-epic", issue_type="epic", status="open"),
+        _bead("wrapper-1", issue_type="molecule", status="open"),
+    ]
+
+    lane = derive.epic_lane(beads)
+    ids = [b["id"] for b in lane]
+
+    assert "real-epic" in ids
+    assert "wrapper-1" not in ids
+
+
+def test_is_molecule_helper():
+    assert derive._is_molecule({"issue_type": "molecule"}) is True
+    assert derive._is_molecule({"issue_type": "Molecule"}) is True
+    assert derive._is_molecule({"issue_type": "epic"}) is False
+    assert derive._is_molecule({"issue_type": "task"}) is False
+    assert derive._is_molecule({}) is False
+
+
 def test_epic_lane_promotes_active_or_next_ready_to_front_and_omits_closed():
     beads = [
         _bead(
