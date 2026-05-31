@@ -54,6 +54,7 @@ These checks live in CI rather than a bd formula by design — see
 | `--no-browser` | off | Don't auto-launch a browser |
 | `--bd` | `bd` | Path to the `bd` binary |
 | `--dir` | cwd | Workspace to run in |
+| `--strict-port` | off | Fail if the requested port is taken instead of auto-incrementing (default scans 20 ports from the start port) |
 
 ## Behavior highlights
 
@@ -114,10 +115,11 @@ bd dolt pull        # hydrates .beads/embeddeddolt/ from refs/dolt/data
 bd ready            # confirm issues are present
 ```
 
-> The local-only JSONL backup in `.beads/backup/` (gitignored) is a
-> belt-and-suspenders recovery export **only** — never the wire protocol and
-> never the source of truth. The canonical, runtime source of truth is the Dolt
-> DB as read through the `bd` CLI.
+> The local-only Dolt archive backup in `.beads/backup/` (gitignored, a set of
+> `.darc` archive files) is a belt-and-suspenders recovery export **only** —
+> never the wire protocol and never the source of truth. (bd can also emit a
+> JSONL export to `.beads/issues.jsonl`, but bdboard never reads it.) The
+> canonical, runtime source of truth is the Dolt DB as read through the `bd` CLI.
 
 ## Troubleshooting
 
