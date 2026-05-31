@@ -152,10 +152,16 @@ re-add the remote, *then* pull:
 git clone https://github.com/weegens-aaron/bdboard.git
 cd bdboard
 bd init                                                              # create the local .beads/embeddeddolt/ DB (required before any bd dolt command)
-bd dolt remote add origin https://github.com/weegens-aaron/bdboard.git
+bd dolt remote add origin git+https://github.com/weegens-aaron/bdboard-dolt.git
 bd dolt pull        # hydrates .beads/embeddeddolt/ from refs/dolt/data
 bd ready            # confirm issues are present
 ```
+
+> **Why a separate `bdboard-dolt` repo?** Issue data (titles, descriptions,
+> notes, full audit trail) lives in a **private** repo so the public code repo
+> stays clean — `bd dolt push` never publishes `refs/dolt/data` to the public
+> `bdboard.git`. You need read access to `bdboard-dolt.git` to hydrate; without
+> it the code still builds and runs, you just won't see the historical beads.
 
 > If any `bd dolt` step hangs, you've hit the stale `dolt sql-server`
 > accumulation issue — run `pkill -9 -f 'dolt sql-server'` (see
