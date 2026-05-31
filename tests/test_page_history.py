@@ -118,3 +118,42 @@ def test_history_page_surfaces_workspace_error(monkeypatch) -> None:
 
     assert resp.status_code == 500
     assert "bd not found" in resp.body.decode()
+
+
+def test_head_script_never_derefs_document_body(monkeypatch) -> None:
+    """Regression for bdboard-src: the Custom date-range toggle did nothing.
+
+    The custom-range disclosure (and the page-size persistence + configRequest
+    listeners) are delegated from an inline <script> that lives in the page
+    <head>. While the head is parsing, ``document.body`` is still ``null``, so
+    any ``document.body.addEventListener(...)`` there throws a TypeError that
+    aborts the rest of the <script> block — leaving the Custom toggle's click
+    listener unregistered, so clicking 'Custom' produced no response.
+
+    Guard: the markup BEFORE </head> must not reference ``document.body``.
+    Delegating off ``document`` (always present, still sees bubbled events) is
+    the fix; this test fails if anyone reintroduces the null-deref.
+    """
+    _, body = _call_history()
+
+    head, sep, _rest = body.partition("</head>")
+    assert sep, "expected a </head> in the rendered page"
+    assert "document.body.addEventListener" not in head, (
+        "head-script must delegate from `document`, not `document.body` "
+        "(null at head-parse time) — see bdboard-src"
+    )
+
+
+def test_custom_toggle_disclosure_is_wired(monkeypatch) -> None:
+    """bdboard-src: the Custom toggle + its delegated click handler must ship.
+
+    The toggle is JS-only (no HTMX fallback), so the disclosure JS that flips
+    the form's [hidden]/aria-expanded must be present and keyed off the
+    toggle's id.
+    """
+    _, body = _call_history()
+
+    # The handler is delegated from `document` and matches the toggle by id.
+    assert "document.addEventListener('click'" in body
+    assert "history-custom-toggle" in body
+    assert "history-custom-range" in body

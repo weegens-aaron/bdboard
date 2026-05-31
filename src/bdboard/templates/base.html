@@ -47,8 +47,12 @@
           } catch (e) { return null; }
         }
         // The <select> is swapped in with #history-region, so delegate the
-        // change listener from <body> rather than binding to the element.
-        document.body.addEventListener('change', function (evt) {
+        // change listener from `document` rather than binding to the element.
+        // NOTE: this script runs in <head>, where `document.body` is still
+        // null — delegating off `document` (which is never null and still
+        // sees bubbled events) avoids a TypeError that would abort the rest
+        // of this <script> block (bdboard-src).
+        document.addEventListener('change', function (evt) {
           var el = evt.target;
           if (el && el.id === 'history-page-size-select') {
             try { localStorage.setItem(KEY, el.value); } catch (e) {}
@@ -59,7 +63,7 @@
         // hit a bare /api/history (server default 50); pager/range links
         // embed page_size in their URL and the select change sends it as a
         // parameter — both are left untouched so explicit choices win.
-        document.body.addEventListener('htmx:configRequest', function (evt) {
+        document.addEventListener('htmx:configRequest', function (evt) {
           var path = evt.detail.path || '';
           if (path.indexOf('/api/history') !== 0) return;
           if (path.indexOf('page_size=') !== -1) return;
@@ -76,13 +80,20 @@
       // Custom date-range disclosure (bdboard-7k6). The History range
       // control's "Custom" badge toggles the from/to date form's visibility.
       // The button + form are swapped in with #history-region, so the click
-      // listener is delegated from <body> rather than bound to the element
+      // listener is delegated from `document` rather than bound to the element
       // (it survives every HTMX swap). Server-rendered state wins on load:
       // when a custom selection is active the form ships without [hidden] and
       // the toggle ships aria-expanded=true, so this JS only handles the
       // user-driven open/close of an as-yet-unsubmitted range.
+      //
+      // Delegated off `document` (NOT `document.body`): this <head> script
+      // runs before <body> exists, so `document.body` is null here and
+      // delegating a listener off it threw a TypeError — which aborted this
+      // whole <script> block and left the Custom toggle dead (clicking it did
+      // nothing). `document` is always present and still receives the bubbled
+      // click. (bdboard-src)
       (function () {
-        document.body.addEventListener('click', function (evt) {
+        document.addEventListener('click', function (evt) {
           var btn = evt.target;
           if (!btn || btn.id !== 'history-custom-toggle') return;
           var form = document.getElementById('history-custom-range');
