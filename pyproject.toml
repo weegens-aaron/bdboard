@@ -3,6 +3,7 @@ name = "bdboard"
 version = "0.1.0"
 description = "Python+FastAPI+HTMX dashboard for bd (beads) workspaces"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",

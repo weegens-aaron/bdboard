@@ -98,80 +98,31 @@ These checks live in CI rather than a bd formula by design — see
 
 - **Lanes** — Deferred / Ready / In-Progress / Blocked / Closed are derived in-process from `bd list --json` snapshots
 - **Activity** — derived from `updated_at` / `closed_at` / `created_at` because bd doesn't expose a global audit feed; rendered as a swim lane alongside the bead lanes
-- **JSONL freshness** — bdboard reads bead state via `bd list --all --no-pager --limit 0 --json` (the dolt-native, always-fresh path). We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher observes each dolt database's `noms/` directory (plus `.beads/` itself) **non-recursively** so any bd write triggers a refresh within ~250ms (debounced) + ~1s cooldown. We deliberately avoid recursively watching the whole `.beads/` tree: dolt's churning `noms/` object store would open a kqueue fd per directory on macOS and exhaust `RLIMIT_NOFILE` (see bdboard-3sf). SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
+- **JSONL freshness** — bdboard reads bead state via `bd list --all --no-pager --limit 0 --json` (the dolt-native, always-fresh path). We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher observes each dolt database's `noms/` directory (plus `.beads/` itself) **non-recursively** so any bd write triggers a refresh within ~250ms (debounced) + ~1s cooldown. We deliberately avoid recursively watching the whole `.beads/` tree: dolt's churning `noms/` object store would open a kqueue fd per directory on macOS and exhaust `RLIMIT_NOFILE`. SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
 
 ## Backup & cross-machine sync (beads issue data)
 
-The real bead database lives in `.beads/embeddeddolt/`, which is **gitignored** —
-so your code branches (`refs/heads/*`) carry *none* of the issue history. To keep
-the 95+ issues and their audit trail safe off-machine, beads replicates the Dolt
-database over its git-compatible wire protocol to a separate ref
-(`refs/dolt/data`) on the **same GitHub origin** you already push code to. This is
-the project-blessed "Approach A" (see bead `bdboard-6gp`); we deliberately do
-**not** commit `.beads/issues.jsonl` as the sync channel and do **not** use any
-third-party Dolt host.
+The bead database lives in `.beads/embeddeddolt/`, which is typically
+**gitignored** — so your code branches (`refs/heads/*`) carry *none* of the
+issue history. To keep issues and their audit trail safe off-machine, beads can
+replicate the Dolt database over its git-compatible wire protocol to a separate
+ref (`refs/dolt/data`) on a git remote, reusing the same credentials as your
+code pushes. This is beads' built-in sync path; you do **not** need to commit
+`.beads/issues.jsonl` as a sync channel and do **not** need a third-party Dolt
+host.
 
-### One-time setup (already done on this repo)
+This is a property of `bd` itself rather than bdboard. See the upstream
+[SYNC_CONCEPTS.md](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md)
+for the full model and the exact commands for one-time setup
+(`bd dolt remote add` / `bd dolt push`), routine backup, and fresh-clone
+hydration (`bd init` before any `bd dolt` command on a fresh clone).
 
-```sh
-bd dolt remote add origin https://github.com/weegens-aaron/bdboard.git
-bd dolt push        # creates refs/dolt/data on origin
-```
+> bdboard never writes to `.beads/` and never reads `.beads/issues.jsonl`; the
+> canonical, runtime source of truth is the Dolt DB as read through the `bd` CLI.
 
-Verify the off-machine backup exists:
-
-```sh
-git ls-remote origin 'refs/dolt/*'
-# c5ea0469...   refs/dolt/data
-```
-
-### Routine backup
-
-After a batch of bead changes, push them off-machine:
-
-```sh
-bd dolt commit      # flush any pending working-set changes (no-op if clean)
-bd dolt push        # replicate to refs/dolt/data on origin
-```
-
-Auth uses the **same GitHub HTTPS/PAT credentials as your code pushes** — no
-extra secret to manage. CI that only builds code is unaffected (it never fetches
-the `refs/dolt/data` ref); CI that needs issues runs `bd dolt pull`.
-
-### Fresh-clone hydration (verified)
-
-The Dolt remote config is stored *inside* the gitignored `.beads/embeddeddolt/`
-database, so a brand-new `git clone` does **not** inherit the remote and the
-installed `post-checkout` / `post-merge` hooks will **not** auto-hydrate issue
-data on their own. Worse, a fresh clone has **no local Dolt database at all** —
-so `bd dolt remote add` fails with `Error: no beads database found` until you
-create one. The correct order is: `bd init` (creates the empty local DB), *then*
-re-add the remote, *then* pull:
-
-```sh
-git clone https://github.com/weegens-aaron/bdboard.git
-cd bdboard
-bd init                                                              # create the local .beads/embeddeddolt/ DB (required before any bd dolt command)
-bd dolt remote add origin git+https://github.com/weegens-aaron/bdboard-dolt.git
-bd dolt pull        # hydrates .beads/embeddeddolt/ from refs/dolt/data
-bd ready            # confirm issues are present
-```
-
-> **Why a separate `bdboard-dolt` repo?** Issue data (titles, descriptions,
-> notes, full audit trail) lives in a **private** repo so the public code repo
-> stays clean — `bd dolt push` never publishes `refs/dolt/data` to the public
-> `bdboard.git`. You need read access to `bdboard-dolt.git` to hydrate; without
-> it the code still builds and runs, you just won't see the historical beads.
-
-> If any `bd dolt` step hangs, you've hit the stale `dolt sql-server`
+> If any `bd dolt` step hangs, you may have hit the stale `dolt sql-server`
 > accumulation issue — run `pkill -9 -f 'dolt sql-server'` (see
 > [Troubleshooting](#bead-detail-or-bd-itself-hangs)) and retry.
-
-> The local-only Dolt archive backup in `.beads/backup/` (gitignored, a set of
-> `.darc` archive files) is a belt-and-suspenders recovery export **only** —
-> never the wire protocol and never the source of truth. (bd can also emit a
-> JSONL export to `.beads/issues.jsonl`, but bdboard never reads it.) The
-> canonical, runtime source of truth is the Dolt DB as read through the `bd` CLI.
 
 ## Troubleshooting
 
@@ -194,3 +145,12 @@ file an issue upstream against bd.
 
 You're not in a directory with `.beads/`.
 `cd` to a bd workspace or pass `--dir /path/to/workspace`.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev
+setup and the checks CI enforces.
+
+## License
+
+Released under the [MIT License](LICENSE).

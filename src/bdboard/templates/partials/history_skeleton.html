@@ -1,12 +1,12 @@
-{# History region skeleton (bdboard-2do / bdboard-3vp). Reserves the
+{# History region skeleton. Reserves the
    range-control, two chart strips, and the closed-list space with shimmer
    blocks so the History page paints instantly and hydrates from /api/history
    without a layout jump.
 
    It mirrors partials/history.html's ACTUAL body layout so the swap is
-   shift-free (bdboard-3vp): a range toolbar, then ONE combined "Created vs
-   closed" chart section (bdboard-ijd merged the former "Beads closed" +
-   "Beads created" strips into a single grouped-bar chart), then the
+   shift-free: a range toolbar, then ONE combined "Created vs
+   closed" chart section (the former "Beads closed" +
+   "Beads created" strips were merged into a single grouped-bar chart), then the
    closed-bead list. The KPI strip is NOT reserved here — those
    stats live in the masthead host (#history-stats), which renders its own
    counts skeleton; reserving them inline too would shift the layout when the

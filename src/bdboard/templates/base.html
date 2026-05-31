@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{% block title %}bdboard{% endblock %} · {{ workspace or "bd" }}</title>
     <script>
-      // Anti-FOUC theme resolution (bdboard-35e). Runs BEFORE the
+      // Anti-FOUC theme resolution. Runs BEFORE the
       // stylesheet/body paint so the page never flashes the wrong theme.
       // Single source of truth = the data-theme attribute on <html>:
       //   1. An explicit, persisted choice in localStorage wins.
@@ -26,7 +26,7 @@
         }
       })();
 
-      // History page-size persistence (bdboard-3jj). Mirrors the theme
+      // History page-size persistence. Mirrors the theme
       // toggle: the chosen rows-per-page is stored in localStorage under
       // 'bdboard-history-page-size' and re-applied on load/navigation. The
       // <select> itself is rendered + selected server-side (so it reflects
@@ -51,7 +51,7 @@
         // NOTE: this script runs in <head>, where `document.body` is still
         // null — delegating off `document` (which is never null and still
         // sees bubbled events) avoids a TypeError that would abort the rest
-        // of this <script> block (bdboard-src).
+        // of this <script> block.
         document.addEventListener('change', function (evt) {
           var el = evt.target;
           if (el && el.id === 'history-page-size-select') {
@@ -77,7 +77,7 @@
         });
       })();
 
-      // Custom date-range popover (bdboard-7k6; popover bdboard-9zf). The
+      // Custom date-range popover. The
       // History range control's "Custom" badge toggles a popover holding the
       // from/to date inputs + Apply + Clear. The badge + popover are swapped
       // in with #history-region, so all listeners are delegated from
@@ -93,7 +93,7 @@
       // delegating a listener off it threw a TypeError — which aborted this
       // whole <script> block and left the Custom toggle dead (clicking it did
       // nothing). `document` is always present and still receives the bubbled
-      // click. (bdboard-src)
+      // click.
       (function () {
         function pop() { return document.getElementById('history-custom-range'); }
         function toggleBtn() { return document.getElementById('history-custom-toggle'); }
@@ -165,13 +165,13 @@
     </footer>
     {% endblock %}
     <div id="bead-modal" class="modal-host" onclick="if(event.target===this)this.innerHTML=''"></div>
-    {# Global visually-hidden polite live region (bdboard-o9v.3). Inline field
+    {# Global visually-hidden polite live region. Inline field
        edits announce success here ("Saved.") since the per-row feedback region
        collapses with its <details> on a successful swap. Errors stay in the
        still-open row's own aria-live region. One shared announcer keeps SR
        feedback consistent without per-row bookkeeping. #}
     <div id="a11y-announce" class="sr-only" role="status" aria-live="polite"></div>
-    {# Instant bead-modal skeleton (bdboard-2do). Injected into #bead-modal
+    {# Instant bead-modal skeleton. Injected into #bead-modal
        the moment a bead card is clicked, BEFORE the /api/bead/<id> fetch
        resolves, so opening a bead is never a frozen click. Replaced wholesale
        by the real modal on htmx swap. aria-hidden: visual placeholder while
@@ -202,12 +202,12 @@
         }
       });
 
-      // ----- Snappy navigation/transition feedback (bdboard-2do) -----
+      // ----- Snappy navigation/transition feedback -----
       // The UI must respond instantly to interaction. Skeleton loaders
       // (rendered by the page shells and the bead-modal template below)
       // are the single source of "this region is loading" feedback. The
-      // former global top progress bar (#nav-progress) was removed in
-      // bdboard-ddb as redundant now that skeletons cover in-flight data
+      // former global top progress bar (#nav-progress) was removed
+      // as redundant now that skeletons cover in-flight data
       // regions. What remains here:
       //   (a) an instant skeleton injected into the bead modal so clicking
       //       a bead card paints immediately instead of waiting on the
@@ -216,7 +216,7 @@
       //       placeholder, not real content.
       (function () {
         // Clear aria-busy on hydrating regions once their content settles
-        // (bdboard-3vp). The full-page shells mark each async data region
+        // The full-page shells mark each async data region
         // (#history-region, .lanes-region, #counts, #memory-list) aria-busy
         // so assistive tech knows the skeleton is a loading placeholder, not
         // real content. After the first (and every) HTMX swap completes we
@@ -247,7 +247,7 @@
           }
         });
 
-        // ----- Inline field edit feedback + focus mgmt (bdboard-o9v.3) -----
+        // ----- Inline field edit feedback + focus mgmt -----
         // The inline-edit forms (partials/field_row.html) post to
         // /api/bead/<id>/field and swap their own row in place on success.
         // Two a11y concerns are handled here, delegated from <body> so they
@@ -381,7 +381,7 @@
       }
 
       // Unified time windows shared by the Closed and Activity lanes so the
-      // filter strip is predictable when the eye moves between lanes (bdboard-ah3).
+      // filter strip is predictable when the eye moves between lanes.
       const oneHourMs = 60 * 60 * 1000;
       const oneDayMs = 24 * oneHourMs;
       const UNIFIED_TIME_WINDOWS = {
@@ -465,7 +465,7 @@
         });
       })();
 
-      // Theme toggle wiring (bdboard-35e). The initial theme is already
+      // Theme toggle wiring. The initial theme is already
       // applied by the anti-FOUC script in <head>; this only handles the
       // click-to-flip + persistence. We keep the persisted value and the
       // <html data-theme> attribute as the single source of truth.

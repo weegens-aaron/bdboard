@@ -1,16 +1,16 @@
 {# One bead-detail field row.
 
    Single source of the row markup so the modal grid and the field-edit
-   write path (POST /api/bead/{id}/field, bdboard-o9v.2) render byte-identical
+   write path (POST /api/bead/{id}/field) render byte-identical
    rows — the route returns exactly this partial for the HTMX swap after a
    save. The template stays declarative: it dispatches on `f.kind` for display
    and carries the editability hints (`f.editable`/`f.editor`/...) sourced from
-   the field registry for the inline-edit UI (bdboard-o9v.3) to attach to.
+   the field registry for the inline-edit UI to attach to.
 
    The stable `id` (field-row-<key>) gives HTMX a deterministic swap target so
    a saved field can replace just its own row in place. #}
 
-{# Shared HTMX field-form wrapper (bdboard-rhv). Both the inline edit-field
+{# Shared HTMX field-form wrapper. Both the inline edit-field
    form and the add-note form POST to the SAME endpoint with the SAME swap
    target and CSRF boilerplate; only the <form> class and inner body differ.
    This `{% call %}` macro is the single source of that HTMX header + the two
@@ -80,7 +80,7 @@
     {% endif %}
   </dd>
 
-  {# Inline-edit affordance (bdboard-o9v.3). For editable fields whose safe
+  {# Inline-edit affordance. For editable fields whose safe
      semantics are REPLACE (everything except append-only `notes`), a per-field
      <details> discloses a real form that posts the new value to
      POST /api/bead/{id}/field and swaps THIS row back in place with the
@@ -99,7 +99,7 @@
       <span class="field-edit-summary-label">Edit {{ f.key }}</span>
     </summary>
     {% call field_form(bead_id, f.key, csrf_token, "field-edit-form") %}
-      {# Optimistic-lock token (bdboard-o9v.5): the bead's updated_at at render
+      {# Optimistic-lock token: the bead's updated_at at render
          time. The route re-reads the bead LIVE before writing and rejects
          the submit if updated_at moved on, so a stale tab can't silently
          clobber a concurrent edit. Append-only notes don't need it (an
@@ -156,7 +156,7 @@
   </details>
   {% endif %}
 
-  {# Append-only edit affordance (bdboard-o9v.4). Notes (and any future
+  {# Append-only edit affordance. Notes (and any future
      append_only field) are NEVER editable via a raw replace textarea —
      `bd update --notes` REPLACES the whole field and would destroy agent
      verification / bug-discovery history. The write path is pinned to

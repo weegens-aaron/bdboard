@@ -1,4 +1,4 @@
-"""History page derivations (bdboard-rrc design §4).
+"""History page derivations.
 
 All pure functions over the existing list_all snapshot — no new bd call,
 no persistence. They power the long-window History page (the complement
@@ -27,18 +27,18 @@ HISTORY_RANGES: dict[str, timedelta | None] = {
 # Default range when none/invalid is supplied (matches the design's default).
 DEFAULT_HISTORY_RANGE = "30d"
 
-# Allowed page sizes for the paginated closed list (bdboard-3jj). The
+# Allowed page sizes for the paginated closed list. The
 # user-facing selector offers exactly these; any other value (missing or
 # tampered query param) clamps to HISTORY_PAGE_SIZE.
 HISTORY_PAGE_SIZES = (25, 50, 100)
 
-# Default page size for the paginated closed list (bdboard-3jj). Must be a
+# Default page size for the paginated closed list. Must be a
 # member of HISTORY_PAGE_SIZES.
 HISTORY_PAGE_SIZE = 50
 
 
 def clamp_page_size(value: Any) -> int:
-    """Coerce an arbitrary page_size input to the allowed set (bdboard-3jj).
+    """Coerce an arbitrary page_size input to the allowed set.
 
     Returns ``value`` when it parses to a member of
     :data:`HISTORY_PAGE_SIZES`; otherwise falls back to
@@ -177,7 +177,7 @@ def history_window(
     slice over the in-memory snapshot — no extra I/O per page (design §D5).
 
     An explicit ``from_date``/``to_date`` (``YYYY-MM-DD``) custom selection
-    supersedes ``range_key`` (bdboard-7k6); otherwise the preset window
+    supersedes ``range_key``; otherwise the preset window
     applies as before.
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
@@ -202,8 +202,8 @@ def _iter_day_span(days: list[str]) -> Iterator[str]:
     """Yield every ``"YYYY-MM-DD"`` key from the first through last of ``days``.
 
     Single source of truth for the gap-free "continuous timeline" day
-    iteration shared by :func:`_fill_daily_series` and :func:`combined`
-    (bdboard-6nv). Given any iterable of ``"YYYY-MM-DD"`` day keys (need not
+    iteration shared by :func:`_fill_daily_series` and :func:`combined`.
+    Given any iterable of ``"YYYY-MM-DD"`` day keys (need not
     be sorted or contiguous), yields every calendar day from the earliest
     through the latest inclusive, inserting the days with no entry so callers
     can fill them with zero. Yields nothing for an empty input.
@@ -222,13 +222,13 @@ def _fill_daily_series(buckets: dict[str, int]) -> list[dict[str, Any]]:
     """Turn a sparse day->count map into a gap-free ascending series.
 
     Single source of truth for the "continuous timeline" fill shared by
-    :func:`throughput` and :func:`created` (bdboard-gau). Given ``buckets``
+    :func:`throughput` and :func:`created`. Given ``buckets``
     keyed by ``"YYYY-MM-DD"``, returns
     ``[{"day": "YYYY-MM-DD", "count": int}, ...]`` spanning the first through
     last populated day, inserting ``count=0`` for any day with no entry so
     the chart reads as a continuous line rather than a jagged one. Returns
     ``[]`` for an empty map. Day-span iteration is delegated to
-    :func:`_iter_day_span` (bdboard-6nv).
+    :func:`_iter_day_span`.
     """
     return [{"day": key, "count": buckets.get(key, 0)} for key in _iter_day_span(list(buckets))]
 
@@ -239,7 +239,7 @@ def _bucket_by_day(beads: list[dict[str, Any]], field: str) -> dict[str, int]:
     Single source of truth for the per-day tally shared by :func:`throughput`
     (``field="closed_at"``), :func:`created` (``field="created_at"``) and
     :func:`combined` (both). Beads whose ``field`` is missing/unparseable are
-    skipped — they cannot be placed on a timeline (bdboard-ijd).
+    skipped — they cannot be placed on a timeline.
     """
     buckets: dict[str, int] = defaultdict(int)
     for b in beads:
@@ -264,7 +264,7 @@ def throughput(
     with zero closes inside that span are filled with ``count=0`` so the
     chart reads as a continuous timeline rather than a jagged one. Returns
     ``[]`` when nothing closed in the window. An explicit custom
-    ``from_date``/``to_date`` supersedes ``range_key`` (bdboard-7k6).
+    ``from_date``/``to_date`` supersedes ``range_key``.
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
     windowed = _closed_in_window(beads, cutoff, ceiling)
@@ -318,8 +318,7 @@ def created(
     complement to :func:`throughput`: created answers 'how much did we file?',
     throughput answers 'how much did we finish?'. Returns ``[]`` when nothing
     was created in the window. Pure over the snapshot - no extra I/O. An
-    explicit custom ``from_date``/``to_date`` supersedes ``range_key``
-    (bdboard-7k6).
+    explicit custom ``from_date``/``to_date`` supersedes ``range_key``.
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
     windowed = _created_in_window(beads, cutoff, ceiling)
@@ -333,7 +332,7 @@ def combined(
     from_date: str | None = None,
     to_date: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Created + closed per day, merged into one gap-free series (bdboard-ijd).
+    """Created + closed per day, merged into one gap-free series.
 
     The single source feeding the History page's unified throughput chart.
     Where :func:`throughput` and :func:`created` each return a standalone
@@ -396,13 +395,13 @@ def lead_time_stats(
     Returns ``{n, median_lead_h, p90_lead_h, median_cycle_h, p90_cycle_h,
     avg_cycle_h}`` with hour-valued floats (rounded to 1 dp) or None when
     there is no data for that metric. ``n`` is the count of closed beads in
-    the window. ``avg_cycle_h`` is the **mean** claim-to-close cycle time
-    (bdboard-98o): the editorial "Avg lead time" headline reports active
+    the window. ``avg_cycle_h`` is the **mean** claim-to-close cycle time:
+    the editorial "Avg lead time" headline reports active
     work time (started_at → closed_at) rather than bd's workspace-global
     backlog-age lead time (created → closed). Beads lacking a parseable
     ``started_at`` are excluded from the cycle metrics; negative/zero
     durations from clock skew or odd data are dropped. An explicit custom
-    ``from_date``/``to_date`` supersedes ``range_key`` (bdboard-7k6).
+    ``from_date``/``to_date`` supersedes ``range_key``.
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
     windowed = _closed_in_window(beads, cutoff, ceiling)
@@ -444,8 +443,8 @@ def status_timeline(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Derive a per-bead status-transition timeline from ``bd history <id>``.
 
     ``bd history <id> --json`` returns one full issue snapshot per Dolt
-    commit, **newest first** (see design bdboard-rrc 2.2). This is the
-    deferred "bead E" enrichment: rather than the field-by-field audit diff
+    commit, **newest first**. This is the
+    status-transition enrichment: rather than the field-by-field audit diff
     (:func:`bdboard.app._shape_audit`), we collapse the snapshot stream to
     only the moments the lifecycle *status* changed (created -> in_progress
     -> closed, ...) so a reader can see how long a bead spent in each state.

@@ -21,7 +21,7 @@
 {% set range_labels = {"7d": "7 days", "30d": "30 days", "90d": "90 days", "all": "all time"} %}
 {% set range_human = range_labels.get(range_key, range_key) %}
 
-{# Custom date-range state (bdboard-7k6). When a valid from/to selection is
+{# Custom date-range state. When a valid from/to selection is
    active, ``is_custom`` is true and ``active_range`` is the synthetic
    "custom" key; the preset buttons then read aria-pressed=false and the
    Custom toggle owns the active cue. ``from_date``/``to_date`` echo the
@@ -59,7 +59,7 @@
         hx-swap="innerHTML"
        >{{ "All" if r == "all" else r }}</button>
       {% endfor %}
-      {# Custom date-range control (bdboard-7k6; popover bdboard-9zf). The
+      {# Custom date-range control. The
          Custom badge mirrors the preset badges (same filter-badge idiom +
          aria-pressed for the active-custom cue) but instead of firing an HTMX
          request it toggles a POPOVER anchored to it that holds the from/to
@@ -68,7 +68,7 @@
          share a position:relative wrapper so the popover anchors to the badge
          rather than the toolbar row.
 
-         The popover ALWAYS ships hidden on server render (bdboard-9zf): the
+         The popover ALWAYS ships hidden on server render: the
          active-custom state is shown by the badge highlight, not by a
          persistently-open panel. That makes Apply self-closing (the region
          re-swaps and the popover re-renders hidden), and selecting any preset
@@ -85,7 +85,7 @@
           aria-controls="history-custom-range"
           aria-label="Show history for a custom date range">Custom</button>
 
-        {# Custom date-range popover (bdboard-9zf). A real <form> so Enter
+        {# Custom date-range popover. A real <form> so Enter
            submits and the inputs carry semantic from/to labels. HTMX
            serialises the two date fields onto /api/history, where they
            supersede range=. Hidden until the Custom toggle opens it. #}
@@ -124,16 +124,16 @@
     </div>
   </div>
 
-  {# Stats row — relocated into the masthead header (bdboard-w5z) to mirror the
+  {# Stats row — relocated into the masthead header to mirror the
      board's .masthead-counts. It is NOT rendered inline here in the body;
      instead partials/history_stats.html is emitted as an hx-swap-oob fragment
      (see the include at the foot of this region) so the SAME /api/history
      response that swaps this region also updates the masthead stats out-of-
      band. One fetch keeps both surfaces in sync on every range change and SSE
-     refresh — no second endpoint, no client JS (DRY). bdboard-9jt restored
-     this header strip while keeping the bottom foot-summary line removed. #}
+     refresh — no second endpoint, no client JS (DRY). This
+     header strip is present while the bottom foot-summary line stays removed. #}
 
-  {# Combined throughput chart (bdboard-ijd) — created AND closed per day in a
+  {# Combined throughput chart — created AND closed per day in a
      SINGLE day-bucketed bar strip, replacing the two stacked sections so
      created-vs-closed throughput (net flow / backlog burn) reads at a glance.
      Each day cell holds a GROUPED pair of bars: created (violet) + closed
@@ -171,7 +171,7 @@
             {# Each series is its own bottom-aligned mini column: a per-day
                count label sits above its bar, and the bar grows UP from the
                shared baseline (column + justify-content:flex-end in CSS). This
-               restores the per-day counts lost in the combine (bdboard-oey)
+               restores the per-day counts lost in the combine
                and keeps both series anchored to the baseline rather than
                hanging from the top. #}
             <span class="throughput-col">
@@ -228,8 +228,8 @@
 
     {# Pager — server-side pagination (design §D5). Prev/Next re-fetch this
        region for the adjacent page within the current window, preserving the
-       active page size (bdboard-3jj) AND the custom date range when one is
-       active (bdboard-7k6) via window_qs. #}
+       active page size AND the custom date range when one is
+       active via window_qs. #}
     <nav class="history-pager" aria-label="History pages">
       {% if page > 1 %}
       <button type="button" class="filter-badge"
@@ -244,13 +244,13 @@
               hx-target="#history-region" hx-swap="innerHTML"
               aria-label="Next page">Older ›</button>
       {% endif %}
-      {# Page-size selector (bdboard-3jj). Changing it resets to page 1 and
+      {# Page-size selector. Changing it resets to page 1 and
          re-swaps this region with the chosen size; the base.html persistence
          JS mirrors the choice into localStorage so it survives reloads and
          navigation, like the theme toggle. The selected option is rendered
          server-side from active_page_size so it reflects state after every
          HTMX swap of #history-region. The hx-vals carry the active custom
-         window so changing the size stays inside it (bdboard-7k6). #}
+         window so changing the size stays inside it. #}
       <label class="history-page-size">
         <span class="history-page-size-label">Per page</span>
         <select
@@ -283,13 +283,13 @@
     {% endif %}
   </section>
 
-  {# OOB masthead stats (bdboard-w5z, restored bdboard-9jt). Emitting the stats
+  {# OOB masthead stats. Emitting the stats
      <dl> here with hx-swap-oob="true" makes HTMX peel it off the response and
      swap it into #history-stats in the masthead, while the rest of this
      response fills #history-region. Same fetch, both surfaces — so the
      range-scoped stats in the header stay live on every range click and SSE
      refresh. NOTE: the bottom-of-page foot-summary line ("N closed in range;
-     median lead ...; N closed/day on average") stays removed per bdboard-2qf;
+     median lead ...; N closed/day on average") stays removed;
      only the masthead strip is restored here. #}
   {% include "partials/history_stats.html" %}
 </div>

@@ -1,10 +1,10 @@
 {# Pour result summary — swapped into #formula-pour-result after a
-   POST /api/formulas/{name}/pour (bdboard-ain.1). The board itself refreshes
+   POST /api/formulas/{name}/pour. The board itself refreshes
    via the optimistic SSE broadcast + the watcher pipeline, so this is just an
    acknowledgement of what landed.
 
    `created` here is the VISIBLE count (bd's raw count minus the one hidden
-   molecule wrapper, bdboard-98e) so it matches what shows on the board.
+   molecule wrapper) so it matches what shows on the board.
    `fully_materialized` is False when bd reported more nodes than it actually
    mapped to real ids — a partial pour we must NOT dress up as a clean win. #}
 {% if fully_materialized %}

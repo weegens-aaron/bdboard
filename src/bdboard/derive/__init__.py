@@ -1,6 +1,6 @@
 """Derive UI-shaped views from raw bead snapshots.
 
-This package was split from a single ``derive.py`` module (bdboard-2ic) once
+This package was split from a single ``derive.py`` module once
 it crossed the project's 600-line guideline. The public import surface is
 preserved verbatim — ``from bdboard import derive`` and
 ``from bdboard.derive import <name>`` keep working exactly as before — by

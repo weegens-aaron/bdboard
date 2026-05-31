@@ -2,19 +2,19 @@
 {% block title %}History{% endblock %}
 {% block body %}
 <header class="masthead">
-  {# TOP ROW (bdboard-xgu) brand left, stats strip right-aligned. The page nav
+  {# TOP ROW brand left, stats strip right-aligned. The page nav
      and theme toggle move to the second row below. #}
   <div class="masthead-row">
     <div class="masthead-brand">
       <h1 class="title">History</h1>
     </div>
-    {# Masthead stats host (bdboard-w5z) — symmetric with the board's
+    {# Masthead stats host — symmetric with the board's
        .masthead-counts. The #history-region's first /api/history load (and
        every range click / SSE refresh) returns the stats <dl> as an
        hx-swap-oob fragment that targets #history-stats by id, so the header
        strip is populated and kept current with no extra fetch.
 
-       It ships an instant skeleton (bdboard-3vp) so the masthead reserves the
+       It ships an instant skeleton so the masthead reserves the
        stats columns and shows shimmer placeholders instead of a blank gap
        while that first fetch is in flight — symmetric with the board's
        #counts host. aria-busy flags it as loading for assistive tech; the OOB
@@ -25,7 +25,7 @@
       {% with cells = 6 %}{% include "partials/counts_skeleton.html" %}{% endwith %}
     </div>
   </div>
-  {# SECOND ROW (bdboard-xgu) page nav left, theme toggle right-aligned. #}
+  {# SECOND ROW page nav left, theme toggle right-aligned. #}
   <div class="masthead-row masthead-nav-row">
     {% include "partials/nav.html" %}
     <div class="masthead-actions">
@@ -62,7 +62,7 @@
     hx-trigger="load, refresh from:body"
     hx-swap="innerHTML"
   >
-    {# Instant skeleton (bdboard-2do) so the History page never shows a blank
+    {# Instant skeleton so the History page never shows a blank
        region while the first /api/history fetch is in flight. Replaced on
        the first swap; it's purely a perceived-performance placeholder. #}
     {% include "partials/history_skeleton.html" %}

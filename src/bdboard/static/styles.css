@@ -88,9 +88,9 @@
   --status-unknown-fg: var(--ink-2);
   --status-unknown-border: var(--rule-2);
 
-  /* Priority badge colors (bdboard-97z) — urgency gradient hot->cool,
+  /* Priority badge colors — urgency gradient hot->cool,
      strong->faint, so all five levels are mutually distinguishable by
-     HUE + TREATMENT, not lightness alone. See bdboard-tsu --design for
+     HUE + TREATMENT, not lightness alone. See
      the palette decision and computed WCAG AA proof (both themes).
      P0 solid red / P1 solid amber / P2 blue tint / P3 neutral fill /
      P4 ghost outline. Re-pointed for the dark canvas below. */
@@ -122,7 +122,7 @@
 }
 
 /* ============================================================
-   Dark theme (bdboard-35e).
+   Dark theme.
    Only the *semantic aliases* are re-pointed here — every component
    references those aliases (no raw hex outside :root), so flipping
    data-theme="dark" on <html> recolors the whole surface. Greys are
@@ -211,7 +211,7 @@
   --status-unknown-fg: var(--ink-2);
   --status-unknown-border: var(--rule-2);
 
-  /* Priority badges — re-pointed for the dark canvas (bdboard-97z).
+  /* Priority badges — re-pointed for the dark canvas.
      P0/P1 fills auto-lighten via --brand-red/--brand-yellow; on the
      dark theme dark ink reads on those light fills, so P1 fg flips to
      --on-brand (#16171a). P2 reuses the dark open-status panel/text. */
@@ -275,27 +275,27 @@ pre { margin: 0; }
 }
 .masthead-row {
   display: flex;
-  /* Both masthead rows split their contents left vs right (bdboard-xgu):
+  /* Both masthead rows split their contents left vs right:
      TOP row    = brand (left) + counts/stats strip (right);
      SECOND row = page nav (left) + actions, i.e. theme toggle + Pour Formula
                   (right).
      nowrap is essential: it stops the right-hand group from wrapping ABOVE
-     its row-mate at narrow widths (the bdboard-9y7 / bdboard-xgu bug where
-     the actions reflowed over the brand). Graceful degradation is preserved
+     its row-mate at narrow widths (it once reflowed the actions over the
+     brand). Graceful degradation is preserved
      because the inner groups (.masthead-counts, .masthead-actions) wrap
-     INTERNALLY via their own flex-wrap (folds in bdboard-c52) and the brand
+     INTERNALLY via their own flex-wrap and the brand
      title wraps its words — nothing overflows the row. */
   flex-wrap: nowrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 8px 32px;
 }
-/* Right-hand actions group (bdboard-xgu): theme toggle + Pour Formula, living
+/* Right-hand actions group: theme toggle + Pour Formula, living
    on the SECOND row opposite the page nav. It's right-aligned by the row's
    justify-content:space-between, reinforced by margin-left:auto so it hugs the
    right edge even if the nav is ever absent. align-items:flex-end keeps the
    cells co-planar; flex-wrap lets the group reflow within itself at narrow
-   widths instead of clipping or pushing above the nav (folds in bdboard-c52). */
+   widths instead of clipping or pushing above the nav. */
 .masthead-actions {
   display: flex;
   flex-wrap: wrap;
@@ -304,7 +304,7 @@ pre { margin: 0; }
   margin-left: auto;
   gap: 8px 24px;
 }
-/* SECOND ROW (bdboard-xgu): page nav (left) + actions (right). A hairline
+/* SECOND ROW: page nav (left) + actions (right). A hairline
    rule separates it from the top row, echoing the masthead's editorial rules.
    margin-top ties it under the brand/counts row without crowding. It inherits
    the parent .masthead-row's justify-content:space-between, so the nav sits
@@ -330,7 +330,7 @@ pre { margin: 0; }
   margin-top: 4px;
 }
 
-/* Masthead contents bar (bdboard-9kb, Option A from the bdboard-buq spike).
+/* Masthead contents bar (Option A from the masthead editorial spike).
    Board / Memory / theme read as a single typographic "contents strip" that
    reuses the masthead's own editorial kit — the small-caps letterspacing of
    the counts labels and the hairline vertical rules of the counts strip. No pills,
@@ -341,7 +341,7 @@ pre { margin: 0; }
 .masthead-nav {
   display: flex;
   align-items: center;
-  /* The nav now owns its own second row (bdboard-vbz), so it no longer needs
+  /* The nav now owns its own second row, so it no longer needs
      the old margin-right:auto (left-push) or the 8px baseline lift that tied
      it to the 38px wordmark on the shared single row. The .masthead-nav-row
      handles left-alignment; the nav simply sits at the row's start. */
@@ -353,7 +353,7 @@ pre { margin: 0; }
   text-transform: uppercase;
   letter-spacing: 0.10em;
   /* Sized up from 12px so BOARD/MEMORY read as balanced against the wordmark
-     and counts strip rather than undersized (bdboard-dmp). */
+     and counts strip rather than undersized. */
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
@@ -374,7 +374,7 @@ pre { margin: 0; }
    cells on purpose: the active baseline rule (box-shadow) spans the padding
    box, so zeroing padding-left here used to make BOARD's underline span a
    different width/offset than MEMORY's. Keeping padding uniform makes the
-   active underline read identically across every cell (bdboard-dmp). */
+   active underline read identically across every cell. */
 .masthead-nav .mh-link:first-child {
   border-left: 0;
 }
@@ -395,19 +395,19 @@ pre { margin: 0; }
   box-shadow: inset 0 -2px 0 var(--brand-blue);
 }
 
-/* Theme toggle (bdboard-35e) — borrows .mh-link styling so it reads as the
+/* Theme toggle — borrows .mh-link styling so it reads as the
    trailing cell of the contents bar, tied in with the same hairline
    border-left. It is a <button> outside <nav>: an action, not navigation.
    The label/icon swap is driven by CSS attribute selectors keyed off the
    <html data-theme>, so the JS only flips one attribute (single source of
-   truth from bdboard-35e). */
+   truth: the data-theme attribute on <html>). */
 .mh-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   /* Borrows .mh-link's border-left (hairline rule) and padding for the flex
      layout. The bottom margin matches .masthead-nav so the toggle shares the
-     nav's baseline lift and the whole strip stays co-planar (bdboard-dmp). */
+     nav's baseline lift and the whole strip stays co-planar. */
   margin-bottom: 8px;
 }
 .mh-toggle-icon { font-size: 13px; line-height: 1; }
@@ -418,7 +418,7 @@ pre { margin: 0; }
 :root[data-theme="dark"] .mh-toggle .mh-toggle-to-dark { display: none; }
 :root[data-theme="dark"] .mh-toggle .mh-toggle-to-light { display: inline; }
 
-/* Pour-formula entry point (bdboard-ain.1 / bdboard-rip). It borrows .mh-link
+/* Pour-formula entry point. It borrows .mh-link
    so it reads as a contents-strip action cell (hairline border-left, small-caps
    label) — but, unlike the nav and theme toggle, it has no wrapper carrying the
    baseline lift. The .masthead-row bottom-aligns line boxes (align-items:
@@ -433,7 +433,7 @@ pre { margin: 0; }
   margin-bottom: 8px;
 }
 
-/* Second-row actions group (bdboard-xgu): the theme toggle + Pour Formula
+/* Second-row actions group: the theme toggle + Pour Formula
    button sit on the SECOND masthead row opposite the page nav, not beside the
    wordmark. The .masthead-nav-row centre-aligns its items (align-items:center),
    so neither cell needs the 8px baseline lift the old shared single row used to
@@ -1107,7 +1107,7 @@ pre { margin: 0; }
 }
 
 /* ============================================================
-   Formula pour (bdboard-ain.1) — a masthead button opens a native
+   Formula pour — a masthead button opens a native
    <dialog> with a two-step flow: pick a formula, then fill its
    variables and pour. Borrows the memory-dialog visual kit (button
    colours, inputs) so the two write surfaces stay consistent (DRY).
@@ -1409,7 +1409,7 @@ pre { margin: 0; }
 .modal-head-row {
   display: flex; gap: 8px; align-items: center;
 }
-/* The priority-badge slot (bdboard-nuy) is a stable OOB swap target wrapping
+/* The priority-badge slot is a stable OOB swap target wrapping
    the conditional .bead-priority badge. display:contents keeps the wrapper
    transparent to the flex row, so the badge lays out exactly as before and an
    empty slot (no priority) adds no spurious gap. */
@@ -1619,7 +1619,7 @@ pre { margin: 0; }
   white-space: pre-wrap;
 }
 
-/* Append-only "Add a note" affordance (bdboard-o9v.4). Deliberately framed
+/* Append-only "Add a note" affordance. Deliberately framed
    as ADDING, never replacing: notes carry agent verification / bug-discovery
    history, and `bd update --notes` REPLACES. The server pins --append-notes;
    this UI never prefills the existing value into a textarea. Collapsed by
@@ -1707,7 +1707,7 @@ pre { margin: 0; }
   color: var(--brand-green);
 }
 
-/* Visually-hidden but screen-reader-available utility (bdboard-o9v.3).
+/* Visually-hidden but screen-reader-available utility.
    Used by the global #a11y-announce live region so inline-edit "Saved."
    confirmations reach assistive tech without any visible chrome. */
 .sr-only {
@@ -1722,7 +1722,7 @@ pre { margin: 0; }
   border: 0;
 }
 
-/* Inline field-edit affordance (bdboard-o9v.3). A collapsed <details> per
+/* Inline field-edit affordance. A collapsed <details> per
    editable (replace-semantics) field; mirrors the note-add visual language
    so the modal reads as one editing surface. WCAG 2.2 AA: visible focus
    rings on every interactive element, real labels, and a polite aria-live
@@ -1817,7 +1817,7 @@ pre { margin: 0; }
 .audit-what { color: var(--ink); }
 .audit-commit { font-family: var(--mono); font-size: 10px; color: var(--muted-2); text-align: right; }
 
-/* Lifecycle status-transition timeline (bdboard-7r8). A vertical rail of
+/* Lifecycle status-transition timeline. A vertical rail of
    status stops; each row shows the status badge, when it was entered, how
    long the bead dwelt in it, and who committed the change. The marker dot
    reuses the same status colour tokens as the badges so colour is never the
@@ -2103,7 +2103,7 @@ pre { margin: 0; }
 .live-dot.live-off { background: var(--spark, #ffc220); box-shadow: 0 0 0 2px rgba(255, 194, 32, 0.22); }
 
 /* ============================================================
-   History page (bdboard-ej5) — KPI strip, throughput chart,
+   History page — KPI strip, throughput chart,
    paginated closed list. Reuses the counts strip + filter-badge
    idioms so the surface stays visually consistent with the board.
    ============================================================ */
@@ -2133,7 +2133,7 @@ pre { margin: 0; }
 /* The "All" preset reads better un-lowercased than the others. */
 .history-ranges .filter-badge { text-transform: none; }
 
-/* Custom date-range popover (bdboard-7k6; popover bdboard-9zf). The Custom
+/* Custom date-range popover. The Custom
    badge anchors a floating panel holding the from/to <input type="date">
    fields plus Apply + Clear, instead of spilling them inline across the
    toolbar row. .history-custom is the position:relative anchor wrapping the
@@ -2202,9 +2202,9 @@ pre { margin: 0; }
 }
 .history-date-apply { text-transform: none; }
 
-/* History stats — a SINGLE editorial row (bdboard-4zk) combining bd's
+/* History stats — a SINGLE editorial row combining bd's
    workspace-global totals ("via bd") with the range-derived KPIs. Relocated
-   into the masthead header (bdboard-w5z) to mirror the board's .masthead-counts
+   into the masthead header to mirror the board's .masthead-counts
    strip, so it now reuses the bare counts idiom (typography, hairline rules,
    zero-muting) with NO box/border/background — visually symmetric with the
    board's header counts. flex-wrap + row-gap keep it graceful at narrow widths
@@ -2213,7 +2213,7 @@ pre { margin: 0; }
   flex-wrap: wrap;
   gap: 12px 20px;
 }
-/* Info-icon popover (bdboard-5wt) — terse stat labels delegate their fuller
+/* Info-icon popover — terse stat labels delegate their fuller
    explanation (data source, claim→close vs created→close definition, range
    scope) to this CSS-only popover. The <button> reveals the tooltip on
    hover/focus (keyboard-accessible: focus alone triggers it); aria-describedby
@@ -2252,7 +2252,7 @@ pre { margin: 0; }
    until its trigger is hovered/focused. Clipped (not display:none) so screen
    readers can still resolve the aria-describedby reference.
 
-   Anchored BELOW the trigger (bdboard-r1h): the stats strip sits at the very
+   Anchored BELOW the trigger: the stats strip sits at the very
    top of the masthead, so an upward-anchored popover was clipped off the top
    edge of the viewport. Opening downward keeps the whole panel in view since
    the masthead has the entire page below it. */
@@ -2282,7 +2282,7 @@ pre { margin: 0; }
 }
 /* Right-edge cell (e.g. "Throughput", last in the row): anchor the popover's
    RIGHT edge to the trigger so a 240px panel grows leftward INTO the row
-   instead of overflowing past the right edge of the viewport (bdboard-r1h). */
+   instead of overflowing past the right edge of the viewport. */
 .history-stats .counts-cell:last-child .stat-info-pop {
   left: auto;
   right: 0;
@@ -2353,7 +2353,7 @@ pre { margin: 0; }
 .throughput-bar-created {
   background: var(--violet);
 }
-/* Combined chart (bdboard-ijd): the two series share one fixed-height strip,
+/* Combined chart: the two series share one fixed-height strip,
    so each day cell holds a GROUPED pair of bars instead of a single bar.
    .throughput-pair is the per-day group — a flex row that bottom-aligns the
    created + closed bars side by side and consumes the cell's full height so
@@ -2370,7 +2370,7 @@ pre { margin: 0; }
    top, bar below) that bottom-aligns its bar to the shared baseline. Using a
    column with justify-content:flex-end makes the bar grow UP from the bottom
    axis (adjacent to the date labels) instead of hanging down from the top —
-   the upside-down regression from the combine (bdboard-oey). flex:1 splits
+   the upside-down regression from the combine. flex:1 splits
    the cell width evenly so the pair stays centred and balanced. */
 .throughput-col {
   flex: 1 1 0;
@@ -2531,7 +2531,7 @@ pre { margin: 0; }
 }
 
 /* ============================================================
-   Snappy transitions: skeleton loaders (bdboard-2do).
+   Snappy transitions: skeleton loaders.
 
    Every primary navigation (Board/History/Memory) and the bead-detail
    modal must give an immediate visual response on click — never a frozen
@@ -2540,7 +2540,7 @@ pre { margin: 0; }
         instantly, hydrated in place by HTMX `load` fetches.
      2. .modal-skeleton, an instant placeholder injected into #bead-modal
         the moment a bead card is clicked.
-   (A former global top progress bar was removed in bdboard-ddb — skeleton
+   (A former global top progress bar was removed — skeleton
    loaders are sufficient loading feedback.)
    Tokens stay theme-aware (base vs. shimmer-sweep greys) so the effect
    reads in both light and dark, and the whole thing respects
@@ -2603,7 +2603,7 @@ pre { margin: 0; }
      itself just reserves the box so the lane/list keeps its height. */
   pointer-events: none;
 }
-/* History region skeleton scaffold (bdboard-3vp): mirrors history.html's
+/* History region skeleton scaffold: mirrors history.html's
    real body so the swap is shift-free — a range toolbar, two chart sections
    (closed + created), then the closed list. The KPI strip is NOT reserved
    here; those stats live in the masthead host (#history-stats), which renders
@@ -2641,8 +2641,8 @@ pre { margin: 0; }
 .skeleton-modal-row.short { width: 60%; }
 
 /* ----- Navigation in-flight link state -----
-   Note: the former global top progress bar (.nav-progress) was removed in
-   bdboard-ddb. Skeleton loaders are the single loading-feedback mechanism
+   Note: the former global top progress bar (.nav-progress) was removed.
+   Skeleton loaders are the single loading-feedback mechanism
    for in-flight data regions now. */
 
 /* A nav link that has been clicked and is loading the next page — dim it

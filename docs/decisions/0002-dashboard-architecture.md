@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-05-30
-- **Relates to:** bdboard-z6n (README onboarding audit — relocated this rationale out of the README)
+- **Relates to:** README onboarding audit (relocated this rationale out of the README)
 
 > This ADR captures the *why* behind bdboard's stack and a couple of related
 > implementation choices. It is the home for decision/rationale content that
@@ -42,7 +42,7 @@ merges — they are **not** packaged as a bd *formula*.
 
 **Why CI and not a bd formula?** bd *formulas* spawn work; they do not run
 checks. These deterministic pass/fail checks belong in CI gating every PR,
-leaving the `code-health-audit` formula (bdboard-jyf) to **triage** CI output
+leaving the `code-health-audit` formula to **triage** CI output
 rather than re-run the tools (see `docs/design/formula-spike/`).
 
 ## Consequences

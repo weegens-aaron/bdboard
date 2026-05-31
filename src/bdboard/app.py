@@ -100,7 +100,7 @@ TEMPLATES.env.filters["dep_label"] = _dep_label
 TEMPLATES.env.globals["asset_v"] = str(int(time.time()))
 
 # ----- CSRF protection -----
-# bdboard introduces its first write paths in bdboard-12f.3 (memory curate).
+# bdboard introduces its first write paths with the memory-curate feature.
 # CSRF posture: a per-process token generated at startup, included in all
 # mutation forms via a hidden input, and validated on POST/DELETE. This is
 # minimal-but-sufficient for a single-user localhost dashboard:
@@ -126,7 +126,7 @@ _BD_BIN = os.environ.get("BDBOARD_BD_BIN", "bd")
 # Optional actor override for the audit trail on manual field edits. When unset
 # bd falls back to $BEADS_ACTOR / git user.name / $USER, so this is just a way
 # to force a human-edit attribution distinct from any agent identity that may
-# also be writing to the same workspace (spike bdboard-7q9 §4 — auditability).
+# also be writing to the same workspace (auditability).
 _ACTOR = os.environ.get("BDBOARD_ACTOR") or None
 
 bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE)
@@ -196,7 +196,7 @@ async def _watch_beads() -> None:
     a cooldown after each refresh prevents back-to-back refreshes from
     sustained activity.
 
-    Watch scope (bdboard-3sf): we watch a SMALL, fixed set of directories
+    Watch scope: we watch a SMALL, fixed set of directories
     NON-recursively (bd.watch_targets() — the per-db dolt noms/ dirs plus
     .beads/ itself) instead of the whole .beads/ tree recursively. The
     recursive whole-tree watch opened one kqueue fd per directory on macOS
@@ -314,7 +314,7 @@ async def sse_events(request: Request) -> StreamingResponse:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    """Full-page board view — a cheap, non-blocking shell (bdboard-2do).
+    """Full-page board view — a cheap, non-blocking shell.
 
     Previously this route awaited ``store.snapshot()`` AND a per-epic
     ``bd show`` hydration pass before returning ANY HTML, so the board
@@ -443,7 +443,7 @@ async def api_history(
     Pure derivation over the existing snapshot (design §4): no new bd call.
     ``range`` selects the window (7d/30d/90d/all, default 30d; unknown values
     degrade to the default inside derive). ``page`` drives server-side
-    pagination of the closed list (design §D5). ``page_size`` (bdboard-3jj)
+    pagination of the closed list (design §D5). ``page_size``
     is clamped to the allowed set {25,50,100}, defaulting to 50 on a
     missing/invalid value so a bad query param can never break paging. We
     compute the views from one snapshot — the paginated closed list plus the
@@ -451,7 +451,7 @@ async def api_history(
     partials/history.html.
 
     ``from_date``/``to_date`` (``YYYY-MM-DD``) carry an explicit custom
-    window (bdboard-7k6). When either parses, it supersedes ``range=`` for
+    window. When either parses, it supersedes ``range=`` for
     every series, the closed list, and the KPIs (the derive layer resolves
     the precedence in one place via :func:`derive._resolve_bounds`); the
     range control marks the synthetic ``custom`` preset active so the UI
@@ -466,7 +466,7 @@ async def api_history(
     page = max(1, page)
     # Clamp page_size to the allowed set; missing/invalid -> default 50.
     size = derive.clamp_page_size(page_size)
-    # Custom date window (bdboard-7k6). Resolve the bounds once so we know
+    # Custom date window. Resolve the bounds once so we know
     # whether a valid custom selection is active; if so the template's range
     # control highlights the synthetic 'custom' option instead of a preset.
     custom_lo, custom_hi = derive.custom_bounds(from_date, to_date)
@@ -482,14 +482,14 @@ async def api_history(
     )
     series = derive.throughput(beads, range_key=range_key, from_date=from_date, to_date=to_date)
     stats = derive.lead_time_stats(beads, range_key=range_key, from_date=from_date, to_date=to_date)
-    # Beads created per day (bdboard-5t5): day-bucketed by created_at. The
-    # standalone series is no longer charted on its own (bdboard-ijd merged
-    # it into the combined chart), but we still tally it for the legend's
+    # Beads created per day: day-bucketed by created_at. The
+    # standalone series is no longer charted on its own (it was merged
+    # into the combined chart), but we still tally it for the legend's
     # range-scoped 'Created' count.
     created_series = derive.created(
         beads, range_key=range_key, from_date=from_date, to_date=to_date
     )
-    # Combined created+closed series (bdboard-ijd): created and closed counts
+    # Combined created+closed series: created and closed counts
     # zipped onto ONE continuous timeline so the History page renders a single
     # grouped-bar chart instead of two stacked strips, making created-vs-closed
     # throughput (net flow / backlog burn) readable at a glance. Range/custom
@@ -666,7 +666,7 @@ async def api_memory_delete(
     )
 
 
-# ----- formula pour (bdboard-ain.1) -----
+# ----- formula pour -----
 
 
 def _short_pour_id(new_epic_id: str) -> str:
@@ -676,7 +676,7 @@ def _short_pour_id(new_epic_id: str) -> str:
     title just needs a token that distinguishes two pours of the SAME formula
     on the board. Reusing the suffix bd already assigned to ``new_epic_id``
     (the segment after the last ``-``) is the lowest-risk, zero-new-entropy
-    option and is already collision-free (spike bdboard-9n4 §3.2). Falls back
+    option and is already collision-free. Falls back
     to the whole id if there is no ``-`` to split on.
     """
     suffix = new_epic_id.rsplit("-", 1)[-1]
@@ -687,10 +687,10 @@ def _pour_counts(result: dict[str, Any]) -> tuple[int, int, bool]:
     """Reconcile what bd *created* with what the board will actually *show*.
 
     bd's ``created`` counts every node it materialized, INCLUDING the molecule
-    wrapper that bdboard deliberately hides from the board (Option A,
-    bdboard-ain.2). Reporting the raw ``created`` therefore over-counts by one
-    and tells the user '6 beads added' when only 5 are ever visible — the
-    bdboard-98e count-honesty bug.
+    wrapper that bdboard deliberately hides from the board (Option A).
+    Reporting the raw ``created`` therefore over-counts by one
+    and tells the user '6 beads added' when only 5 are ever visible — a
+    count-honesty bug.
 
     We also guard against *partial* materialization. ``id_mapping`` maps every
     step (plus the wrapper) to a real bead id, so a healthy pour has
@@ -752,7 +752,7 @@ async def api_formula_form(request: Request, name: str) -> HTMLResponse:
     Variables are read by PARSING the ``*.formula.json`` file directly (path
     from ``source`` in ``formula list --json``) — NOT from
     ``formula show --json`` (omits variables) nor the ``vars`` count (always
-    0). See spike bdboard-9n4 §2.2 and memory bd-formula-cli-gotchas.
+    0). See the bd CLI formula gotchas documented in docs/design/.
 
     One field per variable: ``description`` is the label/help, ``default`` is
     the prefilled value, and no-default variables are marked ``required`` so
@@ -803,7 +803,7 @@ async def api_formula_pour(
 ) -> HTMLResponse:
     """Pour a formula onto the board (CSRF-checked write path).
 
-    Flow (spike bdboard-9n4 §5):
+    Flow:
       1. CSRF guard (same posture as memory/field writes).
       2. Pre-flight: re-read the formula's variables and block the pour until
          every required (no-default) variable is filled. We collect the
@@ -896,7 +896,7 @@ async def api_formula_pour(
     # Reconcile bd's raw node count with what the board will actually show:
     # the molecule wrapper is hidden (so visible == created - 1), and a
     # shortfall between id_mapping and created means a partial materialization
-    # we must NOT report as a clean success (bdboard-98e).
+    # we must NOT report as a clean success.
     visible_count, created, fully_materialized = _pour_counts(result)
     # Optimistic SSE so the acting tab refreshes immediately; the watcher
     # pipeline also fires for everyone else.
@@ -920,7 +920,7 @@ async def api_formula_pour(
     )
 
 
-# ----- field edits (manual value editing, bdboard-o9v.2) -----
+# ----- field edits (manual value editing) -----
 
 
 @app.post("/api/bead/{bead_id}/field", response_class=HTMLResponse)
@@ -935,8 +935,8 @@ async def api_bead_field_update(
 ) -> HTMLResponse:
     """Edit one bead field VALUE via `bd update`, return the re-rendered row.
 
-    The write half of manual field editing (epic bdboard-o9v, spike
-    bdboard-7q9 §5). Reuses the exact remember/forget plumbing: CSRF guard,
+    The write half of manual field editing. Reuses the exact
+    remember/forget plumbing: CSRF guard,
     serialized bd mutation, SSE broadcast, optimistic re-render.
 
     Safety: the `field` name is validated against _FIELD_REGISTRY and rejected
@@ -946,7 +946,7 @@ async def api_bead_field_update(
     here even if a crafted request asks for them. The registry's `flag` is the
     ONLY flag passed to bd — we never let the client choose the flag.
 
-    Concurrency (bdboard-o9v.5, spike §4 "multi-writer races"): the
+    Concurrency (multi-writer races): the
     _subprocess_gate serializes the *writes*, but a stale form posted from
     one tab can clobber a concurrent edit made from another tab (or by an
     agent) — last-write-wins. To prevent silent clobber we run an
@@ -980,7 +980,7 @@ async def api_bead_field_update(
             '<p class="field-error" role="alert">Nothing to add.</p>',
             status_code=400,
         )
-    # Status gate (bdboard-1lf) + optimistic-lock precondition (bdboard-o9v.5)
+    # Status gate + optimistic-lock precondition
     # share a single LIVE read of the bead so we never double-shell bd.
     #
     # Status gate: manual field editing only applies to OPEN beads. Once a
@@ -1075,7 +1075,7 @@ async def api_bead_field_update(
         {"f": row, "bead_id": bead_id, "bead_updated_at": bead.get("updated_at")},
     ).body.decode()
     # When priority changes, the modal-header badge would otherwise stay
-    # stale until the modal is closed/reopened (bdboard-nuy). Append an
+    # stale until the modal is closed/reopened. Append an
     # out-of-band copy of the header badge so HTMX swaps it in the same
     # response — same OOB idiom the audit endpoint uses for #lifecycle-slot.
     if field == "priority":
@@ -1155,7 +1155,7 @@ async def api_bead_audit(request: Request, bead_id: str) -> HTMLResponse:
             {"entries": None, "timeline": None, "error": err},
         )
     rendered = _shape_audit(entries)
-    # Deferred bead E (bdboard-7r8): the per-bead status-transition timeline
+    # The per-bead status-transition timeline
     # is derived from the SAME history payload we just fetched, so the
     # lifecycle view costs no extra `bd history` subprocess call.
     timeline = derive.status_timeline(entries)
@@ -1261,8 +1261,8 @@ _FIELD_ORDER = [
 _HIDDEN = {"_type"}  # bd internal
 
 # Field-kind classification for the modal renderer. Keeps the template
-# stupid (just dispatches on the kind string) and the smarts here in Python
-# where they belong. Adding a new kind is one entry here + one branch in
+# trivial (it just dispatches on the kind string) and the logic here in Python
+# where it belongs. Adding a new kind is one entry here + one branch in
 # the template — no logic creep across files.
 _KIND_CHIPS = {"labels", "tags"}
 _KIND_DEPS = {"deps", "dependencies", "dependents"}
@@ -1296,21 +1296,18 @@ _SHORT_META_FIELDS = {
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Field editability registry (bdboard-o9v.1)
+# Field editability registry
 #
 # Single source of truth mapping each bd field key to *how* (if at all) its
 # VALUE may be manually edited from bdboard. This is the extensibility seam
-# the manual-field-editing epic (bdboard-o9v) is built on: adding a newly-
+# manual field editing is built on: adding a newly-
 # editable field later is ONE entry here, mirroring how the _KIND_* sets
 # above let you add a render kind in one place. DRY + open/closed.
 #
-# IMPORTANT — this bead ships the REGISTRY + display hints ONLY. There is
-# deliberately NO write path and NO UI yet (those are bdboard-o9v.2 and .3).
 # _ordered_fields() consults this to decorate each modal field row with
 # `editable` + `editor` hints; nothing here invokes `bd update`.
 #
-# Scope guardrail (from the bdboard-7q9 spike, see
-# docs/design/bdboard-7q9/manual-field-editing-spike.md §3 & §5): we whitelist
+# Scope guardrail: we whitelist
 # only fields whose *existing VALUE* can be edited in place via `bd update`.
 # Fields that edit shape/graph/lifecycle (labels, parent, metadata kv,
 # status) or that have no `bd update` flag at all (story_points, timestamps,
@@ -1323,7 +1320,7 @@ _SHORT_META_FIELDS = {
 #   - md:       multi-line markdown prose (rendered via md.render on display).
 #   - select:   constrained enum; render a dropdown from `enum_options`.
 #   - number:   integer value.
-# `flag` is the exact `bd update` flag the future write path (bdboard-o9v.2)
+# `flag` is the exact `bd update` flag the write path
 # will pass. `enum_options` is populated only for select editors so the
 # dropdown can be built server-side from one source (no enum drift).
 # `append_only` flags fields where the safe edit semantics are append rather
@@ -1402,8 +1399,8 @@ def _field_spec(key: str) -> FieldSpec:
     return _FIELD_REGISTRY.get(key, _READONLY_SPEC)
 
 
-# Statuses that LOCK a bead against manual field editing (bdboard-1lf).
-# Manual editing (epic bdboard-o9v) only applies while a bead is still open:
+# Statuses that LOCK a bead against manual field editing.
+# Manual editing only applies while a bead is still open:
 #   - in_progress => work is in-flight / claimed; editing risks clobbering
 #     a change an agent is actively making.
 #   - closed/resolved/done => the bead is historical record; editing rewrites
@@ -1459,7 +1456,7 @@ def _field_row(key: str, val: Any, *, bead_editable: bool = True) -> dict[str, A
     The `editor`/`enum_options`/`append_only` hints come straight from the
     field registry; the template stays declarative and just reads them.
 
-    `bead_editable` (bdboard-1lf) gates the per-field `editable` hint by the
+    `bead_editable` gates the per-field `editable` hint by the
     bead's lifecycle status: even a registry-editable field renders read-only
     once the bead is in_progress or closed, so the modal exposes no edit
     affordances for claimed / completed work. The registry still decides

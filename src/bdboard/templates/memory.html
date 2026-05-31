@@ -2,14 +2,14 @@
 {% block title %}Memory{% endblock %}
 {% block body %}
 <header class="masthead">
-  {# TOP ROW (bdboard-xgu) brand alone. The page nav and theme toggle move to
+  {# TOP ROW brand alone. The page nav and theme toggle move to
      the second row below. #}
   <div class="masthead-row">
     <div class="masthead-brand">
       <h1 class="title">Memory</h1>
     </div>
   </div>
-  {# SECOND ROW (bdboard-xgu) page nav left, theme toggle right-aligned. #}
+  {# SECOND ROW page nav left, theme toggle right-aligned. #}
   <div class="masthead-row masthead-nav-row">
     {% include "partials/nav.html" %}
     <div class="masthead-actions">
@@ -68,7 +68,7 @@
       hx-trigger="load, refresh from:body"
       hx-swap="innerHTML"
     >
-      {# Instant skeleton (bdboard-2do) so the Memory list never flashes
+      {# Instant skeleton so the Memory list never flashes
          empty while the first /api/memory fetch is in flight. Replaced on
          the first swap; purely a perceived-performance placeholder. #}
       {% include "partials/memory_skeleton.html" %}

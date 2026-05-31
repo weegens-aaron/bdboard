@@ -1,7 +1,7 @@
 {# Bead lifecycle + audit trail (loaded async into the modal by /api/bead/<id>/audit).
 
    Two complementary views over the same `bd history <id>` payload:
-     1. Lifecycle timeline (deferred bead E, bdboard-7r8) — only the
+     1. Lifecycle timeline — only the
         status-transition stops with dwell time spent in each state.
      2. Audit trail — the full field-by-field change log.
    Both degrade gracefully: a fetch error shows one friendly message; an

@@ -100,8 +100,7 @@ class BdClient:
         RLIMIT_NOFILE soft limit (often 256). Once fds run out, EVERYTHING
         needing a new fd fails — most visibly asyncio.create_subprocess_exec
         can no longer open pipes, so `bd list --json` (snapshot refresh) and
-        `bd show` (bead detail) both crash with OSError [Errno 24]. See
-        bdboard-3sf.
+        `bd show` (bead detail) both crash with OSError [Errno 24].
 
         Every meaningful bd write touches manifest + journal.idx inside each
         database's noms/ dir, so watching those directories NON-recursively
@@ -299,7 +298,7 @@ class BdClient:
 
         ``fresh=True`` drops any cached entry for this bead first, forcing a
         live read. The optimistic-lock precondition check (the field-edit
-        route, bdboard-o9v.5) needs this: a stale cache (up to SUCCESS_TTL_S
+        route) needs this: a stale cache (up to SUCCESS_TTL_S
         old) could report an out-of-date ``updated_at`` and let a concurrent
         edit slip through undetected, silently clobbering the other writer.
         """
@@ -398,7 +397,7 @@ class BdClient:
         )
         self._memories_cache.clear()
 
-    # ----- formulas: list + variable enumeration + pour (bdboard-ain.1) -----
+    # ----- formulas: list + variable enumeration + pour -----
 
     async def list_formulas(self) -> list[dict[str, Any]]:
         """List available formulas via `bd formula list --json`.
@@ -410,7 +409,7 @@ class BdClient:
         variables.
 
         ⚠️ The ``vars`` count in this payload is unreliable (bd reports ``0``
-        even when variables exist — verified in spike bdboard-9n4 §2.1), so do
+        even when variables exist), so do
         NOT use it to decide whether a formula has variables. Read the source
         file instead.
 
@@ -431,7 +430,7 @@ class BdClient:
 
         ``source`` is the absolute path bd reports in ``formula list --json``.
         We read the template file directly because the bd CLI does NOT expose
-        variables any other way (verified spike bdboard-9n4 §2.2):
+        variables any other way:
           - ``bd formula show <name> --json`` OMITS the ``variables`` block.
           - the ``vars`` count in ``formula list --json`` is wrong (always 0).
 
@@ -484,7 +483,7 @@ class BdClient:
         and materializes its bead tree) AND returns parsed JSON. The result
         carries ``new_epic_id`` (the molecule wrapper node that parents the
         whole tree), ``id_mapping`` (stepId → real bead id) and ``created``
-        (node count) — verified spike bdboard-9n4 §1.1.
+        (node count).
 
         Serialized on ``_subprocess_gate`` (bd's embedded dolt is single-writer).
         On non-zero exit we surface bd's stderr verbatim (same posture as
@@ -537,7 +536,7 @@ class BdClient:
         """Rename a bead's title via `bd update <id> --title <title>`.
 
         Used by the pour route to retitle the molecule wrapper / epic root
-        step to ``<formula> <id>`` (spike bdboard-9n4 §3.2). Serialized on the
+        step to ``<formula> <id>``. Serialized on the
         subprocess gate; surfaces bd's stderr on failure. Caches are
         invalidated so the post-rename list reflects the new title.
         """
@@ -550,7 +549,7 @@ class BdClient:
     # Flags whose value bd can read from a file/stdin instead of a positional
     # arg. Long markdown (description, design) goes through stdin via these
     # *-file variants with '-' to dodge shell-arg length limits and any
-    # quoting fragility (spike bdboard-7q9 §4). Every other flag (title,
+    # quoting fragility. Every other flag (title,
     # priority, append-notes, ...) takes its value directly as an arg — which
     # is already shell-safe because we use create_subprocess_exec (no shell).
     _STDIN_FLAG_ALIASES = {
