@@ -105,14 +105,6 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
   <body>
-    {# Global navigation/HTMX progress bar (bdboard-2do). A thin top-of-page
-       bar that paints the instant ANY interaction starts — both full-page
-       nav clicks (Board/History/Memory links) and in-page HTMX fetches
-       (lanes, counts, history range, memory search, bead modal). It gives
-       immediate "something is happening" feedback so the UI never feels
-       frozen while a bd-backed fetch is in flight. Driven by JS below:
-       .is-active animates an indeterminate sweep; .is-done fades it out. #}
-    <div id="nav-progress" class="nav-progress" role="presentation" aria-hidden="true"></div>
     {% block body %}{% endblock %}
     {% block footer %}
     <footer class="footer">
@@ -171,42 +163,18 @@
       });
 
       // ----- Snappy navigation/transition feedback (bdboard-2do) -----
-      // Single source of truth for "the UI is responding right now":
-      //   (a) a global top progress bar that animates while any HTMX
-      //       request is in flight (lanes, counts, history range, memory
-      //       search, bead modal) AND while a full-page nav link loads, and
-      //   (b) an instant skeleton injected into the bead modal so clicking
+      // The UI must respond instantly to interaction. Skeleton loaders
+      // (rendered by the page shells and the bead-modal template below)
+      // are the single source of "this region is loading" feedback. The
+      // former global top progress bar (#nav-progress) was removed in
+      // bdboard-ddb as redundant now that skeletons cover in-flight data
+      // regions. What remains here:
+      //   (a) an instant skeleton injected into the bead modal so clicking
       //       a bead card paints immediately instead of waiting on the
-      //       bd-backed /api/bead/<id> fetch.
-      // Wired off HTMX lifecycle events so it covers every hx-get/post on
-      // the page without per-element bookkeeping.
+      //       bd-backed /api/bead/<id> fetch, and
+      //   (b) aria-busy bookkeeping so AT knows a skeleton is a loading
+      //       placeholder, not real content.
       (function () {
-        const bar = document.getElementById('nav-progress');
-        let inflight = 0;
-
-        function startBar() {
-          if (!bar) return;
-          inflight += 1;
-          bar.classList.remove('is-done');
-          bar.classList.add('is-active');
-        }
-        function stopBar() {
-          if (!bar) return;
-          inflight = Math.max(0, inflight - 1);
-          if (inflight === 0) {
-            bar.classList.remove('is-active');
-            bar.classList.add('is-done');
-          }
-        }
-
-        // Every HTMX request drives the global progress bar.
-        document.body.addEventListener('htmx:beforeRequest', startBar);
-        document.body.addEventListener('htmx:afterRequest', stopBar);
-        // Network failures / timeouts must not leave the bar stuck on.
-        document.body.addEventListener('htmx:sendError', stopBar);
-        document.body.addEventListener('htmx:timeout', stopBar);
-        document.body.addEventListener('htmx:responseError', stopBar);
-
         // Clear aria-busy on hydrating regions once their content settles
         // (bdboard-3vp). The full-page shells mark each async data region
         // (#history-region, .lanes-region, #counts, #memory-list) aria-busy
@@ -297,10 +265,9 @@
         });
 
         // Full-page navigation (the masthead Board/History/Memory links are
-        // plain <a> hrefs, not HTMX) — show the bar on click so the cross-
-        // page jump also has an immediate affordance, and mark the clicked
-        // link as in-flight to dampen rapid double-clicks. The bar is wiped
-        // when the new document loads (fresh DOM, fresh bar).
+        // plain <a> hrefs, not HTMX) — mark the clicked link as in-flight to
+        // dampen rapid double-clicks. The destination page paints its own
+        // skeleton shell instantly, so no extra loading affordance is needed.
         document.addEventListener('click', (e) => {
           const link = e.target.closest && e.target.closest('a.mh-link');
           if (!link) return;
@@ -312,7 +279,6 @@
             return;
           }
           link.classList.add('is-navigating');
-          startBar();
         });
       })();
 

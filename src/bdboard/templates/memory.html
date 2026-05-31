@@ -35,7 +35,6 @@
           hx-trigger="keyup changed delay:250ms, search"
           hx-target="#memory-list"
           hx-swap="innerHTML"
-          hx-indicator="#nav-progress"
           hx-sync="this:replace"
         />
       </form>
@@ -60,7 +59,6 @@
       hx-get="/api/memory"
       hx-trigger="load, refresh from:body"
       hx-swap="innerHTML"
-      hx-indicator="#nav-progress"
     >
       {# Instant skeleton (bdboard-2do) so the Memory list never flashes
          empty while the first /api/memory fetch is in flight. Replaced on

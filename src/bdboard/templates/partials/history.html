@@ -57,7 +57,7 @@
         hx-get="/api/history?range={{ r }}&page=1&page_size={{ active_page_size }}"
         hx-target="#history-region"
         hx-swap="innerHTML"
-        hx-indicator="#nav-progress">{{ "All" if r == "all" else r }}</button>
+       >{{ "All" if r == "all" else r }}</button>
       {% endfor %}
       {# Custom date-range toggle (bdboard-7k6). It mirrors the preset badges
          (same filter-badge idiom + aria-pressed) but instead of firing an
@@ -86,7 +86,6 @@
       hx-get="/api/history"
       hx-target="#history-region"
       hx-swap="innerHTML"
-      hx-indicator="#nav-progress"
       {% if not is_custom %}hidden{% endif %}>
       <label class="history-date-field">
         <span class="history-date-label">From</span>
@@ -105,7 +104,6 @@
       <button type="button" class="link-button history-date-clear"
               hx-get="/api/history?range={{ range_key }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
-              hx-indicator="#nav-progress"
               aria-label="Clear custom range and return to {{ range_human }}">Clear</button>
       {% endif %}
     </form>
@@ -196,7 +194,6 @@
           hx-get="/api/bead/{{ b.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML"
-          hx-indicator="#nav-progress"
           hx-disabled-elt="this">
         <div class="bead-card-head">
           <span class="bead-id">{{ b.id }}</span>
@@ -223,7 +220,6 @@
       <button type="button" class="filter-badge"
               hx-get="/api/history?{{ window_qs }}&page={{ page - 1 }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
-              hx-indicator="#nav-progress"
               aria-label="Previous page">‹ Newer</button>
       {% endif %}
       <span class="history-page-indicator">Page {{ page }}</span>
@@ -231,7 +227,6 @@
       <button type="button" class="filter-badge"
               hx-get="/api/history?{{ window_qs }}&page={{ page + 1 }}&page_size={{ active_page_size }}"
               hx-target="#history-region" hx-swap="innerHTML"
-              hx-indicator="#nav-progress"
               aria-label="Next page">Older ›</button>
       {% endif %}
       {# Page-size selector (bdboard-3jj). Changing it resets to page 1 and

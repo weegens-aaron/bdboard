@@ -31,7 +31,6 @@
           <a class="dep-id"
              hx-get="/api/bead/{{ d.depends_on_id or d.target or d.id }}"
              hx-target="#bead-modal" hx-swap="innerHTML"
-             hx-indicator="#nav-progress"
              style="cursor:pointer">{{ d.depends_on_id or d.target or d.id }}</a>
           {% if d.status %}<span class="dep-status status-{{ d.status }}">{{ d.status }}</span>{% endif %}
           {% if d.title %}<span class="dep-title">{{ d.title }}</span>{% endif %}
@@ -83,8 +82,7 @@
           hx-post="/api/bead/{{ bead_id }}/field"
           hx-target="#field-row-{{ f.key }}"
           hx-swap="outerHTML"
-          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
-          hx-indicator="#nav-progress">
+          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="field" value="{{ f.key }}" />
       {# Optimistic-lock token (bdboard-o9v.5): the bead's updated_at at render
@@ -161,8 +159,7 @@
           hx-post="/api/bead/{{ bead_id }}/field"
           hx-target="#field-row-{{ f.key }}"
           hx-swap="outerHTML"
-          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
-          hx-indicator="#nav-progress">
+          hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="field" value="{{ f.key }}" />
       <p class="note-add-hint" id="note-add-hint-{{ f.key }}">

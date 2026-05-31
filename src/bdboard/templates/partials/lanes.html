@@ -8,7 +8,6 @@
         hx-get="/api/bead/{{ e.id }}"
         hx-target="#bead-modal"
         hx-swap="innerHTML"
-        hx-indicator="#nav-progress"
         hx-disabled-elt="this">
       <div class="epic-chip-head">
         <span class="bead-id">{{ e.id }}</span>
@@ -52,7 +51,6 @@
           hx-get="/api/bead/{{ b.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML"
-          hx-indicator="#nav-progress"
           hx-disabled-elt="this">
         <div class="bead-card-head">
           <span class="bead-id">{{ b.id }}</span>
@@ -85,7 +83,6 @@
           hx-get="/api/bead/{{ it.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML"
-          hx-indicator="#nav-progress"
           hx-disabled-elt="this">
         <span class="activity-when">{{ it.ts | humanize_ts }}</span>
         <span class="activity-verb verb-{{ it.verb|replace(' ', '-') }}">{{ it.verb }}</span>

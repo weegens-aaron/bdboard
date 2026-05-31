@@ -12,8 +12,7 @@
        `refresh from:body` trigger keeps the SSE live-update pipeline. #}
     <div class="masthead-counts" id="counts"
          aria-busy="true"
-         hx-get="/api/counts" hx-trigger="load, refresh from:body" hx-swap="innerHTML"
-         hx-indicator="#nav-progress">
+         hx-get="/api/counts" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
       {% include "partials/counts_skeleton.html" %}
     </div>
   </div>
@@ -27,8 +26,7 @@
      History and Memory — cheap route, immediate paint, async hydration. #}
   <section class="lanes-region"
            aria-busy="true"
-           hx-get="/api/lanes" hx-trigger="load, refresh from:body" hx-swap="innerHTML"
-           hx-indicator="#nav-progress">
+           hx-get="/api/lanes" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
     {% include "partials/lanes_skeleton.html" %}
   </section>
 </main>

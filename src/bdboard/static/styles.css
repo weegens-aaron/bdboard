@@ -2232,18 +2232,17 @@ pre { margin: 0; }
 }
 
 /* ============================================================
-   Snappy transitions: skeletons, shimmer, global progress bar
-   (bdboard-2do).
+   Snappy transitions: skeleton loaders (bdboard-2do).
 
    Every primary navigation (Board/History/Memory) and the bead-detail
    modal must give an immediate visual response on click — never a frozen
-   UI while a bd-backed fetch resolves. Three coordinated pieces:
+   UI while a bd-backed fetch resolves. Two coordinated pieces:
      1. .skeleton placeholders (shimmer) that the page shells render
         instantly, hydrated in place by HTMX `load` fetches.
-     2. #nav-progress, a global top bar driven by HTMX request lifecycle
-        + full-page nav clicks (see base.html).
-     3. .modal-skeleton, an instant placeholder injected into #bead-modal
+     2. .modal-skeleton, an instant placeholder injected into #bead-modal
         the moment a bead card is clicked.
+   (A former global top progress bar was removed in bdboard-ddb — skeleton
+   loaders are sufficient loading feedback.)
    Tokens stay theme-aware (base vs. shimmer-sweep greys) so the effect
    reads in both light and dark, and the whole thing respects
    prefers-reduced-motion.
@@ -2342,47 +2341,10 @@ pre { margin: 0; }
 .skeleton-modal-row { width: 100%; height: 56px; }
 .skeleton-modal-row.short { width: 60%; }
 
-/* ----- Global navigation / HTMX progress bar ----- */
-.nav-progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 3px;
-  width: 100%;
-  z-index: 1000;
-  transform-origin: left center;
-  background: var(--brand-blue);
-  /* Hidden until a request is in flight. opacity (not display) so the
-     fade-out on completion is smooth. */
-  opacity: 0;
-  transform: scaleX(0);
-  pointer-events: none;
-}
-/* In flight: an indeterminate sweep that signals activity without
-   pretending to know real progress (we can't — the bd CLI is opaque). */
-.nav-progress.is-active {
-  opacity: 1;
-  animation: nav-progress-indeterminate 1.1s ease-in-out infinite;
-}
-@keyframes nav-progress-indeterminate {
-  0%   { transform: scaleX(0);    transform-origin: left center; }
-  50%  { transform: scaleX(0.65); transform-origin: left center; }
-  100% { transform: scaleX(1);    transform-origin: right center; }
-}
-/* Settle: snap to full then fade out. */
-.nav-progress.is-done {
-  opacity: 0;
-  transform: scaleX(1);
-  transition: opacity 0.25s ease 0.05s;
-}
-
-/* HTMX wires .htmx-request onto an hx-indicator target while its request
-   is in flight; map that to the same active sweep so elements that point
-   hx-indicator="#nav-progress" light the bar even without bespoke JS. */
-.nav-progress.htmx-request {
-  opacity: 1;
-  animation: nav-progress-indeterminate 1.1s ease-in-out infinite;
-}
+/* ----- Navigation in-flight link state -----
+   Note: the former global top progress bar (.nav-progress) was removed in
+   bdboard-ddb. Skeleton loaders are the single loading-feedback mechanism
+   for in-flight data regions now. */
 
 /* A nav link that has been clicked and is loading the next page — dim it
    slightly so a rapid double-click reads as "already going" (the JS also
@@ -2407,11 +2369,5 @@ pre { margin: 0; }
     /* Static mid-tone so the placeholder is still visible without motion. */
     animation: none;
     background-image: none;
-  }
-  .nav-progress.is-active,
-  .nav-progress.htmx-request {
-    /* No sweep; just show a static full bar as the activity cue. */
-    animation: none;
-    transform: scaleX(1);
   }
 }
