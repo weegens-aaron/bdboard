@@ -133,15 +133,23 @@ the `refs/dolt/data` ref); CI that needs issues runs `bd dolt pull`.
 The Dolt remote config is stored *inside* the gitignored `.beads/embeddeddolt/`
 database, so a brand-new `git clone` does **not** inherit the remote and the
 installed `post-checkout` / `post-merge` hooks will **not** auto-hydrate issue
-data on their own. After cloning, re-add the remote once, then pull:
+data on their own. Worse, a fresh clone has **no local Dolt database at all** —
+so `bd dolt remote add` fails with `Error: no beads database found` until you
+create one. The correct order is: `bd init` (creates the empty local DB), *then*
+re-add the remote, *then* pull:
 
 ```sh
 git clone https://github.com/weegens-aaron/bdboard.git
 cd bdboard
+bd init                                                              # create the local .beads/embeddeddolt/ DB (required before any bd dolt command)
 bd dolt remote add origin https://github.com/weegens-aaron/bdboard.git
 bd dolt pull        # hydrates .beads/embeddeddolt/ from refs/dolt/data
 bd ready            # confirm issues are present
 ```
+
+> If any `bd dolt` step hangs, you've hit the stale `dolt sql-server`
+> accumulation issue — run `pkill -9 -f 'dolt sql-server'` (see
+> [Troubleshooting](#bead-detail-or-bd-itself-hangs)) and retry.
 
 > The local-only Dolt archive backup in `.beads/backup/` (gitignored, a set of
 > `.darc` archive files) is a belt-and-suspenders recovery export **only** —
