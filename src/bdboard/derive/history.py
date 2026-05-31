@@ -8,6 +8,7 @@ to the board's 12h/1d/3d lane filter and 50-cap closed lane).
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -197,6 +198,26 @@ def history_window(
     }
 
 
+def _iter_day_span(days: list[str]) -> Iterator[str]:
+    """Yield every ``"YYYY-MM-DD"`` key from the first through last of ``days``.
+
+    Single source of truth for the gap-free "continuous timeline" day
+    iteration shared by :func:`_fill_daily_series` and :func:`combined`
+    (bdboard-6nv). Given any iterable of ``"YYYY-MM-DD"`` day keys (need not
+    be sorted or contiguous), yields every calendar day from the earliest
+    through the latest inclusive, inserting the days with no entry so callers
+    can fill them with zero. Yields nothing for an empty input.
+    """
+    if not days:
+        return
+    ordered = sorted(days)
+    cursor = datetime.strptime(ordered[0], "%Y-%m-%d")
+    last = datetime.strptime(ordered[-1], "%Y-%m-%d")
+    while cursor <= last:
+        yield cursor.strftime("%Y-%m-%d")
+        cursor += timedelta(days=1)
+
+
 def _fill_daily_series(buckets: dict[str, int]) -> list[dict[str, Any]]:
     """Turn a sparse day->count map into a gap-free ascending series.
 
@@ -206,20 +227,10 @@ def _fill_daily_series(buckets: dict[str, int]) -> list[dict[str, Any]]:
     ``[{"day": "YYYY-MM-DD", "count": int}, ...]`` spanning the first through
     last populated day, inserting ``count=0`` for any day with no entry so
     the chart reads as a continuous line rather than a jagged one. Returns
-    ``[]`` for an empty map.
+    ``[]`` for an empty map. Day-span iteration is delegated to
+    :func:`_iter_day_span` (bdboard-6nv).
     """
-    if not buckets:
-        return []
-    days = sorted(buckets)
-    first = datetime.strptime(days[0], "%Y-%m-%d")
-    last = datetime.strptime(days[-1], "%Y-%m-%d")
-    series: list[dict[str, Any]] = []
-    cursor = first
-    while cursor <= last:
-        key = cursor.strftime("%Y-%m-%d")
-        series.append({"day": key, "count": buckets.get(key, 0)})
-        cursor += timedelta(days=1)
-    return series
+    return [{"day": key, "count": buckets.get(key, 0)} for key in _iter_day_span(list(buckets))]
 
 
 def _bucket_by_day(beads: list[dict[str, Any]], field: str) -> dict[str, int]:
@@ -342,24 +353,14 @@ def combined(
     closed_buckets = _bucket_by_day(_closed_in_window(beads, cutoff, ceiling), "closed_at")
     created_buckets = _bucket_by_day(_created_in_window(beads, cutoff, ceiling), "created_at")
     all_days = set(closed_buckets) | set(created_buckets)
-    if not all_days:
-        return []
-    days = sorted(all_days)
-    first = datetime.strptime(days[0], "%Y-%m-%d")
-    last = datetime.strptime(days[-1], "%Y-%m-%d")
-    series: list[dict[str, Any]] = []
-    cursor = first
-    while cursor <= last:
-        key = cursor.strftime("%Y-%m-%d")
-        series.append(
-            {
-                "day": key,
-                "created": created_buckets.get(key, 0),
-                "closed": closed_buckets.get(key, 0),
-            }
-        )
-        cursor += timedelta(days=1)
-    return series
+    return [
+        {
+            "day": key,
+            "created": created_buckets.get(key, 0),
+            "closed": closed_buckets.get(key, 0),
+        }
+        for key in _iter_day_span(list(all_days))
+    ]
 
 
 def _percentile(sorted_vals: list[float], pct: float) -> float | None:
