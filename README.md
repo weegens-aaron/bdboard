@@ -9,19 +9,47 @@ field bd exposes**.
 **Who it's for:** developers using `bd` who want an at-a-glance, always-fresh
 web view of a workspace's beads without leaving their terminal-driven workflow.
 
+## Prerequisites
+
+| Tool | Why | Notes |
+| --- | --- | --- |
+| **`bd` (beads)** | **Required at runtime** — bdboard shells out to the `bd` binary for every bead read (see `src/bdboard/bd.py`). Without it on `PATH`, the board comes up but every lane/detail/memory/history view fails. | [install from upstream](https://github.com/gastownhall/beads); confirm with `bd --version` |
+| **Python ≥ 3.11** | runtime | `pyproject.toml` `requires-python` |
+| **uv** | venv + installer | `uv --version` |
+| Node + `npx` | only for `make duplication` (jscpd) | bundled toolchains skip this |
+| `lychee` | only for `make links` | `brew install lychee` |
+
 ## Install (dev)
 
 ```sh
 cd bdboard
+make install           # uv venv + editable install (carries the corp --index-url)
+```
+
+Prefer the raw commands? They're equivalent, but on a Walmart machine you must
+pass the corp index or the install can fail to resolve packages:
+
+```sh
+cd bdboard
 uv venv
-uv pip install -e .
+uv pip install --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple \
+  --allow-insecure-host pypi.ci.artifacts.walmart.com -e .
 ```
 
 ## Run
 
 ```sh
-cd /path/to/repo-with-.beads
-bdboard                # binds 127.0.0.1:7332 and opens a browser
+cd /path/to/repo-with-.beads   # MUST be a bd workspace (a dir containing .beads/)
+bdboard                        # binds 127.0.0.1:7332 and opens a browser
+```
+
+> bdboard only works inside a bd workspace. From a non-`.beads/` directory it
+> reports "workspace not ready" — `cd` into one or pass `--dir /path/to/workspace`.
+
+## Test
+
+```sh
+make test              # pytest (268 tests; runs against this repo's own .beads workspace)
 ```
 
 ## Code health (CI gates)
