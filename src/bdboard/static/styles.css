@@ -275,9 +275,16 @@ pre { margin: 0; }
 }
 .masthead-row {
   display: flex;
+  /* flex-wrap lets the crowded masthead (brand / nav / + Pour Formula /
+     counts) reflow onto extra lines as width shrinks instead of
+     overflowing or compressing off-screen (bdboard-c52). The inner
+     regions (.masthead-counts) already wrap; this brings the top-level
+     row in line. row-gap is tighter than the 32px column-gap so wrapped
+     lines sit close together rather than spreading out vertically. */
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 32px;
+  gap: 8px 32px;
 }
 .masthead-brand .title {
   font-family: var(--display);
