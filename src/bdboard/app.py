@@ -775,11 +775,23 @@ async def api_bead_field_update(
             '<p class="field-saved" role="status">Saved.</p>',
             status_code=200,
         )
-    return TEMPLATES.TemplateResponse(
+    row_html = TEMPLATES.TemplateResponse(
         request,
         "partials/field_row.html",
         {"f": row, "bead_id": bead_id, "bead_updated_at": bead.get("updated_at")},
-    )
+    ).body.decode()
+    # When priority changes, the modal-header badge would otherwise stay
+    # stale until the modal is closed/reopened (bdboard-nuy). Append an
+    # out-of-band copy of the header badge so HTMX swaps it in the same
+    # response — same OOB idiom the audit endpoint uses for #lifecycle-slot.
+    if field == "priority":
+        badge_html = TEMPLATES.TemplateResponse(
+            request,
+            "partials/bead_priority_badge.html",
+            {"bead": bead, "oob": True},
+        ).body.decode()
+        row_html += badge_html
+    return HTMLResponse(row_html)
 
 
 @app.get("/api/counts", response_class=HTMLResponse)

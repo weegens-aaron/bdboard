@@ -4,7 +4,7 @@
     <header class="modal-head">
       <div class="modal-head-row">
         <span class="bead-id">{{ bead.id }}</span>
-        {% if bead.priority is not none %}<span class="bead-priority p{{ bead.priority }}">P{{ bead.priority }}</span>{% endif %}
+        {% include "partials/bead_priority_badge.html" %}
         {% if bead.status %}<span class="bead-status status-{{ bead.status }}">{{ bead.status }}</span>{% endif %}
         <button class="modal-close" onclick="document.getElementById('bead-modal').innerHTML=''">✕</button>
       </div>

@@ -1,0 +1,15 @@
+{# Modal-header priority badge (bdboard-nuy).
+
+   Single source of the header priority badge so the modal header and the
+   inline-edit write path render it identically. After an inline priority
+   change the field-edit route (POST /api/bead/{id}/field) appends a copy of
+   this partial with `oob=True`, so HTMX swaps it out-of-band into the header
+   and the badge stays in sync with the edited field WITHOUT closing/reopening
+   the modal.
+
+   The outer slot span carries a STABLE id and always renders (even when the
+   bead has no priority), so the OOB swap always has a target to replace.
+   The inner .bead-priority span is conditional on an actual priority value. #}
+<span id="modal-priority-badge-{{ bead.id }}" class="modal-priority-slot"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {%- if bead.priority is not none %}<span class="bead-priority p{{ bead.priority }}">P{{ bead.priority }}</span>{% endif -%}
+</span>

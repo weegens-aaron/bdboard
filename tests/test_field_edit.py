@@ -334,6 +334,42 @@ def test_select_field_edit_renders_enum_options_with_selected() -> None:
     assert "selected" in body[sel : sel + 40]
 
 
+def test_priority_edit_appends_oob_header_badge() -> None:
+    """Regression bdboard-nuy: editing priority must also re-render the modal
+    header badge via an out-of-band swap so it stays in sync with the field
+    without closing/reopening the modal."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    # Bead now at priority 0 after the edit.
+    _stub_show_long(_bead(priority=0))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "priority", "value": "0"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    # The OOB header-badge slot is appended, targeting the modal header by id.
+    assert 'id="modal-priority-badge-bdboard-x1"' in body
+    assert 'hx-swap-oob="true"' in body
+    # It carries the NEW priority class.
+    assert "bead-priority p0" in body
+
+
+def test_non_priority_edit_omits_oob_header_badge() -> None:
+    """Editing a non-priority field must NOT append the header-badge OOB swap
+    (no spurious header churn)."""
+    _stub_update_field()
+    _stub_bus_broadcast()
+    _stub_show_long(_bead(title="Renamed"))
+    status, body = _call_field(
+        "bdboard-x1",
+        {"field": "title", "value": "Renamed"},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+    assert status == 200
+    assert "modal-priority-badge-" not in body
+
+
 def test_number_field_edit_renders_number_input() -> None:
     _stub_update_field()
     _stub_bus_broadcast()

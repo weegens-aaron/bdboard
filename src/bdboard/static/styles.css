@@ -1139,6 +1139,11 @@ pre { margin: 0; }
 .modal-head-row {
   display: flex; gap: 8px; align-items: center;
 }
+/* The priority-badge slot (bdboard-nuy) is a stable OOB swap target wrapping
+   the conditional .bead-priority badge. display:contents keeps the wrapper
+   transparent to the flex row, so the badge lays out exactly as before and an
+   empty slot (no priority) adds no spurious gap. */
+.modal-priority-slot { display: contents; }
 .modal-close {
   margin-left: auto;
   background: transparent;
