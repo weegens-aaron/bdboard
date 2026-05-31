@@ -58,8 +58,13 @@ jobs:
         run: |
           uv venv
           uv pip install -e .
+      # --no-sync: the venv is already populated by `uv pip install -e .` above
+      # (resolved against PUBLIC PyPI). Without it, `uv run` re-syncs from
+      # uv.lock, whose pinned URLs point at the Walmart artifactory proxy —
+      # unreachable from public GitHub runners (DNS failure). See header note
+      # + bdboard-b6i. We intentionally run the public-PyPI venv, not the lock.
       - name: pytest
-        run: uv run python -m pytest -q
+        run: uv run --no-sync python -m pytest -q
 
   duplication:
     name: jscpd (copy-paste detector)
@@ -88,7 +93,10 @@ jobs:
         run: |
           uv venv
           uv pip install -e .
+      # --no-sync for the same reason as the pytest job: don't let `uv run`
+      # re-sync from uv.lock (Walmart-proxy URLs, unreachable here). pip-audit
+      # is overlaid via --with and audits the public-PyPI venv installed above.
       - name: pip-audit (CVE scan) — hard gate
-        run: uv run --with pip-audit pip-audit
+        run: uv run --no-sync --with pip-audit pip-audit
       - name: uv pip list --outdated (advisory, never fails)
         run: uv pip list --outdated || true
