@@ -1047,6 +1047,216 @@ pre { margin: 0; }
 }
 
 /* ============================================================
+   Formula pour (bdboard-ain.1) — a masthead button opens a native
+   <dialog> with a two-step flow: pick a formula, then fill its
+   variables and pour. Borrows the memory-dialog visual kit (button
+   colours, inputs) so the two write surfaces stay consistent (DRY).
+   ============================================================ */
+.formula-dialog {
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  max-width: 560px;
+  width: 92vw;
+}
+.formula-dialog::backdrop {
+  background: rgba(46, 47, 50, 0.55);
+}
+.formula-dialog-inner {
+  padding: 20px 24px;
+}
+.formula-dialog-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.formula-dialog-title {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+}
+.formula-dialog-hint {
+  font-family: var(--sans);
+  font-size: 12px;
+  margin: 6px 0 16px;
+}
+.formula-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.formula-card {
+  margin: 0;
+}
+.formula-pick-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.formula-pick-btn:hover {
+  background: var(--paper-2);
+  border-color: var(--rule);
+}
+.formula-pick-btn:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+}
+.formula-name {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.formula-desc {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.4;
+}
+.formula-empty,
+.formula-no-vars {
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.formula-form-region {
+  margin-top: 8px;
+}
+.formula-form {
+  border-top: 1px solid var(--rule);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.formula-form-title {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+.formula-form-desc {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+.formula-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.formula-field-label {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.formula-required {
+  color: var(--red-100);
+  margin-left: 2px;
+}
+.formula-field-help {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 4px;
+  line-height: 1.4;
+}
+.formula-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper-3);
+  border: 1px solid var(--rule-2);
+  border-radius: 4px;
+  padding: 9px 12px;
+}
+.formula-input:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 1px;
+  border-color: var(--brand-blue);
+}
+.formula-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.formula-btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.formula-btn-primary {
+  background: var(--brand-blue);
+  color: var(--on-brand);
+  border: 1px solid var(--brand-blue);
+}
+.formula-btn-primary:hover {
+  background: var(--brand-blue-d);
+  border-color: var(--brand-blue-d);
+}
+.formula-btn-secondary {
+  background: var(--paper-3);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-2);
+}
+.formula-btn-secondary:hover {
+  background: var(--paper-2);
+  border-color: var(--rule);
+}
+.formula-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.formula-pour-result {
+  margin-top: 12px;
+}
+.formula-pour-ok {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--green-100);
+  background: var(--paper-2);
+  border-left: 3px solid var(--green-100);
+  border-radius: 0 4px 4px 0;
+  padding: 10px 12px;
+  margin: 0;
+}
+.formula-error {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--red-100);
+  background: var(--paper-2);
+  border-left: 3px solid var(--red-100);
+  border-radius: 0 4px 4px 0;
+  padding: 10px 12px;
+  margin: 0;
+}
+
+/* ============================================================
    Activity — the right-most swim lane. Same .lane / .lane-list
    chrome as the bead lanes; rows have their own grid layout because
    activity events carry different metadata than bead cards

@@ -654,6 +654,214 @@ async def api_memory_delete(
     )
 
 
+# ----- formula pour (bdboard-ain.1) -----
+
+
+def _short_pour_id(new_epic_id: str) -> str:
+    """Derive the short, human-readable disambiguator for the pour's title.
+
+    bd already mints globally-unique bead ids (e.g. ``...-mol-u72``), so the
+    title just needs a token that distinguishes two pours of the SAME formula
+    on the board. Reusing the suffix bd already assigned to ``new_epic_id``
+    (the segment after the last ``-``) is the lowest-risk, zero-new-entropy
+    option and is already collision-free (spike bdboard-9n4 §3.2). Falls back
+    to the whole id if there is no ``-`` to split on.
+    """
+    suffix = new_epic_id.rsplit("-", 1)[-1]
+    return suffix or new_epic_id
+
+
+@app.get("/api/formulas", response_class=HTMLResponse)
+async def api_formulas(request: Request) -> HTMLResponse:
+    """Render the formula picker (HTMX swap target).
+
+    Lists formulas via ``bd formula list --json`` (name + description). On a
+    bd failure we degrade to a friendly inline message rather than 500-ing
+    the partial swap — symmetric with /api/memory.
+    """
+    try:
+        formulas = await bd.list_formulas()
+    except RuntimeError as err:
+        log.warning("bd formula list failed: %s", err)
+        return HTMLResponse(
+            (
+                '<p class="formula-empty muted" role="status" aria-live="polite">'
+                "Couldn\u2019t load formulas right now. "
+                "Please try again in a moment."
+                "</p>"
+            ),
+            status_code=200,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/formula_list.html",
+        {"formulas": formulas},
+    )
+
+
+@app.get("/api/formulas/{name}/form", response_class=HTMLResponse)
+async def api_formula_form(request: Request, name: str) -> HTMLResponse:
+    """Render the variable form for one formula (HTMX swap target).
+
+    Variables are read by PARSING the ``*.formula.json`` file directly (path
+    from ``source`` in ``formula list --json``) — NOT from
+    ``formula show --json`` (omits variables) nor the ``vars`` count (always
+    0). See spike bdboard-9n4 §2.2 and memory bd-formula-cli-gotchas.
+
+    One field per variable: ``description`` is the label/help, ``default`` is
+    the prefilled value, and no-default variables are marked ``required`` so
+    the pour button pre-flight (§4.4) blocks until they are filled.
+    """
+    try:
+        formulas = await bd.list_formulas()
+    except RuntimeError as err:
+        log.warning("bd formula list failed: %s", err)
+        return HTMLResponse(
+            '<p class="formula-error" role="alert">Couldn\u2019t load that '
+            "formula right now. Please try again.</p>",
+            status_code=200,
+        )
+    match = next((f for f in formulas if f.get("name") == name), None)
+    if match is None:
+        return HTMLResponse(
+            '<p class="formula-error" role="alert">No such formula.</p>',
+            status_code=404,
+        )
+    source = match.get("source") or ""
+    try:
+        variables = bd.read_formula_variables(source)
+    except RuntimeError as err:
+        log.warning("read_formula_variables(%s) failed: %s", source, err)
+        return HTMLResponse(
+            '<p class="formula-error" role="alert">Couldn\u2019t read this '
+            "formula\u2019s variables. Please try again.</p>",
+            status_code=200,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/formula_form.html",
+        {
+            "name": name,
+            "description": match.get("description") or "",
+            "variables": variables,
+        },
+    )
+
+
+@app.post("/api/formulas/{name}/pour", response_class=HTMLResponse)
+async def api_formula_pour(
+    request: Request,
+    name: str,
+    csrf: str = Form(None, alias="csrf_token"),
+    x_csrf_token: str | None = Header(None),
+) -> HTMLResponse:
+    """Pour a formula onto the board (CSRF-checked write path).
+
+    Flow (spike bdboard-9n4 §5):
+      1. CSRF guard (same posture as memory/field writes).
+      2. Pre-flight: re-read the formula's variables and block the pour until
+         every required (no-default) variable is filled. We collect the
+         submitted form values, falling back to each variable's default when
+         the field was left blank. This is the server-side mirror of the
+         form's ``required`` attribute (§4.4) — a crafted POST can't skip it.
+      3. Pour via ``bd mol pour ... --json``. bd's stderr is still surfaced on
+         failure because ``--dry-run`` can't catch every pour-blocking bug
+         (§4.2) — pre-flight is necessary but not sufficient.
+      4. Rename the grouping node (``new_epic_id``) to ``<formula> <id>`` so
+         two pours of the same formula are distinguishable on the board.
+      5. Optimistic ``bus.broadcast('beads_changed')`` so the acting tab
+         refreshes immediately; the watcher→Store.refresh→SSE pipeline also
+         fires for other tabs.
+    """
+    _check_csrf(x_csrf_token, csrf)
+    name = name.strip()
+    # Resolve the formula + its declared variables so we can pre-flight and
+    # only forward vars we actually parsed (unknown --var is silently ignored
+    # by bd anyway, §4.4).
+    try:
+        formulas = await bd.list_formulas()
+    except RuntimeError as err:
+        log.warning("bd formula list failed during pour: %s", err)
+        return HTMLResponse(
+            '<p class="formula-error" role="alert">Couldn\u2019t load the '
+            "formula. Please try again.</p>",
+            status_code=500,
+        )
+    match = next((f for f in formulas if f.get("name") == name), None)
+    if match is None:
+        return HTMLResponse(
+            '<p class="formula-error" role="alert">No such formula.</p>',
+            status_code=404,
+        )
+    try:
+        declared = bd.read_formula_variables(match.get("source") or "")
+    except RuntimeError as err:
+        log.warning("read_formula_variables failed during pour: %s", err)
+        return HTMLResponse(
+            '<p class="formula-error" role="alert">Couldn\u2019t read this '
+            "formula\u2019s variables. Please try again.</p>",
+            status_code=500,
+        )
+    form = await request.form()
+    submitted: dict[str, str] = {}
+    missing: list[str] = []
+    for var in declared:
+        var_name = var["name"]
+        raw = form.get(f"var_{var_name}")
+        value = (raw if isinstance(raw, str) else "").strip()
+        if not value and var.get("default") is not None:
+            value = str(var["default"])
+        if not value and var.get("required"):
+            missing.append(var_name)
+        if value:
+            submitted[var_name] = value
+    # Pre-flight: block until required vars are filled (§4.4).
+    if missing:
+        names = ", ".join(missing)
+        return HTMLResponse(
+            f'<p class="formula-error" role="alert">Please fill required variable(s): {names}.</p>',
+            status_code=400,
+        )
+    try:
+        result = await bd.pour_formula(name, submitted)
+    except RuntimeError as err:
+        # Surface bd's real stderr — --dry-run can't catch every pour-blocker.
+        log.warning("bd mol pour %s failed: %s", name, err)
+        return HTMLResponse(
+            f'<p class="formula-error" role="alert">Pour failed: {err}</p>',
+            status_code=500,
+        )
+    # Rename the grouping node to '<formula> <id>' so repeat pours are
+    # distinguishable. Best-effort: a rename failure must NOT lose the (atomic,
+    # successful) pour — the beads are already on the board, just under the bare
+    # formula name. Surface a soft warning rather than a hard error.
+    new_epic_id = result.get("new_epic_id")
+    rename_warning = ""
+    if new_epic_id:
+        title = f"{name} {_short_pour_id(new_epic_id)}"
+        try:
+            await bd.rename_bead(new_epic_id, title)
+        except RuntimeError as err:
+            log.warning("pour rename of %s failed: %s", new_epic_id, err)
+            rename_warning = (
+                " (poured, but couldn\u2019t rename the grouping node — "
+                "it will show under the bare formula name)."
+            )
+    # Optimistic SSE so the acting tab refreshes immediately; the watcher
+    # pipeline also fires for everyone else.
+    await bus.broadcast("beads_changed")
+    created = result.get("created", 0)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/formula_pour_result.html",
+        {
+            "name": name,
+            "created": created,
+            "rename_warning": rename_warning,
+        },
+    )
+
+
 # ----- field edits (manual value editing, bdboard-o9v.2) -----
 
 

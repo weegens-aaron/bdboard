@@ -1,0 +1,8 @@
+{# Pour success summary — swapped into #formula-pour-result on a successful
+   POST /api/formulas/{name}/pour (bdboard-ain.1). The board itself refreshes
+   via the optimistic SSE broadcast + the watcher pipeline, so this is just an
+   acknowledgement of what landed. #}
+<p class="formula-pour-ok" role="status">
+  ✓ Poured <strong>{{ name }}</strong> — {{ created }}
+  {{ "bead" if created == 1 else "beads" }} added to the board.{{ rename_warning }}
+</p>

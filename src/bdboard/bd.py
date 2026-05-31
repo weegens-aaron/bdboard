@@ -33,6 +33,8 @@ MEMORIES_TIMEOUT_S = 8.0
 REMEMBER_TIMEOUT_S = 10.0  # writes may be slower (dolt commit)
 FORGET_TIMEOUT_S = 10.0
 UPDATE_TIMEOUT_S = 10.0  # field edits: dolt commit, possibly long markdown
+FORMULA_LIST_TIMEOUT_S = 8.0
+POUR_TIMEOUT_S = 30.0  # pour cooks inline + materializes a whole formula tree
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
 
@@ -362,7 +364,154 @@ class BdClient:
         )
         self._memories_cache.clear()
 
-    # ----- field edits: manual value editing (bdboard-o9v.2) -----
+    # ----- formulas: list + variable enumeration + pour (bdboard-ain.1) -----
+
+    async def list_formulas(self) -> list[dict[str, Any]]:
+        """List available formulas via `bd formula list --json`.
+
+        Returns a list of formula dicts, each carrying at least ``name``,
+        ``description`` and ``source`` (the absolute path to the on-disk
+        ``*.formula.json`` template). The picker uses ``name`` + ``description``;
+        ``source`` is the hook :meth:`read_formula_variables` reads to enumerate
+        variables.
+
+        ⚠️ The ``vars`` count in this payload is unreliable (bd reports ``0``
+        even when variables exist — verified in spike bdboard-9n4 §2.1), so do
+        NOT use it to decide whether a formula has variables. Read the source
+        file instead.
+
+        Raises RuntimeError on subprocess failure or malformed JSON.
+        """
+        value = await self._run_json(
+            ["formula", "list"],
+            timeout=FORMULA_LIST_TIMEOUT_S,
+        )
+        if not isinstance(value, list):
+            raise RuntimeError(
+                f"bd formula list returned non-list ({type(value).__name__}); expected JSON array"
+            )
+        return value
+
+    def read_formula_variables(self, source: str) -> list[dict[str, Any]]:
+        """Parse a formula's ``variables`` block from its ``*.formula.json`` file.
+
+        ``source`` is the absolute path bd reports in ``formula list --json``.
+        We read the template file directly because the bd CLI does NOT expose
+        variables any other way (verified spike bdboard-9n4 §2.2):
+          - ``bd formula show <name> --json`` OMITS the ``variables`` block.
+          - the ``vars`` count in ``formula list --json`` is wrong (always 0).
+
+        Returns an ordered list of variable descriptors:
+            [{"name": str, "description": str, "default": str | None,
+              "required": bool}, ...]
+        ``required`` is True when the variable has no ``default`` — the pour
+        pre-flight blocks until every required var is filled (§4.4).
+
+        Reading ``*.formula.json`` is consistent with bdboard's
+        CLI-as-source-of-truth posture: the template is a *different* file from
+        the issue store, and we only reach it via the absolute path the CLI
+        handed us. If a future bd release adds ``variables`` to
+        ``formula show --json``, switch to that and drop the file read.
+
+        Raises RuntimeError if the file is missing or unparseable.
+        """
+        path = Path(source)
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except OSError as err:
+            raise RuntimeError(f"Could not read formula file: {err}") from err
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as err:
+            raise RuntimeError(f"Formula file is not valid JSON: {err}") from err
+        variables = data.get("variables")
+        if not isinstance(variables, dict):
+            # No variables block (or a malformed one) → an empty form, which is
+            # a valid "pour with no inputs" case, not an error.
+            return []
+        result: list[dict[str, Any]] = []
+        for name, spec in variables.items():
+            spec = spec if isinstance(spec, dict) else {}
+            default = spec.get("default")
+            result.append(
+                {
+                    "name": name,
+                    "description": spec.get("description") or "",
+                    "default": default,
+                    "required": default is None,
+                }
+            )
+        return result
+
+    async def pour_formula(self, name: str, variables: dict[str, str]) -> dict[str, Any]:
+        """Pour a formula onto the board via `bd mol pour <name> --var k=v ... --json`.
+
+        A hybrid call: it MUTATES the workspace (pour cooks the formula inline
+        and materializes its bead tree) AND returns parsed JSON. The result
+        carries ``new_epic_id`` (the molecule wrapper node that parents the
+        whole tree), ``id_mapping`` (stepId → real bead id) and ``created``
+        (node count) — verified spike bdboard-9n4 §1.1.
+
+        Serialized on ``_subprocess_gate`` (bd's embedded dolt is single-writer).
+        On non-zero exit we surface bd's stderr verbatim (same posture as
+        ``_run_mutate``) so pre-flight-passing pours that still fail at the bd
+        layer — e.g. the broken-formula dependency bug in §4.2, which
+        ``--dry-run`` does NOT catch — show the real reason. Pour is atomic:
+        a failed pour rolls back to zero new beads (§4.3), so the board is
+        never left with orphans.
+
+        After a successful pour we invalidate caches so follow-up reads (the
+        rename, the list refresh) see post-pour state.
+
+        Raises RuntimeError (bd's stderr) on failure or malformed JSON.
+        """
+        args = ["mol", "pour", name]
+        for key, val in variables.items():
+            args += ["--var", f"{key}={val}"]
+        args.append("--json")
+        async with self._subprocess_gate:
+            proc = await asyncio.create_subprocess_exec(
+                self.bd_bin,
+                *args,
+                cwd=str(self.workspace),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            try:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=POUR_TIMEOUT_S)
+            except TimeoutError as err:
+                proc.kill()
+                await proc.wait()
+                raise RuntimeError(
+                    "Pour timed out. The formula may still be materializing — refresh in a moment."
+                ) from err
+            if proc.returncode != 0:
+                err_text = stderr.decode(errors="replace").strip()
+                raise RuntimeError(err_text or f"bd mol pour failed (exit {proc.returncode}).")
+            try:
+                result = json.loads(stdout)
+            except json.JSONDecodeError as err:
+                raise RuntimeError("Pour succeeded but returned an unexpected response.") from err
+        self.invalidate_caches()
+        if not isinstance(result, dict):
+            raise RuntimeError(
+                f"bd mol pour returned non-object ({type(result).__name__}); expected JSON object"
+            )
+        return result
+
+    async def rename_bead(self, bead_id: str, title: str) -> None:
+        """Rename a bead's title via `bd update <id> --title <title>`.
+
+        Used by the pour route to retitle the molecule wrapper / epic root
+        step to ``<formula> <id>`` (spike bdboard-9n4 §3.2). Serialized on the
+        subprocess gate; surfaces bd's stderr on failure. Caches are
+        invalidated so the post-rename list reflects the new title.
+        """
+        await self._run_mutate(
+            ["update", bead_id, "--title", title],
+            timeout=UPDATE_TIMEOUT_S,
+        )
+        self.invalidate_caches()
 
     # Flags whose value bd can read from a file/stdin instead of a positional
     # arg. Long markdown (description, design) goes through stdin via these

@@ -1,0 +1,32 @@
+{# Formula picker — HTMX swap target for /api/formulas (bdboard-ain.1).
+   Lists each formula by name + description. Selecting one loads its variable
+   form into #formula-form via HTMX. Symmetric with partials/memory_list.html. #}
+
+{% set n = formulas|length %}
+
+{% if formulas %}
+<ul class="formula-list" role="list">
+  {% for f in formulas %}
+  <li class="formula-card">
+    <button
+      type="button"
+      class="formula-pick-btn"
+      hx-get="/api/formulas/{{ f.name | urlencode }}/form"
+      hx-target="#formula-form"
+      hx-swap="innerHTML"
+      aria-label="Configure and pour {{ f.name }}"
+    >
+      <span class="formula-name">{{ f.name }}</span>
+      {% if f.description %}
+      <span class="formula-desc">{{ f.description }}</span>
+      {% endif %}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="formula-empty muted">
+  No formulas found — add one under <code>.beads/formulas/</code> or run
+  <code>bd formula</code> to create one.
+</p>
+{% endif %}

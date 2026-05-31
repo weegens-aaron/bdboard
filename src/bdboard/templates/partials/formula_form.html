@@ -1,0 +1,65 @@
+{# Formula variable form — HTMX swap target for /api/formulas/{name}/form.
+   One field per variable parsed from the *.formula.json file (bdboard-ain.1,
+   spike bdboard-9n4 §2.2). description → label/help, default → prefilled
+   value, no-default vars are `required` so the browser blocks the pour button
+   until they're filled (the POST route re-checks server-side, §4.4).
+
+   Posts to /api/formulas/{name}/pour and swaps the result into
+   #formula-pour-result. CSRF token via hidden field + header (same posture as
+   the memory form). #}
+
+<form
+  class="formula-form"
+  hx-post="/api/formulas/{{ name | urlencode }}/pour"
+  hx-target="#formula-pour-result"
+  hx-swap="innerHTML"
+  hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+  <h3 class="formula-form-title">{{ name }}</h3>
+  {% if description %}
+  <p class="formula-form-desc muted">{{ description }}</p>
+  {% endif %}
+
+  {% if variables %}
+  <div class="formula-fields">
+    {% for v in variables %}
+    <div class="formula-field">
+      <label class="formula-field-label" for="var-{{ v.name }}">
+        {{ v.name }}
+        {% if v.required %}
+        <span class="formula-required" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+        {% endif %}
+      </label>
+      {% if v.description %}
+      <p class="formula-field-help" id="help-{{ v.name }}">{{ v.description }}</p>
+      {% endif %}
+      <input
+        type="text"
+        id="var-{{ v.name }}"
+        name="var_{{ v.name }}"
+        class="formula-input"
+        {% if v.default is not none %}value="{{ v.default }}"{% endif %}
+        {% if v.required %}required aria-required="true"{% endif %}
+        {% if v.description %}aria-describedby="help-{{ v.name }}"{% endif %}
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="formula-no-vars muted">This formula takes no variables.</p>
+  {% endif %}
+
+  <div class="formula-form-actions">
+    <button type="submit" class="formula-btn formula-btn-primary">
+      Pour onto board
+    </button>
+  </div>
+</form>
+
+{# Result region for the pour outcome (success summary or error). #}
+<div id="formula-pour-result" class="formula-pour-result" aria-live="polite"></div>

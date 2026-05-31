@@ -7,6 +7,17 @@
       <h1 class="title">{{ workspace }}</h1>
     </div>
     {% include "partials/nav.html" %}
+    {# Pour-formula entry point (bdboard-ain.1). Opens a native <dialog> that
+       loads the formula picker; picking a formula loads its variable form;
+       submitting pours onto the board. New beads arrive live via the existing
+       watchfiles→Store.refresh→SSE pipeline plus the route's optimistic
+       broadcast. #}
+    <button
+      type="button"
+      class="mh-link formula-open-btn"
+      aria-haspopup="dialog"
+      onclick="openFormulaDialog()"
+    >+ Pour Formula</button>
     {# Counts strip hydrates via HTMX `load` (bdboard-2do) so the masthead
        paints instantly instead of blocking on the bd-backed snapshot. The
        `refresh from:body` trigger keeps the SSE live-update pipeline. #}
@@ -30,4 +41,53 @@
     {% include "partials/lanes_skeleton.html" %}
   </section>
 </main>
+
+{# Pour-formula dialog (bdboard-ain.1). A native <dialog> traps keyboard focus
+   automatically. Two-step flow: the picker (#formula-list) loads on open;
+   selecting a formula swaps its variable form into #formula-form; submitting
+   the form pours and shows the result. #}
+<dialog id="formula-dialog" class="formula-dialog" aria-labelledby="formula-dialog-title">
+  <div class="formula-dialog-inner">
+    <div class="formula-dialog-head">
+      <h2 id="formula-dialog-title" class="formula-dialog-title">Pour a Formula</h2>
+      <button
+        type="button"
+        class="formula-btn formula-btn-secondary"
+        onclick="this.closest('dialog').close()"
+        aria-label="Close"
+      >Close</button>
+    </div>
+    <p class="formula-dialog-hint muted">
+      Pick a formula, fill any variables, and pour its beads onto the board.
+    </p>
+
+    {# Picker region — loads the formula list when the dialog opens. #}
+    <div
+      id="formula-list"
+      class="formula-list-region"
+      hx-get="/api/formulas"
+      hx-trigger="load-formulas"
+      hx-swap="innerHTML"
+    >
+      <p class="formula-empty muted">Loading formulas…</p>
+    </div>
+
+    {# Variable-form region — populated when a formula is picked. #}
+    <div id="formula-form" class="formula-form-region"></div>
+  </div>
+</dialog>
+
+<script>
+  // Open the pour-formula dialog and (re)load the picker fresh each time so a
+  // newly-added formula shows up without a page reload.
+  function openFormulaDialog() {
+    const dialog = document.getElementById('formula-dialog');
+    // Clear any prior variable form from a previous open.
+    document.getElementById('formula-form').innerHTML = '';
+    dialog.showModal();
+    // Trigger the picker's HTMX load (custom event so it fetches on open,
+    // not on initial page load when the dialog is hidden).
+    htmx.trigger('#formula-list', 'load-formulas');
+  }
+</script>
 {% endblock %}
