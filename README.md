@@ -59,7 +59,7 @@ The mechanical, deterministic code-health checks run on every push/PR via
 locally with:
 
 ```sh
-make code-health      # lint + dead-code + duplication + audit
+make code-health      # lint + format-check + dead-code + tests + duplication + audit
 make outdated         # advisory only (dependency staleness)
 ```
 
@@ -68,8 +68,10 @@ These checks live in CI rather than a bd formula by design — see
 
 | Gate | Tool | Make target | Config |
 | --- | --- | --- | --- |
-| Lint + format + unused-import/dead-code (F401, F811, F841) | ruff | `make lint` / `make fmt` | `[tool.ruff]` in `pyproject.toml` |
+| Lint + unused-import/dead-code (F401, F811, F841) | ruff | `make lint` | `[tool.ruff]` in `pyproject.toml` |
+| Format check (no rewrites) | ruff | `make fmt-check` (`make fmt` rewrites) | `[tool.ruff]` in `pyproject.toml` |
 | Dead-code sweep (≥80% confidence) | vulture | `make dead-code` | inline flag |
+| Tests | pytest | `make test` | — |
 | Copy-paste duplication | jscpd | `make duplication` | `.jscpd.json` |
 | Dependency CVE scan | pip-audit | `make audit` | — |
 | Outdated deps (advisory, never fails) | uv | `make outdated` | — |

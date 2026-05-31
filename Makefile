@@ -1,6 +1,6 @@
 PY_INDEX := --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple --allow-insecure-host pypi.ci.artifacts.walmart.com
 
-PHONY: help venv install dev run fmt lint test clean dead-code duplication audit outdated code-health links
+PHONY: help venv install dev run fmt fmt-check lint test clean dead-code duplication audit outdated code-health links
 
 help:
 	@echo "Targets:"
@@ -8,7 +8,8 @@ help:
 	@echo "  install     - editable install bdboard into .venv"
 	@echo "  dev         - run with reload (in cwd workspace)"
 	@echo "  run         - run normally"
-	@echo "  fmt         - ruff format"
+	@echo "  fmt         - ruff format (rewrites files)"
+	@echo "  fmt-check   - ruff format --check (CI gate; no rewrites)"
 	@echo "  lint        - ruff check (incl. F401 unused-import / dead-code)"
 	@echo "  test        - run pytest"
 	@echo "  dead-code   - vulture dead-code sweep (>=80%% confidence)"
@@ -33,6 +34,11 @@ run:
 
 fmt:
 	uvx $(PY_INDEX) ruff format src/ tests/
+
+# Format gate: CI runs `ruff format --check` (fails on unformatted code) rather
+# than rewriting. `make fmt` rewrites; `make fmt-check` is the CI-parity check.
+fmt-check:
+	uvx $(PY_INDEX) ruff format --check src/ tests/
 
 lint:
 	uvx $(PY_INDEX) ruff check src/ tests/
@@ -65,7 +71,10 @@ outdated:
 	uv pip list --outdated || true
 
 # Aggregate gate — mirror of the CI workflow so contributors can repro locally.
-code-health: lint dead-code duplication audit
+# Order mirrors code-health.yml jobs: ruff (check + format --check), vulture,
+# pytest, jscpd, pip-audit. `outdated` stays advisory (never gates) so it's not
+# in the aggregate. `test` needs the editable install — run `make install` first.
+code-health: lint fmt-check dead-code test duplication audit
 	@echo "\n✅ mechanical code-health gates passed (outdated is advisory; run 'make outdated')"
 
 # Broken-link sweep (bdboard-mol-003): scan all markdown for dead
