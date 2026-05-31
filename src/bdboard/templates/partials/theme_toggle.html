@@ -1,0 +1,25 @@
+{# Theme toggle (bdboard-35e). Lives in the TOP masthead row's right-aligned
+   actions group (bdboard-vbz two-row layout), alongside the page-specific
+   Pour Formula button + counts strip. Split out of partials/nav.html so the
+   nav can sit alone on the second row while the toggle stays up top. Shared by
+   every surface (board / history / memory) so they stay symmetric (DRY).
+
+   It borrows the .mh-link contents-bar styling so it reads as a cell of the
+   actions strip (with the same hairline border-left separator the counts strip
+   uses), but it stays a <button> OUTSIDE <nav> because switching themes is an
+   action, not navigation. The visible label describes the action (what you'll
+   switch TO); CSS swaps which label shows based on <html data-theme>.
+   aria-pressed is set/maintained in JS (single source of truth from
+   bdboard-35e). #}
+<button type="button"
+        id="theme-toggle"
+        class="mh-link mh-toggle"
+        aria-pressed="false"
+        aria-label="Toggle dark mode">
+  <span class="mh-toggle-to-dark" aria-hidden="true">
+    <span class="mh-toggle-icon">☽</span> Dark
+  </span>
+  <span class="mh-toggle-to-light" aria-hidden="true">
+    <span class="mh-toggle-icon">☀</span> Light
+  </span>
+</button>

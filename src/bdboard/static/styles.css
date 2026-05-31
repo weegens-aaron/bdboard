@@ -275,16 +275,39 @@ pre { margin: 0; }
 }
 .masthead-row {
   display: flex;
-  /* flex-wrap lets the crowded masthead (brand / nav / + Pour Formula /
-     counts) reflow onto extra lines as width shrinks instead of
-     overflowing or compressing off-screen (bdboard-c52). The inner
-     regions (.masthead-counts) already wrap; this brings the top-level
-     row in line. row-gap is tighter than the 32px column-gap so wrapped
-     lines sit close together rather than spreading out vertically. */
+  /* flex-wrap lets the crowded masthead (brand / + Pour Formula / counts /
+     theme) reflow onto extra lines as width shrinks instead of overflowing
+     or compressing off-screen (bdboard-c52). The inner regions
+     (.masthead-counts, .masthead-actions) already wrap; this brings the
+     top-level row in line. row-gap is tighter than the 32px column-gap so
+     wrapped lines sit close together rather than spreading out vertically. */
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 8px 32px;
+}
+/* TOP-ROW actions group (bdboard-vbz): theme toggle + Pour Formula + counts,
+   right-aligned via the parent .masthead-row's justify-content:space-between
+   (brand is the only thing to its left). align-items:flex-end keeps the cells
+   sharing the counts strip's baseline; flex-wrap so the group reflows within
+   itself at narrow widths instead of clipping (folds in bdboard-c52). */
+.masthead-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px 24px;
+}
+/* SECOND ROW (bdboard-vbz): the page nav alone, left-aligned. A hairline
+   rule separates it from the top row, echoing the masthead's editorial rules.
+   margin-top ties it under the brand/actions row without crowding. */
+.masthead-nav-row {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  /* Nav is the only child and should sit hard-left; override the default
+     space-between so it never drifts toward centre when it's the lone item. */
+  justify-content: flex-start;
 }
 .masthead-brand .title {
   font-family: var(--display);
@@ -309,16 +332,14 @@ pre { margin: 0; }
 
    The theme toggle (a <button>) borrows .mh-link so it reads as the last
    cell of the same strip, but stays semantically an action outside <nav>. */
-.masthead-nav {
+..masthead-nav {
   display: flex;
   align-items: center;
-  /* margin-right:auto keeps the strip left, just after the wordmark. The
-     bottom margin ties the contents strip to the wordmark's OPTICAL baseline:
-     the row bottom-aligns line boxes (align-items:flex-end), but the 38px
-     wordmark carries far more descender + leading below its baseline than the
-     small nav text, so without this lift the strip reads as "dropped".
-     Shared verbatim with .mh-toggle so the nav and toggle stay co-planar. */
-  margin: 0 auto 8px 0;
+  /* The nav now owns its own second row (bdboard-vbz), so it no longer needs
+     the old margin-right:auto (left-push) or the 8px baseline lift that tied
+     it to the 38px wordmark on the shared single row. The .masthead-nav-row
+     handles left-alignment; the nav simply sits at the row's start. */
+  margin: 0;
 }
 .mh-link {
   /* Small-caps + letterspacing, matching the counts labels. */
@@ -400,10 +421,21 @@ pre { margin: 0; }
    button dropped ~8px below its neighbours (the misalignment). Sharing the same
    margin-bottom keeps the whole strip co-planar. inline-flex + align-items:center
    mirrors .mh-toggle so the "+" glyph and label centre cleanly. */
-.formula-open-btn {
+..formula-open-btn {
   display: inline-flex;
   align-items: center;
   margin-bottom: 8px;
+}
+
+/* Two-row masthead (bdboard-vbz): inside the right-aligned actions group the
+   theme toggle + Pour Formula button no longer sit beside the 38px wordmark —
+   they share a row with the counts strip (which has no baseline lift). Drop the
+   8px lift here so all actions-group cells bottom-align cleanly with the counts
+   labels. (The lift was only ever to clear the wordmark's deep descender on the
+   old single shared row.) */
+.masthead-actions .mh-toggle,
+.masthead-actions .formula-open-btn {
+  margin-bottom: 0;
 }
 
 .counts {

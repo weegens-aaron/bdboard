@@ -2,30 +2,38 @@
 {% block title %}{{ workspace }}{% endblock %}
 {% block body %}
 <header class="masthead">
+  <  {# TOP ROW (bdboard-vbz): brand left, actions (theme + Pour Formula + counts)
+     right-aligned. The page nav drops to its own second row below. #}
   <div class="masthead-row">
     <div class="masthead-brand">
       <h1 class="title">{{ workspace }}</h1>
     </div>
-    {% include "partials/nav.html" %}
-    {# Pour-formula entry point (bdboard-ain.1). Opens a native <dialog> that
-       loads the formula picker; picking a formula loads its variable form;
-       submitting pours onto the board. New beads arrive live via the existing
-       watchfiles→Store.refresh→SSE pipeline plus the route's optimistic
-       broadcast. #}
-    <button
-      type="button"
-      class="mh-link formula-open-btn"
-      aria-haspopup="dialog"
-      onclick="openFormulaDialog()"
-    >+ Pour Formula</button>
-    {# Counts strip hydrates via HTMX `load` (bdboard-2do) so the masthead
-       paints instantly instead of blocking on the bd-backed snapshot. The
-       `refresh from:body` trigger keeps the SSE live-update pipeline. #}
-    <div class="masthead-counts" id="counts"
-         aria-busy="true"
-         hx-get="/api/counts" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
-      {% include "partials/counts_skeleton.html" %}
+    <div class="masthead-actions">
+      {% include "partials/theme_toggle.html" %}
+      {# Pour-formula entry point (bdboard-ain.1). Opens a native <dialog> that
+         loads the formula picker; picking a formula loads its variable form;
+         submitting pours onto the board. New beads arrive live via the existing
+         watchfiles→Store.refresh→SSE pipeline plus the route's optimistic
+         broadcast. #}
+      <button
+        type="button"
+        class="mh-link formula-open-btn"
+        aria-haspopup="dialog"
+        onclick="openFormulaDialog()"
+      >+ Pour Formula</button>
+      {# Counts strip hydrates via HTMX `load` (bdboard-2do) so the masthead
+         paints instantly instead of blocking on the bd-backed snapshot. The
+         `refresh from:body` trigger keeps the SSE live-update pipeline. #}
+      <div class="masthead-counts" id="counts"
+           aria-busy="true"
+           hx-get="/api/counts" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
+        {% include "partials/counts_skeleton.html" %}
+      </div>
     </div>
+  </div>
+  {# SECOND ROW (bdboard-vbz): page nav alone, left-aligned. #}
+  <div class="masthead-row masthead-nav-row">
+    {% include "partials/nav.html" %}
   </div>
 </header>
 
