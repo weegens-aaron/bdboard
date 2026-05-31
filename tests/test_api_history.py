@@ -401,6 +401,37 @@ def test_custom_toggle_and_date_inputs_render() -> None:
     assert 'type="date"' in body
 
 
+def test_custom_range_is_a_popover_with_apply_and_clear_inside() -> None:
+    """bdboard-9zf: From/To/Apply/Clear live in a popover anchored to Custom.
+
+    The popover always ships hidden (opens only on an explicit Custom click),
+    is wrapped in the position:relative .history-custom anchor, declares
+    role=dialog + aria-haspopup, and contains BOTH Apply and Clear. There must
+    be no persistent inline date inputs or a standalone Clear link in the
+    toolbar.
+    """
+    _stub_snapshot([_bead("a", days_ago=1)])
+
+    _, body = _call()
+
+    # Anchor wrapper + popover class + dialog semantics.
+    assert 'class="history-custom"' in body
+    assert "history-custom-pop" in body
+    assert 'role="dialog"' in body
+    assert 'aria-haspopup="dialog"' in body
+    # Popover ships hidden and the toggle is collapsed by default.
+    assert "hidden" in body
+    assert 'aria-expanded="false"' in body
+    # Apply AND Clear both live inside (the popover always renders Clear now,
+    # not only when custom is active).
+    assert "history-date-apply" in body
+    assert "history-date-clear" in body
+    assert ">Apply<" in body
+    assert ">Clear<" in body
+    # The old persistent-inline form class is gone.
+    assert 'class="history-custom-range"' not in body
+
+
 def test_custom_range_marks_custom_active_not_preset() -> None:
     # A bead closed exactly today (days_ago=0) so an all-encompassing custom
     # window includes it.
@@ -409,9 +440,13 @@ def test_custom_range_marks_custom_active_not_preset() -> None:
 
     _, body = _call_custom(from_date="2000-01-01", to_date=today)
 
-    # The custom toggle owns the active cue; presets are not pressed.
+    # The custom toggle owns the active cue via the badge highlight, NOT an
+    # open popover (bdboard-9zf moved the inputs into a popover that ships
+    # hidden + aria-expanded=false; the active state is the pressed badge).
     assert 'id="history-custom-toggle"' in body
-    assert 'aria-expanded="true"' in body
+    assert "filter-badge-active" in body
+    assert 'aria-pressed="true"' in body
+    assert 'aria-expanded="false"' in body
     # The submitted dates echo back into the inputs.
     assert f'value="{today}"' in body
     # The bead inside the window surfaces.

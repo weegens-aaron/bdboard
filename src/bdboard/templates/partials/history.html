@@ -59,54 +59,69 @@
         hx-swap="innerHTML"
        >{{ "All" if r == "all" else r }}</button>
       {% endfor %}
-      {# Custom date-range toggle (bdboard-7k6). It mirrors the preset badges
-         (same filter-badge idiom + aria-pressed) but instead of firing an
-         HTMX request it reveals the from/to inputs below. aria-expanded
-         exposes the disclosure state to assistive tech. #}
-      <button
-        type="button"
-        id="history-custom-toggle"
-        class="filter-badge{% if is_custom %} filter-badge-active{% endif %}"
-        aria-pressed="{{ 'true' if is_custom else 'false' }}"
-        aria-expanded="{{ 'true' if is_custom else 'false' }}"
-        aria-controls="history-custom-range"
-        aria-label="Show history for a custom date range">Custom</button>
-    </div>
+      {# Custom date-range control (bdboard-7k6; popover bdboard-9zf). The
+         Custom badge mirrors the preset badges (same filter-badge idiom +
+         aria-pressed for the active-custom cue) but instead of firing an HTMX
+         request it toggles a POPOVER anchored to it that holds the from/to
+         inputs + Apply + Clear. aria-haspopup + aria-controls name the
+         popover; aria-expanded tracks its open state. The toggle + popover
+         share a position:relative wrapper so the popover anchors to the badge
+         rather than the toolbar row.
 
-    {# Custom date-range form (bdboard-7k6). A real <form> so Enter submits
-       and the inputs carry semantic from/to labels. HTMX serialises the two
-       date fields straight onto /api/history, where they supersede range=.
-       Hidden until the Custom toggle (or an active custom selection) opens
-       it; the toggle JS in base.html flips [hidden] + aria-expanded. #}
-    <form
-      id="history-custom-range"
-      class="history-custom-range"
-      role="group"
-      aria-label="Custom date range"
-      hx-get="/api/history"
-      hx-target="#history-region"
-      hx-swap="innerHTML"
-      {% if not is_custom %}hidden{% endif %}>
-      <label class="history-date-field">
-        <span class="history-date-label">From</span>
-        <input type="date" name="from_date" value="{{ from_date }}"
-               class="history-date-input" aria-label="Start date" />
-      </label>
-      <label class="history-date-field">
-        <span class="history-date-label">To</span>
-        <input type="date" name="to_date" value="{{ to_date }}"
-               class="history-date-input" aria-label="End date" />
-      </label>
-      <input type="hidden" name="page" value="1" />
-      <input type="hidden" name="page_size" value="{{ active_page_size }}" />
-      <button type="submit" class="filter-badge history-date-apply">Apply</button>
-      {% if is_custom %}
-      <button type="button" class="link-button history-date-clear"
-              hx-get="/api/history?range={{ range_key }}&page_size={{ active_page_size }}"
-              hx-target="#history-region" hx-swap="innerHTML"
-              aria-label="Clear custom range and return to {{ range_human }}">Clear</button>
-      {% endif %}
-    </form>
+         The popover ALWAYS ships hidden on server render (bdboard-9zf): the
+         active-custom state is shown by the badge highlight, not by a
+         persistently-open panel. That makes Apply self-closing (the region
+         re-swaps and the popover re-renders hidden), and selecting any preset
+         dismisses it for free. The base.html JS handles user-driven
+         open/close + click-outside + Escape. #}
+      <span class="history-custom">
+        <button
+          type="button"
+          id="history-custom-toggle"
+          class="filter-badge{% if is_custom %} filter-badge-active{% endif %}"
+          aria-pressed="{{ 'true' if is_custom else 'false' }}"
+          aria-expanded="false"
+          aria-haspopup="dialog"
+          aria-controls="history-custom-range"
+          aria-label="Show history for a custom date range">Custom</button>
+
+        {# Custom date-range popover (bdboard-9zf). A real <form> so Enter
+           submits and the inputs carry semantic from/to labels. HTMX
+           serialises the two date fields onto /api/history, where they
+           supersede range=. Hidden until the Custom toggle opens it. #}
+        <form
+          id="history-custom-range"
+          class="history-custom-pop"
+          role="dialog"
+          aria-label="Custom date range"
+          hx-get="/api/history"
+          hx-target="#history-region"
+          hx-swap="innerHTML"
+          hidden>
+          <div class="history-custom-fields">
+            <label class="history-date-field">
+              <span class="history-date-label">From</span>
+              <input type="date" name="from_date" value="{{ from_date }}"
+                     class="history-date-input" aria-label="Start date" />
+            </label>
+            <label class="history-date-field">
+              <span class="history-date-label">To</span>
+              <input type="date" name="to_date" value="{{ to_date }}"
+                     class="history-date-input" aria-label="End date" />
+            </label>
+          </div>
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="page_size" value="{{ active_page_size }}" />
+          <div class="history-custom-actions">
+            <button type="submit" class="filter-badge history-date-apply">Apply</button>
+            <button type="button" class="link-button history-date-clear"
+                    hx-get="/api/history?range={{ range_key }}&page_size={{ active_page_size }}"
+                    hx-target="#history-region" hx-swap="innerHTML"
+                    aria-label="Clear custom range and return to {{ range_human }}">Clear</button>
+          </div>
+        </form>
+      </span>
+    </div>
   </div>
 
   {# Stats row — relocated into the masthead header (bdboard-w5z) to mirror the

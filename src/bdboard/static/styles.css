@@ -1863,17 +1863,47 @@ pre { margin: 0; }
 /* The "All" preset reads better un-lowercased than the others. */
 .history-ranges .filter-badge { text-transform: none; }
 
-/* Custom date-range form (bdboard-7k6). Sits beside the preset badges and
-   reveals from/to <input type="date"> fields when the Custom badge is
-   toggled (or when a custom selection is active server-side). Mirrors the
-   toolbar's flex idiom and wraps gracefully at narrow widths. */
-.history-custom-range {
+/* Custom date-range popover (bdboard-7k6; popover bdboard-9zf). The Custom
+   badge anchors a floating panel holding the from/to <input type="date">
+   fields plus Apply + Clear, instead of spilling them inline across the
+   toolbar row. .history-custom is the position:relative anchor wrapping the
+   badge + popover so the panel is positioned relative to the badge. */
+.history-custom {
+  position: relative;
+  display: inline-flex;
+}
+/* The popover: absolutely positioned BELOW the Custom badge (the toolbar
+   sits near the top of the page, so opening downward keeps it in view).
+   Right-anchored because the Custom badge lives at the right end of the
+   right-justified toolbar, so a left-anchored panel would overflow the
+   viewport's right edge. */
+.history-custom-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: max-content;
+  padding: 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
+  background: var(--paper-3);
+  box-shadow: 0 6px 18px var(--shadow-inset);
+}
+.history-custom-pop[hidden] { display: none; }
+.history-custom-fields {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
 }
-.history-custom-range[hidden] { display: none; }
+.history-custom-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
 .history-date-field {
   display: flex;
   flex-direction: column;
@@ -1900,8 +1930,7 @@ pre { margin: 0; }
   outline: 2px solid var(--blue-100);
   outline-offset: 1px;
 }
-.history-date-apply { text-transform: none; align-self: flex-end; }
-.history-date-clear { align-self: flex-end; }
+.history-date-apply { text-transform: none; }
 
 /* History stats — a SINGLE editorial row (bdboard-4zk) combining bd's
    workspace-global totals ("via bd") with the range-derived KPIs. Relocated

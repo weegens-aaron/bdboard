@@ -77,14 +77,16 @@
         });
       })();
 
-      // Custom date-range disclosure (bdboard-7k6). The History range
-      // control's "Custom" badge toggles the from/to date form's visibility.
-      // The button + form are swapped in with #history-region, so the click
-      // listener is delegated from `document` rather than bound to the element
-      // (it survives every HTMX swap). Server-rendered state wins on load:
-      // when a custom selection is active the form ships without [hidden] and
-      // the toggle ships aria-expanded=true, so this JS only handles the
-      // user-driven open/close of an as-yet-unsubmitted range.
+      // Custom date-range popover (bdboard-7k6; popover bdboard-9zf). The
+      // History range control's "Custom" badge toggles a popover holding the
+      // from/to date inputs + Apply + Clear. The badge + popover are swapped
+      // in with #history-region, so all listeners are delegated from
+      // `document` rather than bound to the elements (they survive every HTMX
+      // swap). The popover always ships [hidden] from the server, so it opens
+      // only on an explicit Custom click; Apply re-swaps the region (popover
+      // re-renders hidden -> self-closes) and selecting a preset re-swaps
+      // too (dismissed for free). This JS adds the user-driven open/close,
+      // click-outside dismissal, and Escape-to-close.
       //
       // Delegated off `document` (NOT `document.body`): this <head> script
       // runs before <body> exists, so `document.body` is null here and
@@ -93,22 +95,49 @@
       // nothing). `document` is always present and still receives the bubbled
       // click. (bdboard-src)
       (function () {
-        document.addEventListener('click', function (evt) {
-          var btn = evt.target;
-          if (!btn || btn.id !== 'history-custom-toggle') return;
-          var form = document.getElementById('history-custom-range');
+        function pop() { return document.getElementById('history-custom-range'); }
+        function toggleBtn() { return document.getElementById('history-custom-toggle'); }
+        function isOpen() {
+          var form = pop();
+          return !!form && !form.hasAttribute('hidden');
+        }
+        function close() {
+          var form = pop();
+          var btn = toggleBtn();
+          if (form) form.setAttribute('hidden', '');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+        function open() {
+          var form = pop();
+          var btn = toggleBtn();
           if (!form) return;
-          var open = form.hasAttribute('hidden');
-          if (open) {
-            form.removeAttribute('hidden');
-          } else {
-            form.setAttribute('hidden', '');
+          form.removeAttribute('hidden');
+          if (btn) btn.setAttribute('aria-expanded', 'true');
+          var first = form.querySelector('input[type="date"]');
+          if (first) first.focus();
+        }
+
+        document.addEventListener('click', function (evt) {
+          var t = evt.target;
+          // Clicking the Custom badge toggles the popover.
+          if (t && t.id === 'history-custom-toggle') {
+            if (isOpen()) { close(); } else { open(); }
+            return;
           }
-          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-          if (open) {
-            var first = form.querySelector('input[type="date"]');
-            if (first) first.focus();
-          }
+          // Click outside an open popover (and outside the badge) closes it.
+          // Clicks INSIDE the popover (inputs/Apply/Clear) are ignored so the
+          // panel stays open while you pick dates.
+          if (!isOpen()) return;
+          var form = pop();
+          if (form && !form.contains(t)) close();
+        });
+
+        // Escape closes the popover and returns focus to the Custom badge.
+        document.addEventListener('keydown', function (evt) {
+          if (evt.key !== 'Escape' || !isOpen()) return;
+          close();
+          var btn = toggleBtn();
+          if (btn) btn.focus();
         });
       })();
     </script>
