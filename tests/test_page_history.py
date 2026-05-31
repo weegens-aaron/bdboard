@@ -5,7 +5,10 @@ docs/design/bdboard-rrc/history-page-design.md §4/D4/D7 (bead C, bdboard-7ib).
 We invoke the endpoint coroutine directly with a minimal ASGI Request (no
 TestClient/httpx dependency needed) and assert on the rendered HTML. The page
 itself shells no bd subprocess (the #history-region fills lazily via an HTMX
-`load` fetch to /api/history), so no stubbing is required for the happy path.
+`load` fetch to /api/history). It does, however, call `_validate_or_warn()` ->
+`bd.validate()`, which requires the `bd` binary + a `.beads/` workspace; an
+autouse fixture in tests/conftest.py stubs that out so the happy path is
+environment-independent (bdboard-e4l). Error-path tests re-stub it explicitly.
 
 Covers:
   - /history returns 200 and extends base.html (full page, not a partial)

@@ -5,8 +5,10 @@ masthead nav, per docs/design/bdboard-5p1/memory-view-design.md §3 D3, §5,
 We invoke the endpoint coroutine directly with a minimal ASGI Request (no
 TestClient/httpx dependency needed) and assert on the rendered HTML. The
 page itself shells no bd subprocess (the list region fills lazily via an
-HTMX `load` fetch to /api/memory), so no stubbing is required for the
-happy path.
+HTMX `load` fetch to /api/memory). It does call `_validate_or_warn()` ->
+`bd.validate()`, which needs the `bd` binary + a `.beads/` workspace; an
+autouse fixture in tests/conftest.py stubs that out so the happy path is
+environment-independent (bdboard-e4l). Error-path tests re-stub it explicitly.
 
 Covers:
   - /memory returns 200 and extends base.html (full page, not a partial)
