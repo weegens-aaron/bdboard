@@ -18,7 +18,8 @@ audit trail, not running checks (formulas spawn work; they don't run it).
 bd mol pour docs-validation
 ```
 
-`pour` is persistent (git-synced, audit trail) and is the recommended path for
+`pour` is persistent (recorded in the local bead database with a full audit
+trail) and is the recommended path for
 this formula — docs drift is worth a permanent record. Use `--dry-run` first to
 preview the 6 issues without creating them. The formula declares no variables,
 so no `--var` flags are needed; it's poured from within whatever repo needs it,

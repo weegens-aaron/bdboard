@@ -3,15 +3,10 @@
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 > **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a
-> git-compatible protocol), stored under `refs/dolt/data` on your git
-> remote — separate from `refs/heads/*` where your code lives.
+> (`.beads/`) on this machine. This project is **local-only** — there is no
+> git or dolt remote, so there is no push/pull sync step. `bd` writes are
+> committed locally and that is the source of truth.
 > `.beads/issues.jsonl` is a passive export, not the wire protocol.
->
-> See [SYNC_CONCEPTS.md](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md)
-> for the one-screen overview and anti-patterns (don't treat JSONL as the
-> source of truth; don't `bd import` during normal operation; don't
-> reach for third-party Dolt hosting before trying the default).
 
 ## Quick Reference
 
@@ -20,7 +15,6 @@ bd ready              # Find available work
 bd show <id>          # View issue details
 bd update <id> --claim  # Claim work atomically
 bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
 ```
 
 ## Non-Interactive Shell Commands
@@ -144,30 +138,31 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+**Architecture in one line:** issues live in a local Dolt DB on this machine; this project is local-only (no git/dolt remote, no push/pull sync); `.beads/issues.jsonl` is a passive export.
 
 ## Session Completion
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session**, complete the steps below. This project is
+**local-only** — there is no remote, so there is **no push step**; work is
+complete once it is committed locally.
 
-**MANDATORY WORKFLOW:**
+**WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+4. **COMMIT LOCALLY** - Commit all changes:
    ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
+   git add -A
+   git commit -m "<message>"
+   git status  # MUST show "nothing to commit, working tree clean"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
+5. **Clean up** - Clear stashes
+6. **Verify** - All changes committed
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- Work is complete once it is committed locally; there is no remote to push to
+- NEVER leave changes uncommitted - that leaves work stranded in the working tree
+- If a commit fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
