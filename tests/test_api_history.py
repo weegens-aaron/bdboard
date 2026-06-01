@@ -62,7 +62,12 @@ def _stub_snapshot(beads):
     async def fake_snapshot():
         return beads
 
+    # The board path uses snapshot(); the History page uses snapshot_history()
+    # (bdboard-p8v split the two so the board's short date window doesn't
+    # truncate the long-window History view). Stub both so tests stay
+    # decoupled from which path the route under test happens to call.
     app_module.store.snapshot = fake_snapshot  # type: ignore[assignment]
+    app_module.store.snapshot_history = fake_snapshot  # type: ignore[assignment]
 
 
 def _call(range: str = "30d", page: int = 1, page_size: int | None = None) -> tuple[int, str]:

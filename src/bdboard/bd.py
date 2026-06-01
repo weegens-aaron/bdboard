@@ -4,15 +4,19 @@ bdboard talks to bd through the bd CLI (`bd list`, `bd show`, `bd history`
 with `--json`). The JSONL export is not used as a runtime source of truth.
 
 Design notes:
-- list_all is the primary call: returns active issues (open, in_progress,
-  blocked, deferred) with no limit PLUS closed issues capped at
-  CLOSED_LANE_LIMIT (sorted by closed_at desc). This avoids fetching
-  hundreds of closed issues that lanes.py would just truncate anyway
-  (bdboard-zdz). Powers Store.refresh and therefore all lane/count/
-  activity renders.
+- The board uses two fetches that Store caches separately so the header
+  CLOSED KPI and the Closed lane reflect the SAME set (bdboard-p8v):
+    - list_active: active issues (open, in_progress, blocked, deferred),
+      no limit. Fast path for first paint.
+    - list_closed: closed issues bounded by the board's date window
+      (BOARD_CLOSED_WINDOW_DAYS) via --closed-after, NOT a static count
+      cap. Powers the Closed lane and the closed header count.
+- list_closed_history: closed issues capped by count (HISTORY_CLOSED_LIMIT,
+  sorted by closed_at desc). Powers the long-window History page, which is
+  intentionally decoupled from the board's short date filter.
 - show_long / history power bead-detail views and are cached with TTL +
   in-flight dedup.
-- All three share _subprocess_gate, an asyncio.Semaphore(1). bd's embedded
+- All share _subprocess_gate, an asyncio.Semaphore(1). bd's embedded
   dolt server is single-writer and can lock under concurrent CLI invocations,
   so process-wide serialization keeps requests reliable.
 """
@@ -24,6 +28,7 @@ import json
 import shutil
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -147,62 +152,6 @@ class BdClient:
 
     # ----- bread-and-butter: full issue list (dolt-native, always fresh) -----
 
-    async def list_all(self, closed_limit: int | None = None) -> list[dict[str, Any]]:
-        """Fetch all active issues (unlimited) plus closed issues (capped).
-
-        Returns a merged list of bead dicts. Raises on subprocess failure
-        or malformed JSON — Store wraps the call in try/except and falls
-        back to its previous cache so a transient bd hiccup doesn't flash
-        an empty dashboard.
-
-        Performance rationale (bdboard-zdz):
-        The old approach fetched ALL issues (--all --limit 0), which on
-        workspaces with a large closed backlog meant pulling ~500KB of
-        data that lanes.py would immediately truncate to 50 closed cards.
-        Now we fetch:
-          1. Active issues (open/in_progress/blocked/deferred) — unlimited
-          2. Closed issues — capped at CLOSED_LANE_LIMIT, sorted by
-             closed_at desc so the most recent are kept
-        This reduces payload by ~63% on a typical workspace.
-
-        Args:
-            closed_limit: Max closed issues to fetch. Defaults to
-                CLOSED_LANE_LIMIT from derive.lanes.
-
-        Side-effect on counts:
-        The dashboard masthead's "closed" count will show the capped
-        value (typically 50), not the true closed count. For accurate
-        totals, use status_summary() or the History page.
-        """
-        # Import here to avoid circular dependency (derive imports bd indirectly)
-        from bdboard.derive.lanes import CLOSED_LANE_LIMIT
-
-        limit = closed_limit if closed_limit is not None else CLOSED_LANE_LIMIT
-
-        # Fetch active issues (no --all → excludes closed by default)
-        active_task = self._run_json(
-            ["list", "--no-pager", "--limit", "0"],
-            timeout=LIST_TIMEOUT_S,
-        )
-        # Fetch closed issues, sorted by closed_at desc (most recent first),
-        # capped at the lane limit
-        closed_task = self._run_json(
-            ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", str(limit)],
-            timeout=LIST_TIMEOUT_S,
-        )
-
-        # Run both fetches; they serialize on _subprocess_gate anyway, but
-        # gather lets us queue them without await-chaining overhead.
-        active, closed = await asyncio.gather(active_task, closed_task)
-
-        for label, value in (("active", active), ("closed", closed)):
-            if not isinstance(value, list):
-                raise RuntimeError(
-                    f"bd list ({label}) returned non-list ({type(value).__name__}); expected JSON array"
-                )
-
-        return active + closed
-
     async def list_active(self) -> list[dict[str, Any]]:
         """Fetch only active issues (open/in_progress/blocked/deferred).
 
@@ -223,27 +172,75 @@ class BdClient:
             )
         return active
 
-    async def list_closed(self, limit: int | None = None) -> list[dict[str, Any]]:
-        """Fetch only closed issues, capped and sorted by closed_at desc.
+    async def list_closed(self, window_days: int | None = None) -> list[dict[str, Any]]:
+        """Fetch closed issues for the BOARD, bounded by a date window.
 
-        This is the background load for the closed lane after initial paint.
-        Returns most recently closed first so the lane shows recent wins.
+        The board is a recent-activity surface: its time-filter strip caps at
+        12h / 1d / 3d, so the Closed lane (and the header CLOSED KPI that
+        counts the same set) are bounded by the widest of those windows at
+        fetch time -- NOT by a static count cap (bdboard-p8v). This keeps the
+        two numbers consistent: both reflect the same date-bounded set,
+        narrowed further client-side to the user's selected window.
+
+        Issues closed before the window live on the History page, which has
+        its own unbounded data path (:meth:`list_closed_history`).
 
         Args:
-            limit: Max closed issues to fetch. Defaults to CLOSED_LANE_LIMIT.
+            window_days: Look-back window in days. Defaults to
+                BOARD_CLOSED_WINDOW_DAYS from derive.lanes.
 
         Raises on subprocess failure or malformed JSON.
         """
-        from bdboard.derive.lanes import CLOSED_LANE_LIMIT
+        from bdboard.derive.lanes import BOARD_CLOSED_WINDOW_DAYS
 
-        cap = limit if limit is not None else CLOSED_LANE_LIMIT
+        days = window_days if window_days is not None else BOARD_CLOSED_WINDOW_DAYS
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        closed = await self._run_json(
+            [
+                "list",
+                "--status",
+                "closed",
+                "--closed-after",
+                cutoff,
+                "--sort",
+                "closed",
+                "--no-pager",
+                "--limit",
+                "0",
+            ],
+            timeout=LIST_TIMEOUT_S,
+        )
+        if not isinstance(closed, list):
+            raise RuntimeError(
+                f"bd list (closed) returned non-list ({type(closed).__name__}); expected JSON array"
+            )
+        return closed
+
+    async def list_closed_history(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Fetch closed issues for the HISTORY page, capped by count.
+
+        Distinct from :meth:`list_closed` (the board path): History is the
+        long-window retrospective surface and keeps the original count-capped
+        fetch so its behaviour is unchanged by the board's switch to a
+        date-bounded closed set (bdboard-p8v).
+
+        Args:
+            limit: Max closed issues to fetch. Defaults to
+                HISTORY_CLOSED_LIMIT from derive.lanes.
+
+        Raises on subprocess failure or malformed JSON.
+        """
+        from bdboard.derive.lanes import HISTORY_CLOSED_LIMIT
+
+        cap = limit if limit is not None else HISTORY_CLOSED_LIMIT
         closed = await self._run_json(
             ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", str(cap)],
             timeout=LIST_TIMEOUT_S,
         )
         if not isinstance(closed, list):
             raise RuntimeError(
-                f"bd list (closed) returned non-list ({type(closed).__name__}); expected JSON array"
+                f"bd list (closed-history) returned non-list "
+                f"({type(closed).__name__}); expected JSON array"
             )
         return closed
 
@@ -263,7 +260,7 @@ class BdClient:
         sentinel. We strip the sentinel; a payload of *only* the sentinel
         (the empty / no-match shape) yields an empty list. Inherits the
         module's semaphore + timeout + TTL-cache + in-flight dedup via
-        ``_cached``. Raises (like :meth:`list_all`) on subprocess failure
+        ``_cached``. Raises (like :meth:`list_active`) on subprocess failure
         or malformed JSON so callers can surface a friendly error.
         """
         term = (query or "").strip()

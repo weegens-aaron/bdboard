@@ -7,30 +7,38 @@ single-writer lock. Instead, Store keeps the last-known good list in
 memory and only re-fetches when the watcher in app.py reports that
 .beads/ changed.
 
-Snapshot contents (bdboard-zdz, bdboard-0yy):
-The Store maintains TWO caches:
+Snapshot contents (bdboard-zdz, bdboard-0yy, bdboard-p8v):
+The Store maintains THREE caches:
   1. Active snapshot: open, in_progress, blocked, deferred issues (~5KB)
-  2. Closed snapshot: CLOSED_LANE_LIMIT most recently closed issues
+  2. Board-closed snapshot: closed issues bounded by the board's date
+     window (BOARD_CLOSED_WINDOW_DAYS). Powers the Closed lane AND the
+     header CLOSED KPI so the two numbers agree.
+  3. History-closed snapshot: closed issues capped by count
+     (HISTORY_CLOSED_LIMIT). Powers the long-window History page, which is
+     intentionally decoupled from the board's date filter.
 
 This split enables lazy-loading of the closed lane (bdboard-0yy):
   - First paint: /api/lanes fetches active-only (~5KB, fast)
   - Background: /api/lanes/closed loads after initial render
 
-The masthead closed count reflects the capped value; for accurate
-totals see the History page or bd status.
+The masthead CLOSED count and the Closed lane both reflect the same
+date-bounded board set; the History page surfaces older closed work.
 
 Access patterns:
 
   * snapshot_active() — active issues only. Fast path for initial paint.
     Lazy-loads on first call. ~5KB typical payload.
 
-  * snapshot_closed() — closed issues only. Background load for closed lane.
-    Lazy-loads on first call. Capped at CLOSED_LANE_LIMIT.
+  * snapshot_closed() — board-closed issues only (date-bounded). Background
+    load for the Closed lane. Lazy-loads on first call.
 
-  * snapshot() — all issues (active + closed). For History page and SSE
-    refresh. Lazy-loads on first call by calling refresh().
+  * snapshot() — active + board-closed issues. Powers the header counts and
+    the cached bead-lookup fallback. Lazy-loads on first call.
 
-  * refresh() — what the watcher calls. Pulls fresh data for BOTH caches,
+  * snapshot_history() — active + history-closed (count-capped) issues. For
+    the History page only. Lazy-loads on first call.
+
+  * refresh() — what the watcher calls. Pulls fresh data for ALL caches,
     compares against previous, returns True iff something changed.
     Drives broadcast dedup.
 
@@ -66,6 +74,7 @@ class Store:
         self.bd = bd
         self._active_snap: _Snapshot | None = None
         self._closed_snap: _Snapshot | None = None
+        self._history_snap: _Snapshot | None = None
         # Serializes refresh() so a burst of watcher events (or a watcher
         # event landing concurrently with a lazy snapshot load) results in
         # exactly one bd list call — not N parallel ones piling up against
@@ -105,6 +114,24 @@ class Store:
         closed = self._closed_snap.beads if self._closed_snap else []
         return active + closed
 
+    async def snapshot_history(self) -> list[dict[str, Any]]:
+        """Return active + history-closed (count-capped) issues.
+
+        For the History page only. The History page is a long-window
+        retrospective surface (7d/30d/90d/All), so it needs a closed set
+        that is NOT bounded by the board's short date window — otherwise
+        ranges wider than BOARD_CLOSED_WINDOW_DAYS would silently miss
+        older closed work (bdboard-p8v). Lazy-loads both the active cache
+        and the count-capped history-closed cache on first call.
+        """
+        if self._active_snap is None:
+            await self._load_active()
+        if self._history_snap is None:
+            await self._load_history()
+        active = self._active_snap.beads if self._active_snap else []
+        history = self._history_snap.beads if self._history_snap else []
+        return active + history
+
     async def _load_active(self) -> None:
         """Load active issues into cache. Called on first snapshot_active()."""
         async with self._refresh_lock:
@@ -131,6 +158,24 @@ class Store:
                 log.exception("store: bd list_closed failed; closed cache stays empty")
                 return
             self._closed_snap = _Snapshot(
+                beads=fresh,
+                by_id={b["id"]: b for b in fresh if isinstance(b.get("id"), str)},
+            )
+
+    async def _load_history(self) -> None:
+        """Load history-closed issues into cache. Called on first
+        snapshot_history(). Uses the count-capped fetch so the History
+        page sees long-window closed work regardless of the board's date
+        filter (bdboard-p8v)."""
+        async with self._refresh_lock:
+            if self._history_snap is not None:
+                return  # another coroutine loaded while we waited
+            try:
+                fresh = await self.bd.list_closed_history()
+            except Exception:
+                log.exception("store: bd list_closed_history failed; history cache stays empty")
+                return
+            self._history_snap = _Snapshot(
                 beads=fresh,
                 by_id={b["id"]: b for b in fresh if isinstance(b.get("id"), str)},
             )
@@ -175,6 +220,24 @@ class Store:
                     beads=fresh_closed,
                     by_id={b["id"]: b for b in fresh_closed if isinstance(b.get("id"), str)},
                 )
+
+            # The History page's count-capped closed cache is a separate
+            # data path (bdboard-p8v). Only refresh it if it was already
+            # lazy-loaded — no point paying for a long-window fetch nobody
+            # has asked for yet.
+            if self._history_snap is not None:
+                try:
+                    fresh_history = await self.bd.list_closed_history()
+                except Exception:
+                    log.exception("store: bd list_closed_history failed; keeping previous history")
+                else:
+                    if self._history_snap.beads != fresh_history:
+                        self._history_snap = _Snapshot(
+                            beads=fresh_history,
+                            by_id={
+                                b["id"]: b for b in fresh_history if isinstance(b.get("id"), str)
+                            },
+                        )
 
             # Bead-detail caches are now stale wrt the new world. Drop
             # them so the next modal click hits fresh bd show / bd history

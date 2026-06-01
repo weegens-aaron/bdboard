@@ -9,9 +9,10 @@ Lane assignment rules:
                     blocking dependency)
     - Ready       : status == 'open' AND no unmet blocking dependencies
     - Deferred    : everything else open-ish
-    - Closed      : status in {closed, resolved, done}. Capped at
-                    CLOSED_LANE_LIMIT and sorted by closed_at desc so the
-                    most recent wins are most visible.
+    - Closed      : status in {closed, resolved, done}. Bounded by the
+                    board's date window (see BOARD_CLOSED_WINDOW_DAYS) at
+                    fetch time and sorted by closed_at desc so the most
+                    recent wins are most visible.
 """
 
 from __future__ import annotations
@@ -29,10 +30,19 @@ LANES = ("deferred", "ready", "in_progress", "blocked", "closed")
 # Statuses that represent closed/completed work
 CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
 
-# Cap the closed lane so a project with thousands of closed beads doesn't
-# tank page render. Recently-closed is what people actually want to see;
-# anything older is best reached via search.
-CLOSED_LANE_LIMIT = 50
+# The board is a *recent-activity* surface. Its time-filter strip caps at
+# 12h / 1d / 3d (see templates/base.html BOARD_TIME_WINDOWS), so the closed
+# set is bounded by the WIDEST of those windows at fetch time rather than by
+# a static count cap. This keeps the header CLOSED KPI and the Closed lane
+# count consistent (bdboard-p8v): both reflect the same date-bounded set,
+# narrowed further client-side to the user's selected window. Anything older
+# than this window lives on the History page, not the board.
+BOARD_CLOSED_WINDOW_DAYS = 3
+
+# The History page is the long-window retrospective surface (7d/30d/90d/All).
+# It keeps a count-capped closed fetch so its behaviour is unchanged by the
+# board's switch to a date-bounded closed set (bdboard-p8v).
+HISTORY_CLOSED_LIMIT = 50
 
 _STATUS_META: dict[str, tuple[str, str]] = {
     "open": ("○", "Open"),
@@ -304,7 +314,10 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Bucket non-epic beads into swim lanes.
 
     Open lanes sorted by priority asc (P0 first) then updated_at desc.
-    Closed lane sorted by closed_at desc (most recent first) and capped.
+    Closed lane sorted by closed_at desc (most recent first). The closed
+    set is bounded by the board's date window at FETCH time (see
+    BOARD_CLOSED_WINDOW_DAYS / bd.list_closed), not by a static count here —
+    so the header CLOSED KPI and the lane count agree (bdboard-p8v).
     """
     # Exclude epics (they live in the strip) AND molecule wrappers (the
     # redundant formula-pour grouping node — Option A). The
@@ -332,7 +345,6 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     for k in ("deferred", "ready", "in_progress", "blocked"):
         buckets[k].sort(key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at"))))
     buckets["closed"].sort(key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at")))
-    buckets["closed"] = buckets["closed"][:CLOSED_LANE_LIMIT]
     return buckets
 
 

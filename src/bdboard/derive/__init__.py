@@ -40,8 +40,9 @@ from bdboard.derive.history import (
 )
 from bdboard.derive.lanes import (
     _STATUS_META,
-    CLOSED_LANE_LIMIT,
+    BOARD_CLOSED_WINDOW_DAYS,
     CLOSED_STATUSES,
+    HISTORY_CLOSED_LIMIT,
     LANES,
     _epic_lane_rank,
     _has_unmet_blocking_dep,
@@ -70,7 +71,8 @@ __all__ = [
     # constants
     "LANES",
     "CLOSED_STATUSES",
-    "CLOSED_LANE_LIMIT",
+    "BOARD_CLOSED_WINDOW_DAYS",
+    "HISTORY_CLOSED_LIMIT",
     "HISTORY_RANGES",
     "DEFAULT_HISTORY_RANGE",
     "HISTORY_PAGE_SIZE",

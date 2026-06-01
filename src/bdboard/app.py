@@ -476,24 +476,24 @@ async def api_history(
 ) -> HTMLResponse:
     """Render the History swap region (HTMX target), symmetric with /api/lanes.
 
-    Pure derivation over the existing snapshot (design §4): no new bd call.
-    ``range`` selects the window (7d/30d/90d/all, default 30d; unknown values
-    degrade to the default inside derive). ``page`` drives server-side
-    pagination of the closed list (design §D5). ``page_size``
-    is clamped to the allowed set {25,50,100}, defaulting to 50 on a
-    missing/invalid value so a bad query param can never break paging. We
-    compute the views from one snapshot — the paginated closed list plus the
-    throughput-per-day and created-per-day series — and hand them to
-    partials/history.html.
+        Pure derivation over the existing snapshot (design §4): no new bd call.
+        ``range`` selects the window (7d/30d/90d/all, default 30d; unknown values
+        degrade to the default inside derive). ``page`` drives server-side
+        pagination of the closed list (design §D5). ``page_size``
+        is clamped to the allowed set {25,50,100}, defaulting to 50 on a
+        missing/invalid value so a bad query param can never break paging. We
+        compute the views from one snapshot — the paginated closed list plus the
+        throughput-per-day and created-per-day series — and hand them to
+        partials/history.html.
 
-    ``from_date``/``to_date`` (``YYYY-MM-DD``) carry an explicit custom
-    window. When either parses, it supersedes ``range=`` for
-    every series, the closed list, and the KPIs (the derive layer resolves
-    the precedence in one place via :func:`derive._resolve_bounds`); the
-    range control marks the synthetic ``custom`` preset active so the UI
+        ``from_date``/``to_date`` (``YYYY-MM-DD``) carry an explicit custom
+        window. When either parses, it supersedes ``range=`` for
+        every series, the closed list, and the KPIs (the derive layer resolves
+        the precedence in one place via :func:`derive._resolve_bounds`); the
+        range control marks the synthetic ``custom`` preset active so the UI
     reflects the custom selection after each HTMX swap.
     """
-    beads = await store.snapshot()
+    beads = await store.snapshot_history()
     # Normalise the range once so the template's active-state cues and the
     # derive calls agree on the same key (a bad ?range= degrades to default).
     range_key = (range or "").strip().lower()
