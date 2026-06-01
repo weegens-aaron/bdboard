@@ -1,7 +1,7 @@
 {# Pour result summary — swapped into #formula-pour-result after a
-   POST /api/formulas/{name}/pour. The board itself refreshes
-   via the optimistic SSE broadcast + the watcher pipeline, so this is just an
-   acknowledgement of what landed.
+   POST /api/formulas/{name}/pour. The board refreshes via SSE broadcast
+   after the store is updated, so this is just an acknowledgement of what
+   landed.
 
    `created` here is the VISIBLE count (bd's raw count minus the one hidden
    molecule wrapper) so it matches what shows on the board.

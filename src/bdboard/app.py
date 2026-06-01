@@ -851,9 +851,10 @@ async def api_formula_pour(
          (§4.2) — pre-flight is necessary but not sufficient.
       4. Rename the grouping node (``new_epic_id``) to ``<formula> <id>`` so
          two pours of the same formula are distinguishable on the board.
-      5. Optimistic ``bus.broadcast('beads_changed')`` so the acting tab
-         refreshes immediately; the watcher→Store.refresh→SSE pipeline also
-         fires for other tabs.
+      5. Refresh the store + broadcast ``beads_changed`` so the acting tab
+         re-fetches fresh data immediately. The store refresh is critical —
+         without it the broadcast races ahead and clients fetch stale cache
+         data that omits the freshly poured beads.
     """
     _check_csrf(x_csrf_token, csrf)
     name = name.strip()
@@ -934,8 +935,11 @@ async def api_formula_pour(
     # shortfall between id_mapping and created means a partial materialization
     # we must NOT report as a clean success.
     visible_count, created, fully_materialized = _pour_counts(result)
-    # Optimistic SSE so the acting tab refreshes immediately; the watcher
-    # pipeline also fires for everyone else.
+    # Refresh the store BEFORE broadcasting so the HTMX re-fetch sees the
+    # freshly poured beads. Without this, the optimistic broadcast races
+    # ahead of the watcher→refresh cycle and clients fetch stale cache data
+    # that omits the new beads entirely (bdboard-dfl).
+    await store.refresh()
     await bus.broadcast("beads_changed")
     if not fully_materialized:
         log.warning(
