@@ -219,7 +219,19 @@ class BdClient:
         """Run `bd <args> --json` and parse stdout. Raise on non-zero exit
         or timeout. Caller is responsible for converting raised errors into
         cached failure entries. Serialized via _subprocess_gate so two
-        concurrent requests can't deadlock on bd's dolt lock."""
+        concurrent requests can't deadlock on bd's dolt lock.
+
+        IMPORTANT: This method is carefully structured to avoid fd leaks.
+        asyncio.create_subprocess_exec with PIPE opens file descriptors
+        that are only closed when communicate() completes. If the coroutine
+        is interrupted (TimeoutError, CancelledError) before communicate()
+        finishes, the pipes leak. We MUST call communicate() on every exit
+        path — even when killing the process — to drain the pipes and close
+        the transport. The debounce task in app.py can cancel refresh() at
+        any time, so CancelledError can arrive mid-communicate; without
+        cleanup, each cancellation leaks ~3 fds (stdin/stdout/stderr pipes)
+        until RLIMIT_NOFILE is exhausted.
+        """
         async with self._subprocess_gate:
             proc = await asyncio.create_subprocess_exec(
                 self.bd_bin,
@@ -229,14 +241,21 @@ class BdClient:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
+            timed_out = False
             try:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-            except TimeoutError as err:
+            except TimeoutError:
+                timed_out = True
                 proc.kill()
-                await proc.wait()
-                raise RuntimeError(
-                    "Request timed out while loading bead data. Please try again."
-                ) from err
+                # MUST call communicate() to drain pipes and close transport
+                stdout, stderr = await proc.communicate()
+            except BaseException:
+                # CancelledError or other unexpected error — cleanup then re-raise
+                proc.kill()
+                await proc.communicate()  # drain + close
+                raise
+            if timed_out:
+                raise RuntimeError("Request timed out while loading bead data. Please try again.")
             if proc.returncode != 0:
                 raise RuntimeError(
                     f"Could not load bead data right now ({args[0]}). Please try again."
@@ -497,6 +516,10 @@ class BdClient:
         rename, the list refresh) see post-pour state.
 
         Raises RuntimeError (bd's stderr) on failure or malformed JSON.
+
+        Subprocess cleanup mirrors _run_json: we MUST call communicate() on
+        every exit path to drain pipes and close the transport, preventing
+        fd leaks on timeout or cancellation.
         """
         args = ["mol", "pour", name]
         for key, val in variables.items():
@@ -510,14 +533,21 @@ class BdClient:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
+            timed_out = False
             try:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=POUR_TIMEOUT_S)
-            except TimeoutError as err:
+            except TimeoutError:
+                timed_out = True
                 proc.kill()
-                await proc.wait()
+                stdout, stderr = await proc.communicate()  # drain + close
+            except BaseException:
+                proc.kill()
+                await proc.communicate()  # drain + close
+                raise
+            if timed_out:
                 raise RuntimeError(
                     "Pour timed out. The formula may still be materializing — refresh in a moment."
-                ) from err
+                )
             if proc.returncode != 0:
                 err_text = stderr.decode(errors="replace").strip()
                 raise RuntimeError(err_text or f"bd mol pour failed (exit {proc.returncode}).")
@@ -613,6 +643,10 @@ class BdClient:
         provided it is written to the child's stdin (used to stream long
         markdown via bd's --body-file -/--design-file - so we never hit
         shell-arg length limits).
+
+        Subprocess cleanup mirrors _run_json: we MUST call communicate() on
+        every exit path to drain pipes and close the transport, preventing
+        fd leaks on timeout or cancellation.
         """
         async with self._subprocess_gate:
             proc = await asyncio.create_subprocess_exec(
@@ -624,14 +658,21 @@ class BdClient:
                 stderr=asyncio.subprocess.PIPE,
             )
             input_bytes = stdin_data.encode() if stdin_data is not None else None
+            timed_out = False
             try:
                 _stdout, stderr = await asyncio.wait_for(
                     proc.communicate(input=input_bytes), timeout=timeout
                 )
-            except TimeoutError as err:
+            except TimeoutError:
+                timed_out = True
                 proc.kill()
-                await proc.wait()
-                raise RuntimeError("Request timed out while saving. Please try again.") from err
+                _stdout, stderr = await proc.communicate()  # drain + close
+            except BaseException:
+                proc.kill()
+                await proc.communicate()  # drain + close
+                raise
+            if timed_out:
+                raise RuntimeError("Request timed out while saving. Please try again.")
             if proc.returncode != 0:
                 # bd forget on a non-existent key (or update on a bad value)
                 # exits non-zero with a descriptive stderr; surface it.
