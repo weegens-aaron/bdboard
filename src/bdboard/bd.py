@@ -64,6 +64,35 @@ class CacheEntry:
         return (now - self.fetched_at) < ttl
 
 
+def _safe_kill(proc: asyncio.subprocess.Process) -> None:
+    """Kill ``proc``, tolerating an already-exited process.
+
+    The cleanup branches in our subprocess helpers call ``proc.kill()`` when a
+    request times out or is cancelled. But the subprocess may have already
+    exited by then (it was, after all, in the middle of finishing). Under
+    uvloop, ``UVProcessTransport._check_proc`` raises ``ProcessLookupError``
+    when killing a dead pid. That stray error is poisonous in two ways:
+
+    1. In the ``except BaseException`` branch it MASKS the original
+       ``CancelledError``, breaking cooperative cancellation, and it skips the
+       follow-up draining ``communicate()`` (the fd leak the docstrings warn
+       about).
+    2. Being a plain ``Exception`` (not ``BaseException``), it propagates up
+       through ``list_active`` into ``Store.refresh``'s ``except Exception``,
+       which logs 'bd list failed; keeping previous snapshot' and returns
+       False — so no SSE broadcast fires and the board stops syncing.
+
+    A process that is already dead is exactly the outcome ``kill()`` wants, so
+    swallowing ``ProcessLookupError`` is correct: it is a successful no-op.
+    """
+    try:
+        proc.kill()
+    except ProcessLookupError:
+        # Already exited — nothing to kill. Treat as success so the caller
+        # can proceed to drain pipes / re-raise the real (cancellation) error.
+        pass
+
+
 class BdClient:
     """Thin async wrapper around the bd CLI.
 
@@ -318,12 +347,14 @@ class BdClient:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             except TimeoutError:
                 timed_out = True
-                proc.kill()
+                _safe_kill(proc)
                 # MUST call communicate() to drain pipes and close transport
                 stdout, stderr = await proc.communicate()
             except BaseException:
-                # CancelledError or other unexpected error — cleanup then re-raise
-                proc.kill()
+                # CancelledError or other unexpected error — cleanup then re-raise.
+                # _safe_kill swallows ProcessLookupError so the draining
+                # communicate() still runs and the original error propagates.
+                _safe_kill(proc)
                 await proc.communicate()  # drain + close
                 raise
             if timed_out:
@@ -610,10 +641,10 @@ class BdClient:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=POUR_TIMEOUT_S)
             except TimeoutError:
                 timed_out = True
-                proc.kill()
+                _safe_kill(proc)
                 stdout, stderr = await proc.communicate()  # drain + close
             except BaseException:
-                proc.kill()
+                _safe_kill(proc)
                 await proc.communicate()  # drain + close
                 raise
             if timed_out:
@@ -737,10 +768,10 @@ class BdClient:
                 )
             except TimeoutError:
                 timed_out = True
-                proc.kill()
+                _safe_kill(proc)
                 _stdout, stderr = await proc.communicate()  # drain + close
             except BaseException:
-                proc.kill()
+                _safe_kill(proc)
                 await proc.communicate()  # drain + close
                 raise
             if timed_out:
