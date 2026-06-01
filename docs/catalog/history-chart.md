@@ -76,7 +76,7 @@ in the render path.
 - **Templates:**
   - `templates/history.html` — the full page shell; hosts the `#history-region`
     swap target with an instant skeleton.
-  - `templates/partials/histortml` — renders the `.history-throughput`
+  - `templates/partials/history.html` — renders the `.history-throughput`
     section: the legend, the `.throughput-chart-combined` strip, and each day's
     `.throughput-pair` of `.throughput-col` mini columns.
   - `templates/partials/history_skeleton.html` — the load placeholder.
@@ -192,7 +192,7 @@ and pagination state are URL-borne, not element-borne, keeping the wiring DRY.)
   `.throughput-bar-cell`, `.throughput-pair`, `.throughput-col`,
   `.throughput-bar`, `.throughput-bar-created` (violet + hatch),
   `.throughput-bar-closed`, `.throughput-count`, `.history-legend*`
-  (~2314–2440); the `flex-end` baseline anchoring that fixed bdboard-oey.
+  (~2314–2460); the `flex-end` baseline anchoring that fixed bdboard-oey.
 - `tests/test_api_history.py` —
   `test_combined_chart_shows_per_day_counts_and_baseline_columns` (per-day
   counts + baseline columns, the bdboard-oey regression guard) and the broader
