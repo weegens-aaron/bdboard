@@ -56,4 +56,4 @@
 
 export.auto: false
 
-sync.remote: "git+https://github.com/weegens-aaron/bdboard-dolt.git"
+# sync.remote: "git+https://github.com/weegens-aaron/bdboard-dolt.git"
