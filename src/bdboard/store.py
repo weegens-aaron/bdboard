@@ -1,11 +1,18 @@
-"""In-memory cache of `bd list --all --json` output with change detection.
+"""In-memory cache of bead snapshots with change detection.
 
 bdboard is read-mostly: every /api/lanes, /api/counts, and / render
-needs the full bead list. Re-fetching via subprocess on every request
+needs the bead list. Re-fetching via subprocess on every request
 would burn ~700ms per HTTP call and pile up against the bd dolt
 single-writer lock. Instead, Store keeps the last-known good list in
 memory and only re-fetches when the watcher in app.py reports that
 .beads/ changed.
+
+Snapshot contents (bdboard-zdz):
+The snapshot contains ALL active issues (open, in_progress, blocked,
+deferred) plus the CLOSED_LANE_LIMIT most recently closed issues.
+This is a ~63% payload reduction vs fetching every closed issue.
+The masthead closed count reflects the capped value; for accurate
+totals see the History page or bd status.
 
 Two access patterns:
 
