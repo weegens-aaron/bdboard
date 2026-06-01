@@ -648,23 +648,15 @@ pre { margin: 0; }
   color: var(--muted);
 }
 
-/* Board-wide time filter — small pressable badges in masthead, WCAG AA compliant */
+/* Board-wide time filter — small pressable badges in masthead, WCAG AA compliant.
+   Right-aligned next to the masthead actions: margin-left:auto consumes the row's
+   free space so nav stays hard-left while the filter group + actions sit hard-right,
+   reading as a single right-hand cluster of header chrome. */
 .board-filters {
   display: flex;
   gap: 4px;
   align-items: center;
-  margin: 0 auto;  /* center between nav and actions */
-}
-.board-filter-hint {
-  font-size: 11px;
-  margin-left: 6px;
-}
-.board-filter-link {
-  color: var(--blue-100);
-  text-decoration: none;
-}
-.board-filter-link:hover {
-  text-decoration: underline;
+  margin-left: auto;
 }
 .filter-badge {
   font-family: var(--sans);

@@ -17,7 +17,7 @@
       {% include "partials/counts_skeleton.html" %}
     </div>
   </div>
-  {# SECOND ROW page nav left, board-wide time filter center, actions right. #}
+  {# SECOND ROW page nav left, board-wide time filter + actions right. #}
   <div class="masthead-row masthead-nav-row">
     {% include "partials/nav.html" %}
     {# Board-wide time filter: applies to all lanes consistently.
@@ -27,7 +27,6 @@
       <button class="filter-badge" data-filter="12h" role="radio" aria-checked="false" aria-label="Show beads from the last 12 hours">12h</button>
       <button class="filter-badge filter-badge-active" data-filter="1d" role="radio" aria-checked="true" aria-label="Show beads from the last 24 hours">1d</button>
       <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
-      <span class="board-filter-hint muted">· older beads on <a href="/history" class="board-filter-link">History</a></span>
     </div>
     <div class="masthead-actions">
       {% include "partials/theme_toggle.html" %}
