@@ -10,6 +10,7 @@ workspaces — and contributions are welcome.
 git clone <your-fork-url>
 cd bdboard
 make install      # uv venv + editable install
+source .venv/bin/activate  # activate the venv
 make test         # run the test suite
 bdboard           # run it against this repo's own .beads workspace
 ```

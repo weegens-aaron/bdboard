@@ -24,6 +24,7 @@ web view of a workspace's beads without leaving their terminal-driven workflow.
 ```sh
 cd bdboard
 make install           # uv venv + editable install (resolves against public PyPI)
+source .venv/bin/activate   # activate the venv (run once per shell session)
 ```
 
 Prefer the raw commands? They're equivalent:
@@ -32,6 +33,7 @@ Prefer the raw commands? They're equivalent:
 cd bdboard
 uv venv
 uv pip install -e .
+source .venv/bin/activate
 ```
 
 > **Behind a private package mirror?** `make install` reads two optional
@@ -46,9 +48,18 @@ uv pip install -e .
 
 ## Run
 
+From within a bd workspace (any directory containing `.beads/`):
+
 ```sh
-cd /path/to/repo-with-.beads   # MUST be a bd workspace (a dir containing .beads/)
 bdboard                        # binds 127.0.0.1:7332 and opens a browser
+```
+
+Or use `make run` from the bdboard repo (runs against this repo's own
+`.beads/` workspace):
+
+```sh
+cd bdboard
+make run                       # equivalent to .venv/bin/bdboard
 ```
 
 > bdboard only works inside a bd workspace. From a non-`.beads/` directory it
