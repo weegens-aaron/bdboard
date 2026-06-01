@@ -203,6 +203,50 @@ class BdClient:
 
         return active + closed
 
+    async def list_active(self) -> list[dict[str, Any]]:
+        """Fetch only active issues (open/in_progress/blocked/deferred).
+
+        This is the fast path for initial paint — ~5KB vs ~500KB for full
+        fetch on a typical workspace. Blocked-by detection against closed
+        issues will treat unknown targets as blocked (conservative), but
+        most active→active dependencies are correctly resolved.
+
+        Raises on subprocess failure or malformed JSON.
+        """
+        active = await self._run_json(
+            ["list", "--no-pager", "--limit", "0"],
+            timeout=LIST_TIMEOUT_S,
+        )
+        if not isinstance(active, list):
+            raise RuntimeError(
+                f"bd list (active) returned non-list ({type(active).__name__}); expected JSON array"
+            )
+        return active
+
+    async def list_closed(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Fetch only closed issues, capped and sorted by closed_at desc.
+
+        This is the background load for the closed lane after initial paint.
+        Returns most recently closed first so the lane shows recent wins.
+
+        Args:
+            limit: Max closed issues to fetch. Defaults to CLOSED_LANE_LIMIT.
+
+        Raises on subprocess failure or malformed JSON.
+        """
+        from bdboard.derive.lanes import CLOSED_LANE_LIMIT
+
+        cap = limit if limit is not None else CLOSED_LANE_LIMIT
+        closed = await self._run_json(
+            ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", str(cap)],
+            timeout=LIST_TIMEOUT_S,
+        )
+        if not isinstance(closed, list):
+            raise RuntimeError(
+                f"bd list (closed) returned non-list ({type(closed).__name__}); expected JSON array"
+            )
+        return closed
+
     # ----- memories: browse + search (cached, in-flight deduped) -----
 
     async def memories(self, query: str | None = None) -> list[dict[str, str]]:

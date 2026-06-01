@@ -1,0 +1,38 @@
+{# Closed lane content — loaded separately after initial paint for faster
+   time-to-first-paint. This partial is swapped into the .lane-closed
+   placeholder by /api/lanes/closed. The lane chrome (title, filters) stays
+   in lanes.html; this is just the card list + count update. #}
+<h2 class="lane-title">
+  <span class="lane-name">Closed</span>
+  <div class="closed-filters">
+    <button class="filter-badge" data-filter="12h" aria-label="Show beads closed in the last 12 hours">12h</button>
+    <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
+    <button class="filter-badge" data-filter="3d" aria-label="Show beads closed in the last 3 days">3d</button>
+  </div>
+  <span class="lane-count" data-closed-count="total">{{ closed|length }}</span>
+</h2>
+<ul class="lane-list">
+  {% for b in closed %}
+  <li class="bead-card"
+      {% if b.closed_at %}data-closed-at="{{ b.closed_at }}"{% endif %}
+      hx-get="/api/bead/{{ b.id }}"
+      hx-target="#bead-modal"
+      hx-swap="innerHTML"
+      hx-disabled-elt="this">
+    <div class="bead-card-head">
+      <span class="bead-id">{{ b.id }}</span>
+      {% if b.priority is not none %}
+      <span class="bead-priority p{{ b.priority }}">P{{ b.priority }}</span>
+      {% endif %}
+    </div>
+    <div class="bead-title">{{ b.title }}</div>
+    <div class="bead-meta">
+      {% if b.assignee %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
+      {% if b.issue_type %}<span class="bead-type">{{ b.issue_type }}</span>{% endif %}
+      {% if b.dependency_count %}<span class="bead-dep">⛓ {{ b.dependency_count }}</span>{% endif %}
+    </div>
+  </li>
+  {% else %}
+  <li class="lane-empty muted">(empty)</li>
+  {% endfor %}
+</ul>

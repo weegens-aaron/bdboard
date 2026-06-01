@@ -1,4 +1,4 @@
-{% set lane_titles = {"deferred": "Deferred", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked", "closed": "Closed"} %}
+{% set lane_titles = {"deferred": "Deferred", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
 
 <section class="epic-lane" aria-label="Epic lane">
   <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
@@ -31,23 +31,16 @@
 </section>
 
 <div class="lanes">
-  {% for key in ["deferred", "blocked", "ready", "in_progress", "closed"] %}
-  <div class="lane lane-{{ key }}" {% if key == "closed" %}data-lane="closed"{% endif %}>
+  {# Active lanes: rendered immediately from active-only snapshot #}
+  {% for key in ["deferred", "blocked", "ready", "in_progress"] %}
+  <div class="lane lane-{{ key }}">
     <h2 class="lane-title">
       <span class="lane-name">{{ lane_titles[key] }}</span>
-      {% if key == "closed" %}
-      <div class="closed-filters">
-        <button class="filter-badge" data-filter="12h" aria-label="Show beads closed in the last 12 hours">12h</button>
-        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
-        <button class="filter-badge" data-filter="3d" aria-label="Show beads closed in the last 3 days">3d</button>
-      </div>
-      {% endif %}
-      <span class="lane-count" {% if key == "closed" %}data-closed-count="total"{% endif %}>{{ lanes[key]|length }}</span>
+      <span class="lane-count">{{ lanes[key]|length }}</span>
     </h2>
     <ul class="lane-list">
       {% for b in lanes[key] %}
       <li class="bead-card"
-          {% if key == "closed" and b.closed_at %}data-closed-at="{{ b.closed_at }}"{% endif %}
           hx-get="/api/bead/{{ b.id }}"
           hx-target="#bead-modal"
           hx-swap="innerHTML"
@@ -71,6 +64,39 @@
     </ul>
   </div>
   {% endfor %}
+
+  {# Closed lane: lazy-loaded after initial paint for faster TTFP.
+     The `load` trigger fires immediately after this partial swaps in,
+     fetching /api/lanes/closed in the background. SSE `refresh from:body`
+     keeps it in sync with file changes like the other lanes.
+     The skeleton shows while loading so users see something immediately. #}
+  <div class="lane lane-closed"
+       data-lane="closed"
+       hx-get="/api/lanes/closed"
+       hx-trigger="load, refresh from:body"
+       hx-swap="innerHTML">
+    {# Closed lane skeleton while loading #}
+    <h2 class="lane-title">
+      <span class="lane-name">Closed</span>
+      <div class="closed-filters">
+        <button class="filter-badge" data-filter="12h" aria-label="Show beads closed in the last 12 hours">12h</button>
+        <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
+        <button class="filter-badge" data-filter="3d" aria-label="Show beads closed in the last 3 days">3d</button>
+      </div>
+      <span class="skeleton skeleton-text skeleton-count"></span>
+    </h2>
+    <ul class="lane-list" aria-hidden="true">
+      {% for _ in range(3) %}
+      <li class="bead-card skeleton-card">
+        <div class="bead-card-head">
+          <span class="skeleton skeleton-text skeleton-id"></span>
+        </div>
+        <div class="skeleton skeleton-text skeleton-title-line"></div>
+        <div class="skeleton skeleton-text skeleton-meta-line"></div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
 
   <div class="lane lane-activity" data-lane="activity">
     <h2 class="lane-title">
