@@ -1,0 +1,34 @@
+store: bd list failed; keeping previous snapshot
+Traceback (most recent call last):
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/bd.py", line 318, in _run_json
+    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+  File ".../asyncio/tasks.py", line 507, in wait_for
+    return await fut
+  File ".../asyncio/subprocess.py", line 201, in communicate
+    stdin, stdout, stderr = await tasks.gather(stdin, stdout, stderr)
+  File ".../asyncio/subprocess.py", line 181, in _read_stream
+    output = await stream.read()
+  File ".../asyncio/streams.py", line 723, in read
+    block = await self.read(self._limit)
+  File ".../asyncio/streams.py", line 730, in read
+    await self._wait_for_data(read)
+  File ".../asyncio/streams.py", line 539, in _wait_for_data
+    await self._waiter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/store.py", line 192, in refresh
+    fresh_active = await self.bd.list_active()
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/bd.py", line 165, in list_active
+    active = await self._run_json(
+        ...<2 lines>...
+    )
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/bd.py", line 326, in _run_json
+    proc.kill()
+  File ".../asyncio/subprocess.py", line 146, in kill
+    self._transport.kill()
+  File "uvloop/handles/process.pyx", line 663, in uvloop.loop.UVProcessTransport.kill
+  File "uvloop/handles/process.pyx", line 401, in uvloop.loop.UVProcessTransport._check_proc
+ProcessLookupError
