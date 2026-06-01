@@ -1,0 +1,17 @@
+Recurring failure observed after bdboard runs for a while. Repeats many times.
+
+store: bd list --json failed; keeping previous snapshot
+Traceback (most recent call last):
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/store.py", line 76, in refresh
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/bd.py", line 165, in list_all
+  File "/Users/a0w0f56/GOAT/bdboard/src/bdboard/bd.py", line 224, in _run_json
+  File "/Users/a0w0f56/.local/share/uv/python/cpython-3.13.5-macos-aarch64-none/lib/python3.13/asyncio/subprocess.py", line 224, in create_subprocess_exec
+  File "uvloop/loop.pyx", line 2841, in subprocess_exec
+  File "uvloop/loop.pyx", line 2799, in __subprocess_run
+  File "uvloop/handles/process.pyx", line 611, in uvloop.loop.UVProcessTransport.new
+  File "uvloop/handles/process.pyx", line 69, in uvloop.loop.UVProcess._init
+  File "uvloop/handles/process.pyx", line 58, in uvloop.loop.UVProcess._init
+  File "uvloop/handles/process.pyx", line 285, in uvloop.loop.UVProcess._init_options
+  File "uvloop/handles/process.pyx", line 472, in uvloop.loop.UVProcessTransport._init_files
+  File "uvloop/handles/process.pyx", line 419, in uvloop.loop.UVProcessTransport._file_redirect_stdio
+OSError: [Errno 24] Too many open files
