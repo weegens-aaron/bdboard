@@ -25,3 +25,11 @@ exclude_path = [
 
 # Don't hammer mailto/tel links (off by default; explicit for clarity).
 include_mail = false
+
+# Ignore template placeholder links (e.g. the ADR template's
+# [NNNN](NNNN-….md) example). These are intentional placeholders, not
+# real targets, and must not fail the sweep. Matches the literal
+# placeholder filename in any form (raw or percent-encoded ellipsis).
+exclude = [
+    "NNNN-",
+]
