@@ -7,6 +7,16 @@ name: code-health
 # code-health-audit formula (bdboard-jyf) TRIAGES this output rather than
 # re-running the tools.
 #
+# Decision record: the uv-venv + --no-sync choice below (used by the pytest and
+# dependencies jobs) is an architectural CI decision — see bdboard-mol-tgq /
+# bdboard-b6i bead notes and memories `ci-uv-system-install` /
+# `ci-uv-run-nosync-lock`. Short version: `uv pip install --system` crashes on
+# GitHub's externally-managed runner Python (PEP 668), which had silently turned
+# the pip-audit/pytest steps into no-ops (a security-relevant CI gap). We install
+# into a project venv instead, and add `--no-sync` so `uv run` does NOT re-sync
+# from a uv.lock that may pin private-mirror URLs unreachable from public
+# runners. Do NOT "simplify" these back to `--system` or drop `--no-sync`.
+#
 # Note on package indexes: these jobs run on public GitHub-hosted runners,
 # which reach public PyPI / npm directly. Any private package mirror used in
 # local dev (the Makefile's optional PY_INDEX_URL override) is intentionally

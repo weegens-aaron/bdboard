@@ -2,8 +2,18 @@
 
 - **Bead:** bdboard-ace (task / decision)
 - **Discovered from:** bdboard-zda (formula spike)
-- **Status:** decided — **no scheduler shipped** (that is the decision)
+- **Status:** decided — **no scheduler shipped** (that is the decision).
+  **PARTIALLY SUPERSEDED** — see note below.
 - **Date:** 2026-05-29
+
+> **Superseded by bdboard-65z (formulas are now variable-less).** The runbook
+> in §4 below shows per-pour `--var repo=…` / `--var quarter=…` arguments. That
+> reflects the old formula design. bdboard-65z dropped **all** formula
+> variables and all cadence/date binding (and bdboard-q9w's earlier
+> `quarter`→`date` rename is now moot). The **cadence + invoker decision in
+> this doc still stands** (manual quarterly pour, no scheduler); only the
+> variable-passing in the runbook commands is stale — pour the formulas with no
+> `--var` flags. See `.beads/formulas/README.md` for the current invocation.
 
 > This document is the deliverable for bdboard-ace. It records the chosen
 > cadence and invoker for the two shipped maintenance formulas
