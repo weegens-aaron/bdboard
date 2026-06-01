@@ -4,11 +4,6 @@
    in lanes.html; this is just the card list + count update. #}
 <h2 class="lane-title">
   <span class="lane-name">Closed</span>
-  <div class="closed-filters">
-    <button class="filter-badge" data-filter="12h" aria-label="Show beads closed in the last 12 hours">12h</button>
-    <button class="filter-badge filter-badge-active" data-filter="1d" aria-label="Show beads closed in the last 24 hours">1d</button>
-    <button class="filter-badge" data-filter="3d" aria-label="Show beads closed in the last 3 days">3d</button>
-  </div>
   <span class="lane-count" data-closed-count="total">{{ closed|length }}</span>
 </h2>
 <ul class="lane-list">

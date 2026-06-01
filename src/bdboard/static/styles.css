@@ -648,12 +648,23 @@ pre { margin: 0; }
   color: var(--muted);
 }
 
-/* Closed lane filter badges — small, pressable, WCAG AA compliant */
-.closed-filters {
+/* Board-wide time filter — small pressable badges in masthead, WCAG AA compliant */
+.board-filters {
   display: flex;
   gap: 4px;
   align-items: center;
-  margin: 0 auto 0 0;
+  margin: 0 auto;  /* center between nav and actions */
+}
+.board-filter-hint {
+  font-size: 11px;
+  margin-left: 6px;
+}
+.board-filter-link {
+  color: var(--blue-100);
+  text-decoration: none;
+}
+.board-filter-link:hover {
+  text-decoration: underline;
 }
 .filter-badge {
   font-family: var(--sans);
