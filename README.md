@@ -65,6 +65,12 @@ make run                       # equivalent to .venv/bin/bdboard
 > bdboard only works inside a bd workspace. From a non-`.beads/` directory it
 > reports "workspace not ready" — `cd` into one or pass `--dir /path/to/workspace`.
 
+> **Fresh clone? Hydrate first.** A freshly-cloned bdboard workspace ships
+> **no** bead database (`.beads/embeddeddolt/` is gitignored), so `bdboard`
+> starts but renders an **empty board** until you run `bd bootstrap --yes`
+> once. See [Getting the bead history (fresh clone)](#getting-the-bead-history-fresh-clone)
+> for the one-time hydration step.
+
 ## Test
 
 ```sh
@@ -116,8 +122,10 @@ These checks live in CI rather than a bd formula by design — see
 Issue history is replicated off-machine using Dolt's git-compatible wire
 protocol — it rides under `refs/dolt/data` on the **same** GitHub origin as the
 code, **not** as a committed `issues.jsonl`. That custom ref is **not**
-auto-fetched by a normal `git clone`, so a bare clone starts with **zero
-issues** until you hydrate it once. (See
+auto-fetched by a normal `git clone`, and the local Dolt DB itself
+(`.beads/embeddeddolt/`) is gitignored — so a bare clone has **no bead
+database at all**. Until you hydrate once, `bd list` reports `no beads database
+found` and `bdboard` renders an **empty board**. (See
 [`docs/decisions/0003-beads-sync-via-dolt-git-refs.md`](docs/decisions/0003-beads-sync-via-dolt-git-refs.md)
 for the full rationale.)
 

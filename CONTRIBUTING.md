@@ -6,14 +6,23 @@ workspaces — and contributions are welcome.
 
 ## Getting started
 
-```sh
+``````sh
 git clone <your-fork-url>
 cd bdboard
-make install      # uv venv + editable install
+bd bootstrap --yes         # hydrate the bead DB — a fresh clone has none (see note below)
+make install               # uv venv + editable install
 source .venv/bin/activate  # activate the venv
-make test         # run the test suite
-bdboard           # run it against this repo's own .beads workspace
+make test                  # run the test suite
+bdboard                    # run it against this repo's own .beads workspace
 ```
+
+> **Don't skip `bd bootstrap`.** A fresh clone ships **no** bead database
+> (`.beads/embeddeddolt/` is gitignored), so `bd list` reports `no beads
+> database found` and `bdboard` comes up showing an **empty board** until you
+> hydrate once. The test suite passes without it (tests use fixtures), but the
+> running board will be blank. See the README's
+> [Getting the bead history (fresh clone)](README.md#getting-the-bead-history-fresh-clone)
+> for details.
 
 See the [README](README.md) for prerequisites (you'll need the `bd` binary on
 your `PATH`, Python ≥ 3.11, and `uv`).
