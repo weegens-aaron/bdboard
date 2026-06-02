@@ -68,7 +68,7 @@ in the render path.
   `max(max(d["created"], d["closed"]) for d in combined_series)`.
 - **Source of truth:** `await store.snapshot_history()` in
   `src/bdboard/store.py` (~117), which returns **active + history-closed**
-  (count-capped) issues. The History page deliberately uses the long-window
+  (uncapped) issues. The History page deliberately uses the long-window
   history-closed cache — **not** the board's short date-windowed closed set —
   so ranges wider than the board's closed window don't silently miss older work
   (bdboard-p8v). Underneath it's still the in-memory Store cache (lazily loaded
@@ -161,7 +161,7 @@ and pagination state are URL-borne, not element-borne, keeping the wiring DRY.)
   `created_at` / `closed_at` cannot be placed on a timeline and are excluded
   from their respective series (`_created_in_window` / `_closed_in_window`).
 - **Long-window source, not the board window.** The chart derives from
-  `store.snapshot_history()` (count-capped history-closed), so the `90d`/`All`
+  `store.snapshot_history()` (uncapped history-closed), so the `90d`/`All`
   ranges surface closed work older than the board's short closed window
   (bdboard-p8v). The cap is a count cap, not a date cap.
 - **SSE refresh snaps to default.** A live SSE refresh re-fetches the default

@@ -66,7 +66,8 @@ URLs), not element-borne, keeping the wiring DRY.
   Page-size validation lives in `derive.clamp_page_size` (~40), the single
   source of truth shared by the route and the selector.
 - **Source of truth:** `await store.snapshot_history()` in `src/bdboard/store.py`
-  (~117), which returns the **active + history-closed** (count-capped) issues.
+  (~117), which returns the **active + history-closed** (uncapped, full closed
+  record) issues.
   The History page deliberately uses the long-window history-closed cache —
   **not** the board's short date-windowed closed set — so ranges wider than the
   board's closed window don't silently miss older closed work (bdboard-p8v).
@@ -158,7 +159,7 @@ Triggers and controls that re-render it:
   reflects every closed bead in the window, even when only one page is shown —
   it is `window["total"]`, computed pre-pagination.
 - **Long-window source, not the board window.** The list slices
-  `store.snapshot_history()` (count-capped history-closed), so the `90d`/`All`
+  `store.snapshot_history()` (uncapped history-closed), so the `90d`/`All`
   ranges surface closed work older than the board's short closed window
   (bdboard-p8v). The cap is a count cap, not a date cap.
 - **`history_skeleton.html` placeholder.** The list region is reserved by six

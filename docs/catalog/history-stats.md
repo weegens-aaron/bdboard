@@ -85,7 +85,7 @@ statistics"` so a range change is announced to assistive tech.
   under a single workspace-global key, and dropped by `invalidate_caches` on a
   watcher fire so post-mutation totals refresh.
 - **Source of truth (for range KPIs):** `await store.snapshot_history()` in
-  `src/bdboard/store.py` (~117) — the active + history-closed (count-capped)
+  `src/bdboard/store.py` (~117) — the active + history-closed (uncapped)
   snapshot, the same long-window source the chart and list use, so the strip's
   closed/lead numbers cover work older than the board's short closed window
   (bdboard-p8v). Underneath it is the in-memory Store cache (lazily loaded from
@@ -171,7 +171,7 @@ element-borne, keeping the wiring DRY.
   expression short-circuits to `0` when the peak is `0`. It is documented here
   because the bead asked for it, but the canonical home is the chart doc.
 - **Long-window source, not the board window.** Range KPIs derive from
-  `store.snapshot_history()` (count-capped history-closed), so `90d`/`All` ranges
+  `store.snapshot_history()` (uncapped history-closed), so `90d`/`All` ranges
   surface closed work older than the board's short closed window (bdboard-p8v).
   The cap is a count cap, not a date cap.
 - **First-paint host vs OOB swap.** The masthead `#history-stats` host is

@@ -223,7 +223,7 @@ class Store:
                     by_id={b["id"]: b for b in fresh_closed if isinstance(b.get("id"), str)},
                 )
 
-            # The History page's count-capped closed cache is a separate
+            # The History page's full (uncapped) closed cache is a separate
             # data path (bdboard-p8v). Only refresh it if it was already
             # lazy-loaded — no point paying for a long-window fetch nobody
             # has asked for yet.

@@ -43,7 +43,7 @@ bd CLI (bd list/show/history/status --json, backed by the dolt DB)
   → BdClient subprocess wrapper (src/bdboard/bd.py)
       ├─ list_active()         → Store active snapshot
       ├─ list_closed()         → Store board-closed snapshot (date-bounded)
-      ├─ list_closed_history() → Store history-closed snapshot (count-capped)
+      ├─ list_closed_history() → Store history-closed snapshot (uncapped)
       └─ show_long()/history()/status_summary()/memories()
                                → BdClient per-key TTL caches
         → Store in-memory _Snapshot(beads, by_id) caches
