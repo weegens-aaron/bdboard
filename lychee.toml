@@ -11,7 +11,7 @@ timeout = 20
 retry_wait_time = 2
 max_retries = 2
 
-# Treat redirects as OK (e.g. steveyegge/beads -> gastownhall/beads).
+# Treat redirects as OK (defensive policy for upstream repo renames/moves).
 accept = ["200..=299", "301", "302", "307", "308"]
 
 # Skip noise: virtualenvs, caches, deps, VCS internals.
