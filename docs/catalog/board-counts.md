@@ -124,6 +124,19 @@ The strip is **read-only** — it reflects state, it never mutates beads.
   board-closed set, which is bounded by the board's short closed window — it is
   **not** the long-window history-closed set used by the History page. For a
   longer retrospective, use the History page.
+- **CLOSED tracks the active time filter (bdboard-de4z).** The board's
+  12h/1d/3d time filter is purely client-side, and its `applyBoardFilter` keeps
+  the CLOSED cell in lockstep with the visible Closed lane by writing the *same*
+  `visibleCount` into the `[data-count-status="closed"]` cell (via
+  `syncMastheadClosedCount` in `base.html`). Each counts cell carries a
+  `data-count-status` hook so the JS targets the closed cell by status, not by
+  the text-transformed label. The sync is guarded behind the closed lane's real
+  `[data-closed-count]` badge so it never clobbers the server total with a stale
+  `0` before the lane hydrates; and the `htmx:afterSettle` handler re-applies the
+  saved filter when `#counts` itself settles, so an out-of-order hydration can't
+  strand the unfiltered total. OPEN/BLOCKED/DEFERRED are window-invariant
+  (no timestamped cards) and keep their server-rendered totals.
+  (Covered by `tests/test_board_counts_filter_sync.py`.)
 
 ## Source files
 

@@ -334,6 +334,25 @@
       };
       const BOARD_FILTER_STORAGE_KEY = 'bdboard-time-filter';
 
+      // Keep the masthead CLOSED stat (#counts strip) in lockstep with the
+      // client-side-filtered Closed lane. The board time filter never hits the
+      // server (it shows/hides already-fetched cards), so we reuse the SAME
+      // visibleCount the lane badge uses rather than re-deriving on the server
+      // — that guarantees header and lanes can't drift at the window boundary
+      // (no client-now vs server-now skew). Only CLOSED is touched: it's the
+      // only timestamped lane, so OPEN/BLOCKED/DEFERRED are window-invariant
+      // and keep their server-rendered totals. (bdboard-de4z)
+      function syncMastheadClosedCount(visibleCount) {
+        const countsStrip = document.getElementById('counts');
+        if (!countsStrip) return;
+        const cell = countsStrip.querySelector('[data-count-status="closed"]');
+        if (!cell) return;
+        const valueEl = cell.querySelector('.counts-value');
+        if (valueEl) valueEl.textContent = visibleCount;
+        // Mirror the zero-state muting the server template applies (n == 0).
+        cell.classList.toggle('counts-cell-zero', visibleCount === 0);
+      }
+
       // Board-wide time filter: applies the selected time window to all
       // applicable lanes. Currently only Closed has timestamped cards
       // (data-closed-at); other lanes show all items regardless of filter.
@@ -365,7 +384,14 @@
 
           // Update lane count to reflect filtered total
           const countEl = closedLane.querySelector('[data-closed-count]');
-          if (countEl) countEl.textContent = visibleCount;
+          if (countEl) {
+            countEl.textContent = visibleCount;
+            // Only sync the masthead from REAL closed-lane content. countEl
+            // (the [data-closed-count] badge) exists only after the closed lane
+            // hydrates — the skeleton has no such badge — so this guard stops a
+            // premature run from clobbering the server total with a stale 0.
+            syncMastheadClosedCount(visibleCount);
+          }
         }
 
         // Update active badge styling in the board filter strip (masthead)
@@ -419,7 +445,13 @@
         if (!target) return;
         const isLanesRegion = target.classList && target.classList.contains('lanes-region');
         const isClosedLane = target.getAttribute && target.getAttribute('data-lane') === 'closed';
-        if (isLanesRegion || isClosedLane) {
+        // The #counts strip hydrates/refreshes independently of the lanes. If it
+        // lands AFTER the closed lane, its swap carries the unfiltered server
+        // total — so re-apply the saved filter to re-sync the CLOSED cell to
+        // the visible set (bdboard-de4z). syncMastheadClosedCount is a no-op
+        // until the closed lane has real content, so order doesn't matter.
+        const isCountsStrip = target.id === 'counts';
+        if (isLanesRegion || isClosedLane || isCountsStrip) {
           wireFilterBadges();
         }
       });

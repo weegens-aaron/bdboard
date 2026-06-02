@@ -111,10 +111,14 @@ it is pure DOM show/hide plus a sessionStorage write.
 - **Count badge tracks the *filter*, not the *fetch*.** `applyBoardFilter`
   overwrites `[data-closed-count]` with the count of *visible* cards. So the
   Closed lane badge can legitimately read fewer than the number of cards in the
-  DOM — the hidden ones are `display:none`, not removed. (The masthead CLOSED KPI
-  in [board-counts.md](./board-counts.md) counts the server's date-bounded set
-  and is **not** rewritten by this filter, so the two numbers can legitimately
-  diverge when a sub-3d window is active.)
+  DOM — the hidden ones are `display:none`, not removed. **The masthead CLOSED
+  KPI is kept in lockstep** (bdboard-de4z): `applyBoardFilter` feeds the *same*
+  `visibleCount` into the `#counts` cell keyed by `data-count-status="closed"`
+  via `syncMastheadClosedCount`, so header and lanes always show one window.
+  Reusing one number (rather than a second server tally) is what prevents
+  client-now vs server-now drift at the window boundary. Only CLOSED is touched
+  — OPEN/BLOCKED/DEFERRED carry no `data-closed-at`, are window-invariant, and
+  keep their server totals. See [board-counts.md](./board-counts.md).
 - **Cards without `data-closed-at` are always shown.** The template only emits
   the attribute when `closed_at` is present. `applyBoardFilter` short-circuits a
   missing/empty timestamp to "show" and still counts it — defensive handling for

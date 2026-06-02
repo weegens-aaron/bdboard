@@ -1,6 +1,10 @@
+{# `data-count-status` is the stable hook the board time-filter JS uses to keep
+   the CLOSED cell in lockstep with the (client-side) filtered Closed lane —
+   see applyBoardFilter() in base.html. Don't rely on the visible label text:
+   it's text-transformed and could be re-worded. #}
 <dl class="counts">
   {% for status, n in counts.items() %}
-  <div class="counts-cell {% if n == 0 %}counts-cell-zero{% endif %}">
+  <div class="counts-cell {% if n == 0 %}counts-cell-zero{% endif %}" data-count-status="{{ status }}">
     <dt class="counts-label">{{ status }}</dt>
     <dd class="counts-value">{{ n }}</dd>
   </div>
