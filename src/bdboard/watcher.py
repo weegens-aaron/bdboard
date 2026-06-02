@@ -39,6 +39,30 @@ simply cancel and reschedule, so trailing/isolated writes ALWAYS produce a
 refresh within ~debounce+cooldown of the write. And the cooldown clock is
 only advanced after a refresh that *succeeded* (no exception), so a
 transient failure cannot wedge the next change.
+
+The SECOND bug this module fixes (bdboard-ywep — recurrence of the class):
+
+``store.refresh()`` runs ``bd list --json``, and a *read-only* bd list
+still makes dolt re-touch ``journal.idx``/``manifest`` inside the watched
+``noms/`` dir. So the watcher fires for our OWN read ~1.3s later. The old
+``notify()`` cancelled the in-flight settle on every event — including that
+self-induced one — and because ``bd list`` on a large ``noms/`` takes
+LONGER than the self-trigger latency, the refresh was cancelled mid-
+subprocess EVERY time and never completed. Net effect: the board froze and
+only a relaunch (which re-reads ``bd list`` once on boot) showed new state.
+
+The fix has two halves:
+
+  * SCHEDULER (here): ``notify()`` no longer cancels an in-flight refresh.
+    Only the cancellable debounce/cooldown SLEEP may be pre-empted; once
+    the ``bd list`` subprocess starts it runs to completion. An event that
+    arrives mid-refresh sets ``_dirty`` and triggers exactly ONE reconcile
+    pass afterwards, so a real write overlapping the refresh is not lost.
+  * STORE (bd.revision_signature + Store.refresh skip): refresh compares
+    the dolt manifest root-hash signature and SKIPS the ``bd list``
+    subprocess when the committed state is byte-identical to last time —
+    i.e. when the event was just our own read echoing back. That severs the
+    refresh→read→event→refresh loop at the source so it can't spin.
 """
 
 from __future__ import annotations
@@ -85,11 +109,35 @@ class RefreshScheduler:
         self._monotonic = monotonic
         self._last_refresh_at: float = 0.0
         self._pending: asyncio.Task | None = None
+        # True while a refresh() subprocess is actually executing. notify()
+        # must NOT cancel an in-flight refresh (bdboard-ywep) — only the
+        # cancellable debounce/cooldown SLEEP phase may be pre-empted.
+        self._refreshing: bool = False
+        # Set when an event arrives WHILE a refresh is running, so we know to
+        # reconcile once more after it finishes instead of dropping it.
+        self._dirty: bool = False
 
     def notify(self) -> None:
-        """Record an FS-change batch. Cancels any in-flight settle and starts
-        a fresh one, so a continuous event stream keeps pushing the actual
-        refresh out until the writes finally stop."""
+        """Record an FS-change batch.
+
+        Two cases (the bdboard-ywep fix hinges on the distinction):
+
+          * A refresh is currently RUNNING its ``bd list`` subprocess. We do
+            NOT cancel it — cancelling mid-subprocess is exactly what wedged
+            live-sync: ``bd list`` itself touches the watched noms/ dir, so
+            the watcher fired for our own read ~1.3s later and killed the
+            refresh before it could finish (and on a large noms/ it NEVER
+            finished). Instead we set ``_dirty`` so the running refresh
+            reconciles one more time when it completes.
+
+          * Otherwise we are idle or still in the cancellable debounce/
+            cooldown sleep. Cancel any pending settle and start a fresh one,
+            so a continuous event stream keeps pushing the refresh out until
+            the writes finally stop.
+        """
+        if self._refreshing:
+            self._dirty = True
+            return
         if self._pending is not None and not self._pending.done():
             self._pending.cancel()
         self._pending = asyncio.create_task(self._settle())
@@ -122,6 +170,13 @@ class RefreshScheduler:
         except asyncio.CancelledError:
             return
 
+        # ---- Refresh phase (bdboard-ywep): NOT cancellable by notify() ----
+        # From here the refresh runs to completion. A concurrent notify()
+        # sees _refreshing and only flips _dirty rather than cancelling us,
+        # so the slow `bd list` subprocess can no longer be killed mid-flight
+        # by the FS event that bd list itself triggers.
+        self._refreshing = True
+        self._dirty = False
         try:
             changed = await self._refresh()
         except asyncio.CancelledError:
@@ -134,8 +189,19 @@ class RefreshScheduler:
             # permanently wedging live-sync (bdboard-xbc7 root cause #3).
             log.exception("watcher: refresh raised; will retry on next change")
             return
+        finally:
+            self._refreshing = False
 
         # Only a *successful* refresh advances the cooldown clock.
         self._last_refresh_at = self._monotonic()
         if changed:
             await self._broadcast()
+
+        # An event arrived while the refresh was mid-subprocess. Reconcile
+        # once more so a real write that overlapped the refresh is not lost.
+        # When the event was merely our own read echoing back, the next
+        # refresh hits Store's revision-unchanged skip path and is cheap.
+        # Schedule directly rather than via notify() to avoid this still-
+        # running task cancelling itself.
+        if self._dirty:
+            self._pending = asyncio.create_task(self._settle())

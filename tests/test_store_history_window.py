@@ -56,6 +56,12 @@ class _FakeBd:
     def invalidate_caches(self) -> None:  # pragma: no cover - refresh() calls it
         pass
 
+    def revision_signature(self) -> frozenset[tuple[str, bytes]]:
+        # Empty == "no dolt signal": Store never takes the skip path, so these
+        # history-window tests exercise the full refresh/refetch behavior
+        # exactly as before the bdboard-ywep loop-breaker landed.
+        return frozenset()
+
 
 def _closed_at(bead: dict[str, Any]) -> datetime:
     return datetime.strptime(bead["closed_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)

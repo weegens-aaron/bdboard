@@ -87,6 +87,10 @@ class Store:
         # cache can answer "does the cached set already cover this narrower
         # request?" without re-querying bd (bdboard-gp06).
         self._history_cutoff: datetime | None = None
+        # Last dolt revision signature (manifest root hashes) we refreshed at.
+        # Lets refresh() skip the expensive `bd list` when the watcher fired
+        # only because our OWN read jiggled the noms/ files (bdboard-ywep).
+        self._last_revision: frozenset[tuple[str, bytes]] | None = None
         # Serializes refresh() so a burst of watcher events (or a watcher
         # event landing concurrently with a lazy snapshot load) results in
         # exactly one bd list call — not N parallel ones piling up against
@@ -241,8 +245,26 @@ class Store:
 
         On bd-list failure, leaves the existing cache in place — better
         to serve stale data than to flash empty on a transient bd hiccup.
+
+        Self-feedback skip (bdboard-ywep): a read-only `bd list` itself
+        mutates the watched noms/ dir, so the watcher fires for our own read
+        and calls us again. We compare the dolt manifest root-hash signature
+        against the last one we refreshed at; if it is unchanged (and we
+        already hold a populated cache) the database content cannot have
+        changed, so we skip the subprocess entirely and report "no change".
+        This is what stops the refresh→read→event→refresh loop from spinning
+        forever and starving real updates. An EMPTY signature means "no
+        dolt signal available" (legacy JSONL-only workspace) — we never skip
+        in that case so behavior is unchanged there.
         """
         async with self._refresh_lock:
+            revision = self.bd.revision_signature()
+            already_loaded = self._active_snap is not None and self._closed_snap is not None
+            if revision and already_loaded and revision == self._last_revision:
+                # Watcher fired but the committed dolt state is byte-identical
+                # to our last refresh — this is our own read echoing back, or
+                # unrelated FS churn. Skip the subprocess; nothing changed.
+                return False
             try:
                 fresh_active = await self.bd.list_active()
                 fresh_closed = await self.bd.list_closed()
@@ -262,7 +284,9 @@ class Store:
             if not active_changed and not closed_changed:
                 # Watcher fired but no issue state changed (e.g. dolt
                 # internal write, or memory-only `bd remember`). No
-                # broadcast needed.
+                # broadcast needed. Still record the revision so the next
+                # identical-state event can take the cheap skip path above.
+                self._last_revision = revision
                 return False
 
             if active_changed:
@@ -302,6 +326,7 @@ class Store:
             # them so the next modal click hits fresh bd show / bd history
             # output instead of serving cached pre-mutation values.
             self.bd.invalidate_caches()
+            self._last_revision = revision
             return True
 
     def bead(self, bead_id: str) -> dict[str, Any] | None:

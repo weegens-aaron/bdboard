@@ -196,6 +196,48 @@ class BdClient:
             sig.add((str(t), st.st_dev, st.st_ino))
         return frozenset(sig)
 
+    def revision_signature(self) -> frozenset[tuple[str, bytes]]:
+        """Content fingerprint of every dolt db's committed state (bdboard-ywep).
+
+        Returns a frozenset of ``(manifest_path, manifest_bytes)`` for every
+        ``.dolt/noms/manifest`` under ``.beads/embeddeddolt/``. The manifest is
+        a tiny (~150 byte) file whose payload is dolt's current ROOT HASH —
+        it changes IFF the database content actually changed.
+
+        Why this exists — the self-feedback loop it breaks:
+        ``store.refresh()`` runs ``bd list --json``. Even a *read-only*
+        ``bd list`` makes dolt re-touch ``journal.idx`` and rewrite
+        ``manifest`` inside the watched ``noms/`` dir (new inode + bumped
+        mtime), so the watcher fires for our OWN read. Pre-fix that re-trigger
+        chained refreshes forever AND — because ``bd list`` is slower than the
+        self-trigger latency on a large noms/ — cancelled each in-flight
+        refresh before it could finish, so the board never updated until
+        relaunch. Crucially the manifest *content* (root hash) is IDENTICAL
+        across read-only churn and only flips on a real write, so comparing it
+        lets the watcher distinguish "dolt actually changed" from "our own
+        read jiggled the files" — and skip the expensive ``bd list`` entirely
+        when nothing really changed, which is what stops the loop.
+
+        Cheap by construction: one tiny file read per db (a handful of bytes),
+        no subprocess, no dolt lock contention. Returns an empty set when the
+        workspace has no embedded dolt dbs (e.g. legacy JSONL-only) so callers
+        treat "no signal" as "always refresh" rather than "never refresh".
+        """
+        sig: set[tuple[str, bytes]] = set()
+        embedded = self.beads_dir / "embeddeddolt"
+        if not embedded.is_dir():
+            return frozenset(sig)
+        for db_dir in sorted(embedded.iterdir()):
+            manifest = db_dir / ".dolt" / "noms" / "manifest"
+            try:
+                sig.add((str(manifest), manifest.read_bytes()))
+            except OSError:
+                # Manifest missing or mid-rotation — omit it. A partial
+                # signature simply means the next refresh can't be skipped,
+                # which is the safe direction (refresh rather than miss).
+                continue
+        return frozenset(sig)
+
     def validate(self) -> None:
         """Raise a helpful error if the workspace isn't a bd workspace.
 
