@@ -111,6 +111,40 @@ These checks live in CI rather than a bd formula by design — see
 - **Activity** — derived from `updated_at` / `closed_at` / `created_at` because bd doesn't expose a global audit feed; rendered as a swim lane alongside the bead lanes
 - **JSONL freshness** — bdboard reads bead state via the `bd list ... --json` CLI (the dolt-native, always-fresh path), using two queries rather than a single `--all` fetch: active issues via `bd list --no-pager --limit 0` (no `--all`, so closed are excluded), and the closed lane lazy-loaded/capped via `bd list --status closed --sort closed --no-pager --limit <cap>`. We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher observes each dolt database's `noms/` directory (plus `.beads/` itself) **non-recursively** so any bd write triggers a refresh within ~250ms (debounced) + ~1s cooldown. We deliberately avoid recursively watching the whole `.beads/` tree: dolt's churning `noms/` object store would open a kqueue fd per directory on macOS and exhaust `RLIMIT_NOFILE`. SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
 
+## Getting the bead history (fresh clone)
+
+Issue history is replicated off-machine using Dolt's git-compatible wire
+protocol — it rides under `refs/dolt/data` on the **same** GitHub origin as the
+code, **not** as a committed `issues.jsonl`. That custom ref is **not**
+auto-fetched by a normal `git clone`, so a bare clone starts with **zero
+issues** until you hydrate it once. (See
+[`docs/decisions/0003-beads-sync-via-dolt-git-refs.md`](docs/decisions/0003-beads-sync-via-dolt-git-refs.md)
+for the full rationale.)
+
+After cloning, hydrate the bead database with a one-time `bd bootstrap`:
+
+```sh
+git clone https://github.com/weegens-aaron/bdboard.git
+cd bdboard
+bd bootstrap --yes        # auto-detects refs/dolt/data on the git origin and clones it
+bd list                   # should now be non-empty — full issue history is local
+```
+
+`bd bootstrap` auto-detects the dolt data ref on the git `origin`. If your clone
+somehow lacks the dolt remote, point it at the **code** origin (the same repo —
+per ADR 0003 we do *not* use a separate dolt repo) before bootstrapping:
+
+```sh
+bd dolt remote add origin git+https://github.com/weegens-aaron/bdboard.git
+bd bootstrap --yes
+```
+
+> **Gotcha — don't use `bd init` + `bd dolt pull` for a fresh clone.** `bd init`
+> seeds an **independent** Dolt history, so a subsequent `bd dolt pull` fails
+> with `Error 1105: no common ancestor`. Use `bd bootstrap`, which clones the
+> remote history directly. (Hydration of ~200 issues takes ~40s; a raw
+> pull-into-init can churn for minutes before erroring.)
+
 ## Backup (beads issue data)
 
 This project is **local-only**: there is no git or dolt remote, so issue data
