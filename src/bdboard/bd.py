@@ -159,6 +159,38 @@ class BdClient:
             targets.append(self.beads_dir)
         return targets
 
+    def watch_signature(self) -> frozenset[tuple[str, int, int]]:
+        """Identity fingerprint of the current watch targets (bdboard-xbc7).
+
+        Returns a frozenset of ``(path, st_dev, st_ino)`` for every target
+        from :meth:`watch_targets`. The watcher enumerates targets ONCE
+        before entering ``awatch``'s ``async for`` loop, so two post-startup
+        events go unnoticed:
+
+          1. A NEW dolt db (or a recreated ``.dolt/noms/``) appears — its
+             directory was never handed to ``awatch``, so writes there are
+             invisible.
+          2. dolt atomically REPLACES a ``noms/`` dir (rename-over). On
+             macOS the kqueue backend watches the INODE, not the path, so
+             the watch now points at a dead inode and never fires again.
+
+        Both manifest as a change in this signature: (1) adds a tuple, (2)
+        swaps the ``st_ino`` for the same path. The watcher polls this on a
+        cadence and restarts ``awatch`` with fresh targets whenever it
+        differs — so the watch survives noms/ replacement and new-db
+        creation without a process restart.
+        """
+        sig: set[tuple[str, int, int]] = set()
+        for t in self.watch_targets():
+            try:
+                st = t.stat()
+            except OSError:
+                # Raced with a delete/replace — just omit it; the next poll
+                # picks up the settled state.
+                continue
+            sig.add((str(t), st.st_dev, st.st_ino))
+        return frozenset(sig)
+
     def validate(self) -> None:
         """Raise a helpful error if the workspace isn't a bd workspace.
 

@@ -115,3 +115,82 @@ def test_skips_db_dir_without_noms(tmp_path):
     beads = ws / ".beads"
     assert (beads / "embeddeddolt" / "bdboard" / ".dolt" / "noms") in targets
     assert (beads / "embeddeddolt" / "strays") not in targets
+
+
+# --- watch_signature: stale-watch-target detection (bdboard-xbc7 #2) ---------
+#
+# awatch enumerates its paths ONCE on entry. On macOS the kqueue backend
+# watches the INODE, not the path, so a noms/ dir replaced atomically (dolt
+# rename-over) or a brand-new db created after startup goes unobserved.
+# watch_signature() fingerprints (path, st_dev, st_ino) so the watcher's
+# rescan poller can detect the drift and re-enumerate.
+
+
+def test_signature_changes_when_new_db_appears(tmp_path):
+    """A db created AFTER the first signature snapshot must change it, so the
+    watcher knows to re-enumerate and start observing the new noms/ dir."""
+    ws = _make_workspace(tmp_path, ["bdboard"])
+    client = BdClient(workspace=ws)
+
+    before = client.watch_signature()
+
+    # Simulate `bd` creating a second dolt db after startup.
+    new_noms = ws / ".beads" / "embeddeddolt" / "second" / ".dolt" / "noms"
+    new_noms.mkdir(parents=True)
+    (new_noms / "manifest").write_text("x")
+
+    after = client.watch_signature()
+
+    assert after != before
+    # The new noms/ dir's path is represented in the post-creation signature.
+    assert any(str(new_noms) == path for (path, _dev, _ino) in after)
+
+
+def test_signature_changes_when_noms_inode_replaced(tmp_path):
+    """dolt atomically replacing a noms/ dir (same path, NEW inode) must change
+    the signature — this is the macOS dead-inode case the kqueue watch can't
+    see on its own."""
+    ws = _make_workspace(tmp_path, ["bdboard"])
+    client = BdClient(workspace=ws)
+    noms = ws / ".beads" / "embeddeddolt" / "bdboard" / ".dolt" / "noms"
+
+    before = client.watch_signature()
+    before_ino = {ino for (path, _dev, ino) in before if path == str(noms)}
+    assert before_ino, "noms/ should be in the baseline signature"
+
+    # Atomically replace noms/ with a fresh directory at the SAME path — new
+    # inode, identical path. (rename-over is how dolt swaps object stores;
+    # macOS os.replace can't overwrite a non-empty dir, so we drop the old
+    # one first — the inode-change is what matters for the signature.)
+    import shutil
+
+    replacement = ws / ".beads" / "embeddeddolt" / "bdboard" / ".dolt" / "noms_new"
+    replacement.mkdir()
+    (replacement / "manifest").write_text("x")
+    shutil.rmtree(noms)
+    replacement.replace(noms)  # rename to the original path — new inode
+
+    after = client.watch_signature()
+    after_ino = {ino for (path, _dev, ino) in after if path == str(noms)}
+
+    assert after != before, "inode swap must change the signature"
+    assert after_ino and after_ino != before_ino, "st_ino should differ post-swap"
+
+
+def test_signature_stable_when_only_file_contents_change(tmp_path):
+    """Plain bd writes mutate files INSIDE noms/ (manifest, journal.idx) but
+    leave the watched dir inodes intact — the signature must stay stable so
+    the rescan poller does NOT needlessly tear down and rebuild the watch.
+    (awatch itself still fires on those content changes; signature is only
+    for structural drift.)"""
+    ws = _make_workspace(tmp_path, ["bdboard"])
+    client = BdClient(workspace=ws)
+    noms = ws / ".beads" / "embeddeddolt" / "bdboard" / ".dolt" / "noms"
+
+    before = client.watch_signature()
+    # Mutate file contents the way a bd write does — dir inodes unchanged.
+    (noms / "manifest").write_text("new-manifest-bytes")
+    (noms / "journal.idx").write_text("new-journal-bytes")
+    after = client.watch_signature()
+
+    assert after == before

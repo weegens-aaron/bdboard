@@ -22,6 +22,7 @@ from bdboard import derive, md
 from bdboard.bd import BdClient
 from bdboard.events import EventBus
 from bdboard.store import Store
+from bdboard.watcher import RefreshScheduler
 
 log = logging.getLogger(__name__)
 
@@ -160,6 +161,11 @@ bus = EventBus()
 WATCHER_DEBOUNCE_S = 0.25
 WATCHER_COOLDOWN_S = 1.0
 
+# How often the watcher re-resolves its target set while awatch is running.
+# Catches dolt atomically replacing a noms/ inode or a new db appearing
+# after startup (bdboard-xbc7 root cause #2). Cheap: a handful of stat()s.
+WATCHER_RESCAN_S = 3.0
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -194,7 +200,8 @@ async def _watch_beads() -> None:
     Implementation mirrors mantoni/beads-ui server/watcher.js: a trailing
     debounce window absorbs burst-writes from one logical bd command;
     a cooldown after each refresh prevents back-to-back refreshes from
-    sustained activity.
+    sustained activity. The debounce/cooldown logic lives in
+    bdboard.watcher.RefreshScheduler (unit-tested in isolation).
 
     Watch scope: we watch a SMALL, fixed set of directories
     NON-recursively (bd.watch_targets() — the per-db dolt noms/ dirs plus
@@ -205,7 +212,22 @@ async def _watch_beads() -> None:
     (OSError [Errno 24] Too many open files). Every meaningful bd write
     still touches manifest/journal.idx in a noms/ dir, so we keep
     sub-second latency without the fd blowup.
+
+    Target re-resolution (bdboard-xbc7 root cause #2): targets are
+    enumerated ONCE before awatch's `async for`. On macOS the kqueue
+    backend watches the INODE, not the path — so dolt atomically replacing
+    a noms/ dir, or a brand-new db appearing after startup, would leave the
+    watch pointing at a dead inode (or never seeing the new db). We guard
+    against that with a lightweight background poll of bd.watch_signature()
+    that trips awatch's stop_event whenever the target set's identity
+    changes, forcing a clean re-enumeration on the next loop iteration.
     """
+    scheduler = RefreshScheduler(
+        refresh=store.refresh,
+        broadcast=lambda: bus.broadcast("beads_changed"),
+        debounce_s=WATCHER_DEBOUNCE_S,
+        cooldown_s=WATCHER_COOLDOWN_S,
+    )
     while True:
         try:
             targets = bd.watch_targets()
@@ -218,12 +240,33 @@ async def _watch_beads() -> None:
                 len(targets),
                 ", ".join(str(t) for t in targets),
             )
-            # watchfiles.awatch yields a batch (set of (change, path))
-            # roughly every 50ms of FS activity — it already does light
-            # batching for us. Our debounce sits on top of that to collapse
-            # multi-batch bursts (a bd update often spans 2-3 batches).
-            async for _changes in awatch(*targets, recursive=False):
-                await _settle_then_refresh()
+            # stop_event lets the rescan poller break us out of awatch so we
+            # re-enumerate targets after a noms/ inode swap or new db.
+            stop_event = asyncio.Event()
+            baseline_sig = bd.watch_signature()
+            rescan = asyncio.create_task(
+                _rescan_targets(baseline_sig, stop_event),
+                name="bdboard.watcher.rescan",
+            )
+            try:
+                # watchfiles.awatch yields a batch (set of (change, path))
+                # roughly every 50ms of FS activity — it already does light
+                # batching for us. The scheduler's debounce sits on top to
+                # collapse multi-batch bursts (a bd update often spans 2-3
+                # batches).
+                async for _changes in awatch(*targets, recursive=False, stop_event=stop_event):
+                    scheduler.notify()
+            finally:
+                rescan.cancel()
+                try:
+                    await rescan
+                except asyncio.CancelledError:
+                    pass
+            if stop_event.is_set():
+                # Targets changed underfoot — loop immediately to re-enumerate
+                # (no sleep: this is an intended, healthy restart).
+                log.info("watcher targets changed; re-enumerating")
+                continue
         except FileNotFoundError:
             # .beads dir not there yet — wait and retry
             await asyncio.sleep(2)
@@ -232,46 +275,29 @@ async def _watch_beads() -> None:
             await asyncio.sleep(2)
 
 
-_last_refresh_at: float = 0.0
-_pending_settle: asyncio.Task | None = None
+async def _rescan_targets(
+    baseline: frozenset[tuple[str, int, int]], stop_event: asyncio.Event
+) -> None:
+    """Poll bd.watch_signature(); set stop_event when the target set's
+    identity changes (new db, or a noms/ dir replaced under the same path).
 
-
-async def _settle_then_refresh() -> None:
-    """Debounce + cooldown wrapper around Store.refresh().
-
-    Called for every batch of FS events. Cancels any in-flight settle
-    task and starts a fresh one — so a continuous stream of events keeps
-    pushing the actual refresh out by debounce_s, until the writes
-    finally stop and the timer fires.
+    This is the bdboard-xbc7 root-cause-#2 guard: awatch only re-enumerates
+    its paths on (re)entry, so without this a post-startup inode swap or
+    new db would silently stop producing events. We re-enter the awatch
+    loop — with fresh targets — by tripping its stop_event.
     """
-    global _pending_settle
-    if _pending_settle is not None and not _pending_settle.done():
-        _pending_settle.cancel()
-    _pending_settle = asyncio.create_task(_settle_task())
-
-
-async def _settle_task() -> None:
-    """Sleep one debounce window; if we get cancelled by a new event,
-    silently exit. Otherwise refresh + broadcast (respecting cooldown)."""
-    global _last_refresh_at
-    try:
-        await asyncio.sleep(WATCHER_DEBOUNCE_S)
-    except asyncio.CancelledError:
-        return
-    now = time.monotonic()
-    if now - _last_refresh_at < WATCHER_COOLDOWN_S:
-        # Within cooldown — swallow this event. The next event after
-        # cooldown expires will trigger a fresh debounce + refresh, so
-        # we don't miss real subsequent changes.
-        return
-    try:
-        changed = await store.refresh()
-    except Exception:
-        log.exception("watcher: store.refresh raised; continuing")
-        return
-    _last_refresh_at = time.monotonic()
-    if changed:
-        await bus.broadcast("beads_changed")
+    while not stop_event.is_set():
+        try:
+            await asyncio.sleep(WATCHER_RESCAN_S)
+        except asyncio.CancelledError:
+            return
+        try:
+            if bd.watch_signature() != baseline:
+                stop_event.set()
+                return
+        except Exception:
+            # A transient stat hiccup must not kill the poller; try again.
+            log.debug("watcher rescan: signature check failed; retrying")
 
 
 app = FastAPI(title="bdboard", version="0.1.0", lifespan=lifespan)
