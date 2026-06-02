@@ -5,15 +5,27 @@
    until they're filled (the POST route re-checks server-side, §4.4).
 
    Posts to /api/formulas/{name}/pour and swaps the result into
-   #formula-pour-result. CSRF token via hidden field + header (same posture as
-   the memory form). #}
+   #formula-pour-result (which lives OUTSIDE this region, in the dialog, so a
+   post-pour picker reset doesn't wipe the confirmation). CSRF token via hidden
+   field + header (same posture as the memory form).
+
+   In-flight lifecycle (bdboard-ksny):
+     - hx-disabled-elt disables the submit button from click until the pour
+       completes, preventing double-submits.
+     - hx-on::after-request resets the picker to its default open state on a
+       2xx completion (clears the <select> selection and empties this form
+       region), while the result/warning swapped into #formula-pour-result
+       survives because it lives outside #formula-form. Non-2xx (CSRF/
+       validation/pour failure) leaves the form intact so the user can retry. #}
 
 <form
   class="formula-form"
   hx-post="/api/formulas/{{ name | urlencode }}/pour"
   hx-target="#formula-pour-result"
   hx-swap="innerHTML"
+  hx-disabled-elt="find button[type='submit']"
   hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+  hx-on::after-request="if (event.detail.xhr && event.detail.xhr.status >= 200 && event.detail.xhr.status < 300) { var s = document.getElementById('formula-select'); if (s) s.value = ''; var r = document.getElementById('formula-form'); if (r) r.innerHTML = ''; }"
 >
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
 
@@ -84,6 +96,3 @@
     </button>
   </div>
 </form>
-
-{# Result region for the pour outcome (success summary or error). #}
-<div id="formula-pour-result" class="formula-pour-result" aria-live="polite"></div>

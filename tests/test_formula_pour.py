@@ -213,6 +213,42 @@ def test_api_formula_form_renders_variables() -> None:
     assert "required" in body  # the required var carries the attribute
 
 
+def test_api_formula_form_disables_button_in_flight() -> None:
+    """bdboard-ksny: the form disables its submit button from click until the
+    pour completes (no double-submit) via HTMX hx-disabled-elt."""
+    _stub_list_formulas([{"name": "demo", "description": "d", "source": "/x.formula.json"}])
+    _stub_read_detail({"description": "d", "variables": [], "steps": []})
+    resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/demo/form"), "demo"))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    assert "hx-disabled-elt" in body
+    # Targets the submit button so it goes [disabled] for the request duration.
+    assert "button[type='submit']" in body
+
+
+def test_api_formula_form_resets_picker_on_success_only() -> None:
+    """bdboard-ksny: on a 2xx completion the form resets the picker to its
+    default open state (clears the <select> + empties #formula-form). The reset
+    is gated on a 2xx status so validation/CSRF/pour failures keep the form for
+    retry. The result region is NOT inside this partial — it lives in the dialog
+    so the confirmation survives the reset."""
+    _stub_list_formulas([{"name": "demo", "description": "d", "source": "/x.formula.json"}])
+    _stub_read_detail({"description": "d", "variables": [], "steps": []})
+    resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/demo/form"), "demo"))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    # Reset hook gated on success (2xx) only.
+    assert "hx-on::after-request" in body
+    assert "status >= 200" in body
+    assert "status < 300" in body
+    # Resets the dropdown selection and empties the variable-form region.
+    assert "formula-select" in body
+    assert "formula-form" in body
+    # The result region is owned by the dialog (dashboard.html), not the form
+    # partial — so the picker reset can't wipe the confirmation.
+    assert 'id="formula-pour-result"' not in body
+
+
 def test_api_formula_form_404_for_unknown() -> None:
     _stub_list_formulas([{"name": "demo", "source": "/x"}])
     resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/nope/form"), "nope"))

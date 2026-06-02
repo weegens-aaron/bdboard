@@ -88,8 +88,16 @@
       <p class="formula-empty muted">Loading formulas…</p>
     </div>
 
-    {# Variable-form region — populated when a formula is picked. #}
+    {# Variable-form region — populated when a formula is picked. A successful
+       pour empties this region (back to default open state); see
+       partials/formula_form.html. #}
     <div id="formula-form" class="formula-form-region"></div>
+
+    {# Pour outcome (success summary or partial-pour warning). Lives OUTSIDE
+       #formula-form so the post-pour picker reset keeps it visible — the user
+       still sees what landed after the modal returns to its default state
+       (bdboard-ksny). #}
+    <div id="formula-pour-result" class="formula-pour-result" aria-live="polite"></div>
   </div>
 </dialog>
 
@@ -98,8 +106,10 @@
   // newly-added formula shows up without a page reload.
   function openFormulaDialog() {
     const dialog = document.getElementById('formula-dialog');
-    // Clear any prior variable form from a previous open.
+    // Clear any prior variable form + pour result from a previous open so the
+    // dialog always reopens in its default state (no formula selected).
     document.getElementById('formula-form').innerHTML = '';
+    document.getElementById('formula-pour-result').innerHTML = '';
     dialog.showModal();
     // Trigger the picker's HTMX load (custom event so it fetches on open,
     // not on initial page load when the dialog is hidden).

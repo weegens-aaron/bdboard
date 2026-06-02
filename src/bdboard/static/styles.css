@@ -1364,6 +1364,19 @@ pre { margin: 0; }
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
+/* In-flight pour: hx-disabled-elt adds [disabled] from click until the pour
+   completes, preventing double-submits. Dim + not-allowed cursor make the
+   non-interactive state obvious without relying on color alone (bdboard-ksny). */
+.formula-btn:disabled,
+.formula-btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.formula-btn-primary:disabled:hover,
+.formula-btn-primary[disabled]:hover {
+  background: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
 .formula-pour-result {
   margin-top: 12px;
 }
