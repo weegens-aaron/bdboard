@@ -77,6 +77,70 @@
         });
       })();
 
+      // Active-window preservation across bare /api/history fetches
+      // (bdboard-li44). The #history-region re-fetches a BARE /api/history on
+      // its `load` trigger AND on every SSE `refresh from:body`. Those bare
+      // fetches carry no range/custom-date params, so the server resolves the
+      // DEFAULT 30d window — silently discarding whatever window the user had
+      // selected. On a busy workspace SSE fires constantly, so a freshly
+      // picked preset / custom range gets snapped straight back to 30d, making
+      // the date filter look like it does nothing.
+      //
+      // Fix (symmetric with the page-size injector above): on a bare
+      // /api/history request, read the ACTIVE window from the DOM (the live
+      // single source of truth after every swap) and inject it so load + SSE
+      // refreshes re-render the SAME window the user is viewing. Explicit
+      // requests — preset buttons (range= in the URL), the Custom Apply form
+      // (from_date/to_date in parameters), the pager/size selector — already
+      // carry their window and are left untouched so they always win.
+      (function () {
+        // The active preset badge among the range buttons. Excludes the Custom
+        // toggle (it has no hx-get; its active state means a custom window).
+        function activePresetRange() {
+          var btn = document.querySelector(
+            '.history-ranges .filter-badge-active[hx-get]'
+          );
+          if (!btn) return null;
+          var m = (btn.getAttribute('hx-get') || '').match(/[?&]range=([^&]+)/);
+          return m ? m[1] : null;
+        }
+        // The custom from/to selection, when the Custom toggle owns the active
+        // cue and at least one date input is filled. Returns null otherwise.
+        function activeCustom() {
+          var toggle = document.getElementById('history-custom-toggle');
+          if (!toggle || toggle.getAttribute('aria-pressed') !== 'true') {
+            return null;
+          }
+          var form = document.getElementById('history-custom-range');
+          if (!form) return null;
+          var from = form.querySelector('input[name="from_date"]');
+          var to = form.querySelector('input[name="to_date"]');
+          var fv = from && from.value ? from.value : '';
+          var tv = to && to.value ? to.value : '';
+          if (!fv && !tv) return null;
+          return { from_date: fv, to_date: tv };
+        }
+        document.addEventListener('htmx:configRequest', function (evt) {
+          var path = evt.detail.path || '';
+          if (path.indexOf('/api/history') !== 0) return;
+          // An explicit window already on the request wins — never override it.
+          if (path.indexOf('range=') !== -1 ||
+              path.indexOf('from_date=') !== -1 ||
+              path.indexOf('to_date=') !== -1) return;
+          var p = evt.detail.parameters || {};
+          if ('range' in p || 'from_date' in p || 'to_date' in p) return;
+          // Custom window takes precedence (matches the server resolver).
+          var custom = activeCustom();
+          if (custom) {
+            evt.detail.parameters['from_date'] = custom.from_date;
+            evt.detail.parameters['to_date'] = custom.to_date;
+            return;
+          }
+          var range = activePresetRange();
+          if (range) evt.detail.parameters['range'] = range;
+        });
+      })();
+
       // Custom date-range popover. The
       // History range control's "Custom" badge toggles a popover holding the
       // from/to date inputs + Apply + Clear. The badge + popover are swapped

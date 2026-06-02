@@ -215,6 +215,38 @@ def test_empty_window_state() -> None:
     assert "try a wider range" in body
 
 
+def test_window_change_changes_returned_set() -> None:
+    # bdboard-li44 regression: changing the active window must re-derive a
+    # DIFFERENT closed set, not echo the previous render. One mix of recent +
+    # old beads, fetched once, sliced by the route per requested window:
+    #   - a narrow preset (7d) shows only the recent bead
+    #   - a wide preset (all) shows BOTH
+    #   - a custom narrow window shows only the bead inside it
+    # This guards the route's window resolution + derive pushdown so a future
+    # change can't silently make every window render the same thing again.
+    recent = _bead("recent", days_ago=1)
+    old = _bead("old", days_ago=400)
+    _stub_snapshot([recent, old])
+
+    def cards(body: str) -> set[str]:
+        return {b for b in ("recent", "old") if f"Bead {b}<" in body}
+
+    _, narrow = _call(range="7d")
+    _, wide = _call(range="all")
+
+    assert cards(narrow) == {"recent"}
+    assert cards(wide) == {"recent", "old"}
+    # The two windows genuinely differ — the core symptom of the bug was that
+    # they did not.
+    assert cards(narrow) != cards(wide)
+
+    # A custom window scoped to the old bead's day surfaces ONLY it, proving
+    # the custom path also drives the set (not just presets).
+    old_day = (NOW - timedelta(days=400)).strftime("%Y-%m-%d")
+    _, custom = _call_custom(from_date=old_day, to_date=old_day)
+    assert cards(custom) == {"old"}
+
+
 def test_all_range_includes_old_beads() -> None:
     _stub_snapshot([_bead("old", days_ago=400)])
 
