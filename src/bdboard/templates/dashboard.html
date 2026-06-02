@@ -17,17 +17,11 @@
       {% include "partials/counts_skeleton.html" %}
     </div>
   </div>
-  {# SECOND ROW page nav left, board-wide time filter + actions right. #}
+  {# SECOND ROW page nav left, actions right. The board-wide time filter
+     moved out of here to a right-aligned toolbar above the lanes, mirroring
+     the History page's range toolbar (bdboard-150t). #}
   <div class="masthead-row masthead-nav-row">
     {% include "partials/nav.html" %}
-    {# Board-wide time filter: applies to all lanes consistently.
-       The 3d max matches the closed-lane's historical limit; users
-       needing longer windows use the History page (7d/30d/90d/All). #}
-    <div class="board-filters" role="radiogroup" aria-label="Time window filter" id="board-time-filter">
-      <button class="filter-badge" data-filter="12h" role="radio" aria-checked="false" aria-label="Show beads from the last 12 hours">12h</button>
-      <button class="filter-badge filter-badge-active" data-filter="1d" role="radio" aria-checked="true" aria-label="Show beads from the last 24 hours">1d</button>
-      <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
-    </div>
     <div class="masthead-actions">
       {% include "partials/theme_toggle.html" %}
       {# Pour-formula entry point. Opens a native <dialog> that
@@ -45,7 +39,19 @@
   </div>
 </header>
 
-<main class="layout">
+<main class="layout layout-board">
+  {# Board-wide time filter: applies to all lanes consistently. Lives at the
+     top of the main content, right-aligned, mirroring the History page's
+     range toolbar so the two pages read consistently (bdboard-150t).
+     The 3d max matches the closed-lane's historical limit; users needing
+     longer windows use the History page (7d/30d/90d/All). #}
+  <div class="board-toolbar">
+    <div class="board-filters" role="radiogroup" aria-label="Time window filter" id="board-time-filter">
+      <button class="filter-badge" data-filter="12h" role="radio" aria-checked="false" aria-label="Show beads from the last 12 hours">12h</button>
+      <button class="filter-badge filter-badge-active" data-filter="1d" role="radio" aria-checked="true" aria-label="Show beads from the last 24 hours">1d</button>
+      <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
+    </div>
+  </div>
   {# Lanes region: render an instant skeleton, then hydrate
      from /api/lanes on `load`. Previously `/` blocked on store.snapshot()
      + per-epic `bd show` subprocess calls before returning ANY HTML,

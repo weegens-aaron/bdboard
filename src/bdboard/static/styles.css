@@ -495,6 +495,23 @@ pre { margin: 0; }
   overflow: hidden;
 }
 
+/* Board page: stack a right-aligned time-filter toolbar above the lanes.
+   The base .layout is a horizontal flex (lanes fill the row); the board
+   needs a vertical stack so the toolbar sits ON TOP of the lanes rather than
+   beside them. Mirrors the History page's column layout + flex-end toolbar
+   so the two pages read consistently (bdboard-150t). */
+.layout-board {
+  flex-direction: column;
+}
+/* Board time-filter toolbar — right-aligned, same idiom as .history-toolbar. */
+.board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-bottom: 14px;
+}
+
 /* ============================================================
    Lanes. Each lane is a flex column so the title stays put and the
    bead list scrolls inside it — canonical kanban behavior.
@@ -648,15 +665,13 @@ pre { margin: 0; }
   color: var(--muted);
 }
 
-/* Board-wide time filter — small pressable badges in masthead, WCAG AA compliant.
-   Right-aligned next to the masthead actions: margin-left:auto consumes the row's
-   free space so nav stays hard-left while the filter group + actions sit hard-right,
-   reading as a single right-hand cluster of header chrome. */
+/* Board-wide time filter — small pressable badges, WCAG AA compliant.
+   Lives in the right-aligned .board-toolbar above the lanes (the parent
+   handles the flex-end alignment, mirroring the History range toolbar). */
 .board-filters {
   display: flex;
   gap: 4px;
   align-items: center;
-  margin-left: auto;
 }
 .filter-badge {
   font-family: var(--sans);
