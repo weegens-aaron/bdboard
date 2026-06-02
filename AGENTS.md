@@ -2,11 +2,13 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
-> **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/`) on this machine. This project is **local-only** — there is no
-> git or dolt remote, so there is no push/pull sync step. `bd` writes are
-> committed locally and that is the source of truth.
-> `.beads/issues.jsonl` is a passive export, not the wire protocol.
+> **Architecture in one line:** Issues live in a Dolt database (`.beads/`).
+> Bead data is replicated off-machine via Dolt's git-compatible wire protocol:
+> the Dolt remote `origin` points at the same GitHub origin as the code, and
+> issue history rides under `refs/dolt/data` there. After committing local `bd`
+> writes, run `bd dolt push` to sync; `bd dolt pull` (or `bd bootstrap` on a
+> fresh clone) hydrates from the remote. `.beads/issues.jsonl` is a passive
+> export, not the wire protocol.
 
 ## Quick Reference
 
@@ -138,13 +140,13 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
-**Architecture in one line:** issues live in a local Dolt DB on this machine; this project is local-only (no git/dolt remote, no push/pull sync); `.beads/issues.jsonl` is a passive export.
+**Architecture in one line:** issues live in a Dolt DB; bead data is replicated off-machine via Dolt's git-compatible wire protocol (`bd dolt push`/`pull` to `refs/dolt/data` on the same GitHub origin as the code); `.beads/issues.jsonl` is a passive export.
 
 ## Session Completion
 
-**When ending a work session**, complete the steps below. This project is
-**local-only** — there is no remote, so there is **no push step**; work is
-complete once it is committed locally.
+**When ending a work session**, complete the steps below. Bead data syncs
+off-machine via Dolt, so finishing a session means committing code locally
+**and** pushing bead writes to the remote with `bd dolt push`.
 
 **WORKFLOW:**
 
@@ -157,12 +159,16 @@ complete once it is committed locally.
    git commit -m "<message>"
    git status  # MUST show "nothing to commit, working tree clean"
    ```
-5. **Clean up** - Clear stashes
-6. **Verify** - All changes committed
-7. **Hand off** - Provide context for next session
+5. **PUSH BEAD DATA** - Replicate bead writes off-machine:
+   ```bash
+   bd dolt push   # syncs issue history to refs/dolt/data on origin
+   ```
+6. **Clean up** - Clear stashes
+7. **Verify** - All changes committed and bead data pushed
+8. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is complete once it is committed locally; there is no remote to push to
+- Commit code locally AND `bd dolt push` bead writes — both are needed to sync work off-machine
 - NEVER leave changes uncommitted - that leaves work stranded in the working tree
 - If a commit fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->

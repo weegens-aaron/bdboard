@@ -147,14 +147,23 @@ bd bootstrap --yes
 
 ## Backup (beads issue data)
 
-This project is **local-only**: there is no git or dolt remote, so issue data
-is not synced or pushed anywhere off this machine. The bead database lives in
-`.beads/` and is the single source of truth, read at runtime through the `bd`
-CLI.
+Issue data **is** replicated off-machine. The Dolt remote `origin` points at
+the same GitHub origin as the code (`weegens-aaron/bdboard.git`), and the full
+issue history rides under `refs/dolt/data` there via Dolt's git-compatible wire
+protocol — **not** as a committed `issues.jsonl`. See
+[`docs/decisions/0003-beads-sync-via-dolt-git-refs.md`](docs/decisions/0003-beads-sync-via-dolt-git-refs.md)
+for the full rationale, and [Getting the bead history](#getting-the-bead-history-fresh-clone)
+for how a fresh clone hydrates.
 
-If you want an off-machine backup, copy the `.beads/` directory with your
-regular file-backup tooling. (`bd` does support a git-compatible remote sync
-protocol, but it is not configured or used here.)
+To push local bead writes off-machine:
+
+```sh
+bd dolt push        # replicates issue history to refs/dolt/data on origin
+```
+
+The bead database lives in `.beads/embeddeddolt/` (gitignored) and is the
+single source of truth, read at runtime through the `bd` CLI. `bd dolt pull`
+brings remote changes back down on another machine.
 
 > bdboard never writes to `.beads/` and never reads `.beads/issues.jsonl`; the
 > canonical, runtime source of truth is the Dolt DB as read through the `bd` CLI.
