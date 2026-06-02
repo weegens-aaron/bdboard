@@ -8,8 +8,9 @@ to the board's 12h/1d/3d lane filter and 50-cap closed lane).
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from typing import Any
 
 from bdboard.derive.lanes import _is_closed
@@ -269,26 +270,35 @@ def _bucket_by_day(beads: list[dict[str, Any]], field: str) -> dict[str, int]:
     return buckets
 
 
-def throughput(
+WindowFilter = Callable[
+    [list[dict[str, Any]], datetime | None, datetime | None],
+    list[dict[str, Any]],
+]
+
+
+def _daily_count_series(
     beads: list[dict[str, Any]],
     range_key: str = DEFAULT_HISTORY_RANGE,
     now: datetime | None = None,
     from_date: str | None = None,
     to_date: str | None = None,
+    *,
+    field: str,
+    window: WindowFilter,
 ) -> list[dict[str, Any]]:
-    """Closed-beads-per-day series within a range (design §D2).
+    """Resolve the window, filter, bucket by ``field`` and gap-fill the days.
 
-    Buckets closed_at by local calendar day (:func:`_day_bucket`) and returns
-    a gap-free ascending series ``[{"day": "YYYY-MM-DD", "count": int}, ...]``
-    spanning the first through last day that has a close in the window. Days
-    with zero closes inside that span are filled with ``count=0`` so the
-    chart reads as a continuous timeline rather than a jagged one. Returns
-    ``[]`` when nothing closed in the window. An explicit custom
+    The single per-day-count pipeline behind :func:`throughput` and
+    :func:`created`, which are :func:`functools.partial` specializations of it
+    pre-binding their ``window`` filter and date ``field``. Returns
+    ``[{"day": "YYYY-MM-DD", "count": int}, ...]`` spanning the first through
+    last populated day with gaps zero-filled. The public positional params
+    (``beads, range_key, now, from_date, to_date``) are exactly the family
+    signature so the partials read like plain functions; an explicit custom
     ``from_date``/``to_date`` supersedes ``range_key``.
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
-    windowed = _closed_in_window(beads, cutoff, ceiling)
-    return _fill_daily_series(_bucket_by_day(windowed, "closed_at"))
+    return _fill_daily_series(_bucket_by_day(window(beads, cutoff, ceiling), field))
 
 
 def _created_in_window(
@@ -319,30 +329,25 @@ def _created_in_window(
     return out
 
 
-def created(
-    beads: list[dict[str, Any]],
-    range_key: str = DEFAULT_HISTORY_RANGE,
-    now: datetime | None = None,
-    from_date: str | None = None,
-    to_date: str | None = None,
-) -> list[dict[str, Any]]:
-    """Beads-created-per-day series within a range (mirrors :func:`throughput`).
+# Closed-beads-per-day series within a range (design D2): the 'how much did we
+# finish?' view. A partial of the shared pipeline pre-binding the closed-at
+# filter, so it stays in lock-step with :func:`created` by construction rather
+# than by duplicated code. Returns ``[]`` when nothing closed in the window.
+throughput = partial(_daily_count_series, field="closed_at", window=_closed_in_window)
+throughput.__doc__ = (
+    "Closed-beads-per-day series within a range (design D2). The 'how much did "
+    "we finish?' view; see :func:`_daily_count_series` for the full contract."
+)
 
-    Buckets ``created_at`` by local calendar day (:func:`_day_bucket`) and
-    returns a gap-free ascending series
-    ``[{\"day\": \"YYYY-MM-DD\", \"count\": int}, ...]`` spanning the first
-    through last day that has a creation in the window. Days with zero
-    creations inside that span are filled with ``count=0`` so the chart reads
-    as a continuous timeline rather than a jagged one. Status is irrelevant
-    (an open bead filed in-window still counts), which is exactly the
-    complement to :func:`throughput`: created answers 'how much did we file?',
-    throughput answers 'how much did we finish?'. Returns ``[]`` when nothing
-    was created in the window. Pure over the snapshot - no extra I/O. An
-    explicit custom ``from_date``/``to_date`` supersedes ``range_key``.
-    """
-    cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
-    windowed = _created_in_window(beads, cutoff, ceiling)
-    return _fill_daily_series(_bucket_by_day(windowed, "created_at"))
+# Beads-created-per-day series within a range: the 'how much did we file?'
+# complement to :func:`throughput`. Same pipeline, the created-at filter pre-
+# bound. Status is irrelevant -- a still-open bead filed in-window still
+# counts. Returns ``[]`` when nothing was created in the window.
+created = partial(_daily_count_series, field="created_at", window=_created_in_window)
+created.__doc__ = (
+    "Beads-created-per-day series within a range; the 'how much did we file?' "
+    "complement to :func:`throughput`. See :func:`_daily_count_series`."
+)
 
 
 def combined(
@@ -354,19 +359,13 @@ def combined(
 ) -> list[dict[str, Any]]:
     """Created + closed per day, merged into one gap-free series.
 
-    The single source feeding the History page's unified throughput chart.
-    Where :func:`throughput` and :func:`created` each return a standalone
-    ``count`` series, this zips both metrics onto one continuous timeline so
-    they can be read together per day (net flow / backlog burn):
-    ``[{"day": "YYYY-MM-DD", "created": int, "closed": int}, ...]``.
-
-    The span runs from the first through last day that has EITHER a creation
-    or a close in the window (the union), filling missing days on each metric
-    with ``0`` so the grouped bars stay aligned and the timeline reads
-    continuously. Returns ``[]`` when nothing was created or closed in the
-    window. Range/custom-window semantics mirror the sibling series exactly
-    (an explicit ``from_date``/``to_date`` supersedes ``range_key``); pure
-    over the snapshot, no extra I/O.
+    The single source feeding the History page's unified chart: it zips both
+    metrics onto one timeline so they read together per day (net flow / backlog
+    burn): ``[{"day": "YYYY-MM-DD", "created": int, "closed": int}, ...]``. The
+    span is the union of days that saw a creation OR a close; each metric is
+    zero-filled across that span so the grouped bars stay aligned. Returns
+    ``[]`` for an empty window. Range/custom-window semantics mirror the
+    sibling series exactly.
     """
     cutoff, ceiling = _resolve_bounds(range_key, from_date, to_date, now=now)
     closed_buckets = _bucket_by_day(_closed_in_window(beads, cutoff, ceiling), "closed_at")

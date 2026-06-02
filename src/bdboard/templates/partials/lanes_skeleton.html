@@ -28,13 +28,7 @@
     </h2>
     <ul class="lane-list">
       {% for _ in range(3) %}
-      <li class="bead-card skeleton-card">
-        <div class="bead-card-head">
-          <span class="skeleton skeleton-text skeleton-id"></span>
-        </div>
-        <div class="skeleton skeleton-text skeleton-title-line"></div>
-        <div class="skeleton skeleton-text skeleton-meta-line"></div>
-      </li>
+      {% include "partials/bead_card_skeleton.html" %}
       {% endfor %}
     </ul>
   </div>

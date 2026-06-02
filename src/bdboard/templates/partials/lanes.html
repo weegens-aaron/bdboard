@@ -40,24 +40,7 @@
     </h2>
     <ul class="lane-list">
       {% for b in lanes[key] %}
-      <li class="bead-card"
-          hx-get="/api/bead/{{ b.id }}"
-          hx-target="#bead-modal"
-          hx-swap="innerHTML"
-          hx-disabled-elt="this">
-        <div class="bead-card-head">
-          <span class="bead-id">{{ b.id }}</span>
-          {% if b.priority is not none %}
-          <span class="bead-priority p{{ b.priority }}">P{{ b.priority }}</span>
-          {% endif %}
-        </div>
-        <div class="bead-title">{{ b.title }}</div>
-        <div class="bead-meta">
-          {% if b.assignee %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
-          {% if b.issue_type %}<span class="bead-type">{{ b.issue_type }}</span>{% endif %}
-          {% if b.dependency_count %}<span class="bead-dep">⛓ {{ b.dependency_count }}</span>{% endif %}
-        </div>
-      </li>
+      {% include "partials/bead_card.html" %}
       {% else %}
       <li class="lane-empty muted">(empty)</li>
       {% endfor %}
@@ -82,13 +65,7 @@
     </h2>
     <ul class="lane-list" aria-hidden="true">
       {% for _ in range(3) %}
-      <li class="bead-card skeleton-card">
-        <div class="bead-card-head">
-          <span class="skeleton skeleton-text skeleton-id"></span>
-        </div>
-        <div class="skeleton skeleton-text skeleton-title-line"></div>
-        <div class="skeleton skeleton-text skeleton-meta-line"></div>
-      </li>
+      {% include "partials/bead_card_skeleton.html" %}
       {% endfor %}
     </ul>
   </div>

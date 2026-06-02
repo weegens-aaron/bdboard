@@ -1,0 +1,37 @@
+{# Shared bead card — single source of truth for the clickable bead tile used
+   by the active lanes, the closed lane, and the History list. Clicking opens
+   the bead modal via HTMX. Callers pass `b` (the bead dict) and may tweak
+   presentation through optional context vars set with {% with %}:
+     - card_class           extra CSS class(es) on the <li> (e.g. "history-card")
+     - show_closed_at_attr  add data-closed-at for the closed lane's age filter
+     - show_closed_when     render the humanized close timestamp in the head
+     - meta                 "default" (assignee/type/dep) or "history"
+                            (assignee/close_reason)
+   Every var is optional; the defaults reproduce the active-lane card exactly,
+   so a bare {% include %} is the board card. #}
+<li class="bead-card{% if card_class %} {{ card_class }}{% endif %}"
+    {% if show_closed_at_attr and b.closed_at %}data-closed-at="{{ b.closed_at }}"{% endif %}
+    hx-get="/api/bead/{{ b.id }}"
+    hx-target="#bead-modal"
+    hx-swap="innerHTML"
+    hx-disabled-elt="this">
+  <div class="bead-card-head">
+    <span class="bead-id">{{ b.id }}</span>
+    {% if b.priority is not none %}
+    <span class="bead-priority p{{ b.priority }}">P{{ b.priority }}</span>
+    {% endif %}
+    {% if show_closed_when %}
+    <span class="history-closed-when" title="{{ b.closed_at }}">{{ b.closed_at | humanize_ts }}</span>
+    {% endif %}
+  </div>
+  <div class="bead-title">{{ b.title }}</div>
+  <div class="bead-meta">
+    {% if b.assignee %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
+    {% if meta == "history" %}
+    {% if b.close_reason %}<span class="history-close-reason">{{ b.close_reason }}</span>{% endif %}
+    {% else %}
+    {% if b.issue_type %}<span class="bead-type">{{ b.issue_type }}</span>{% endif %}
+    {% if b.dependency_count %}<span class="bead-dep">&#9939; {{ b.dependency_count }}</span>{% endif %}
+    {% endif %}
+  </div>
+</li>

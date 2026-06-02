@@ -205,24 +205,7 @@
     {% if items %}
     <ul class="history-list" role="list">
       {% for b in items %}
-      <li class="bead-card history-card"
-          hx-get="/api/bead/{{ b.id }}"
-          hx-target="#bead-modal"
-          hx-swap="innerHTML"
-          hx-disabled-elt="this">
-        <div class="bead-card-head">
-          <span class="bead-id">{{ b.id }}</span>
-          {% if b.priority is not none %}
-          <span class="bead-priority p{{ b.priority }}">P{{ b.priority }}</span>
-          {% endif %}
-          <span class="history-closed-when" title="{{ b.closed_at }}">{{ b.closed_at | humanize_ts }}</span>
-        </div>
-        <div class="bead-title">{{ b.title }}</div>
-        <div class="bead-meta">
-          {% if b.assignee %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
-          {% if b.close_reason %}<span class="history-close-reason">{{ b.close_reason }}</span>{% endif %}
-        </div>
-      </li>
+      {% with card_class = "history-card", show_closed_when = true, meta = "history" %}{% include "partials/bead_card.html" %}{% endwith %}
       {% endfor %}
     </ul>
 
