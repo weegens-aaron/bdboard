@@ -24,10 +24,16 @@ off-machine at all**, and a fresh clone got zero issues. A single-machine
 failure would have lost everything. We needed a way to version issue data
 alongside the code.
 
-> **Note on current deployment.** This repo is presently operated *local-only*
-> (no remote configured) — see the README backup section. ADR 0003 records the
-> chosen sync *mechanism* (the decision from bdboard-6gp/9i7) so that whenever
-> off-machine sync is enabled, it uses Dolt git-refs and never the JSONL path.
+> **Note on current deployment.** Off-machine sync is now **enabled** (epic
+> bdboard-qqt6, bead bdboard-calu, 2026-06): the Dolt remote `origin` points at
+> the existing code origin (`weegens-aaron/bdboard.git`) per the decision below,
+> and `bd dolt push` has replicated the full issue history to `refs/dolt/data`
+> there. A transient misconfiguration that pointed the Dolt remote at a
+> *separate* repo (`weegens-aaron/bdboard-dolt.git` — i.e. rejected Alternative
+> C) was repointed to the code origin to honor this ADR. Fresh-clone hydration
+> uses `bd bootstrap` (auto-detects `refs/dolt/data` on the git origin), **not**
+> `bd init` + `bd dolt pull` — `bd init` creates an independent Dolt history and
+> a subsequent pull fails with "no common ancestor".
 
 ## Decision
 
