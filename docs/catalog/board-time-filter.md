@@ -102,8 +102,8 @@ it is pure DOM show/hide plus a sessionStorage write.
   is 3d because the server only ever fetches closed beads from the last
   `BOARD_CLOSED_WINDOW_DAYS = 3`. Offering a wider board filter would be a lie:
   there is no data behind it. Longer windows are deliberately deferred to the
-  History page (7d/30d/90d/All), which uses a separate count-capped path
-  (`list_closed_history`, `HISTORY_CLOSED_LIMIT = 50`). The template and the JS
+  History page (7d/30d/90d/All), which uses a separate uncapped path
+  (`list_closed_history`, `bd list --limit 0`). The template and the JS
   both carry comments restating this contract.
 - **Filter narrows, never widens.** Because the fetch is already bounded to 3d,
   picking 3d shows everything the board has; 12h/1d only ever hide a subset. You

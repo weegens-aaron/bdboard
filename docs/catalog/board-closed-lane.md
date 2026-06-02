@@ -106,9 +106,9 @@ Three things change what it shows:
 - **3-day historical limit.** The board only ever fetches beads closed within
   `BOARD_CLOSED_WINDOW_DAYS = 3` (`derive/lanes.py` ~40, applied at fetch time in
   `bd.list_closed`). Anything closed earlier never reaches the board — it lives
-  on the History page, which uses a separate count-capped path
-  (`list_closed_history`, `HISTORY_CLOSED_LIMIT = 50`) precisely so its wider
-  7d/30d/90d/All ranges don't silently miss older closed work (bdboard-p8v). The
+  on the History page, which uses a separate uncapped path
+  (`list_closed_history`, `bd list --limit 0`) so its wider
+  7d/30d/90d/All ranges don't silently miss older closed work (bdboard-a194). The
   3-day fetch window is also the max the board time filter offers (12h/1d/3d),
   by design — filtering can narrow within the fetch window but never widen
   beyond it.

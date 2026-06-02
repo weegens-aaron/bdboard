@@ -13,9 +13,10 @@ The Store maintains THREE caches:
   2. Board-closed snapshot: closed issues bounded by the board's date
      window (BOARD_CLOSED_WINDOW_DAYS). Powers the Closed lane AND the
      header CLOSED KPI so the two numbers agree.
-  3. History-closed snapshot: closed issues capped by count
-     (HISTORY_CLOSED_LIMIT). Powers the long-window History page, which is
-     intentionally decoupled from the board's date filter.
+  3. History-closed snapshot: the FULL closed record (uncapped fetch).
+     Powers the long-window History page, which is intentionally decoupled
+     from the board's date filter and does its own range/page bounding
+     in-app (bdboard-a194).
 
 This split enables lazy-loading of the closed lane (bdboard-0yy):
   - First paint: /api/lanes fetches active-only (~5KB, fast)
@@ -35,8 +36,8 @@ Access patterns:
   * snapshot() — active + board-closed issues. Powers the header counts and
     the cached bead-lookup fallback. Lazy-loads on first call.
 
-  * snapshot_history() — active + history-closed (count-capped) issues. For
-    the History page only. Lazy-loads on first call.
+  * snapshot_history() — active + history-closed (full closed record) issues.
+    For the History page only. Lazy-loads on first call.
 
   * refresh() — what the watcher calls. Pulls fresh data for ALL caches,
     compares against previous, returns True iff something changed.
@@ -115,14 +116,15 @@ class Store:
         return active + closed
 
     async def snapshot_history(self) -> list[dict[str, Any]]:
-        """Return active + history-closed (count-capped) issues.
+        """Return active + history-closed (full closed record) issues.
 
         For the History page only. The History page is a long-window
-        retrospective surface (7d/30d/90d/All), so it needs a closed set
-        that is NOT bounded by the board's short date window — otherwise
-        ranges wider than BOARD_CLOSED_WINDOW_DAYS would silently miss
-        older closed work (bdboard-p8v). Lazy-loads both the active cache
-        and the count-capped history-closed cache on first call.
+        retrospective surface (7d/30d/90d/All), so it needs the FULL closed
+        set — uncapped and NOT bounded by the board's short date window —
+        otherwise ranges wider than BOARD_CLOSED_WINDOW_DAYS, or pages past
+        the first, would silently miss older closed work (bdboard-a194).
+        Lazy-loads both the active cache and the history-closed cache on
+        first call.
         """
         if self._active_snap is None:
             await self._load_active()
@@ -164,9 +166,9 @@ class Store:
 
     async def _load_history(self) -> None:
         """Load history-closed issues into cache. Called on first
-        snapshot_history(). Uses the count-capped fetch so the History
-        page sees long-window closed work regardless of the board's date
-        filter (bdboard-p8v)."""
+        snapshot_history(). Uses the uncapped full-record fetch so the
+        History page sees ALL closed work regardless of the board's date
+        filter, with range/page bounding done in-app (bdboard-a194)."""
         async with self._refresh_lock:
             if self._history_snap is not None:
                 return  # another coroutine loaded while we waited

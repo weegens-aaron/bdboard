@@ -61,12 +61,13 @@ bd CLI (bd list/show/history/status --json, backed by the dolt DB)
   `bd --closed-after`. Fetched via `bd.list_closed()`. Powers both the
   Closed lane *and* the masthead CLOSED KPI so the two numbers always agree
   (bdboard-p8v).
-- **History-closed** — closed issues capped by **count**
-  (`HISTORY_CLOSED_LIMIT = 50`, sorted by `closed_at` desc) via
-  `bd.list_closed_history()`. Powers the long-window History page, which is
-  intentionally decoupled from the board's short date filter — otherwise a
-  7d/30d/90d range would silently miss closed work older than 3 days
-  (bdboard-p8v).
+- **History-closed** — the FULL closed record (uncapped, `bd list --limit 0`,
+  sorted by `closed_at` desc) via `bd.list_closed_history()`. Powers the
+  long-window History page, which is intentionally decoupled from the board's
+  short date filter and does its range / custom-date / pagination bounding
+  in-app (bdboard-a194). It was previously truncated to the 50 newest closures
+  (`HISTORY_CLOSED_LIMIT`), which made anything older unreachable no matter how
+  the page's filters were set.
 
 **Read accessors** (all `async`, all lazy-loading on first call):
 
@@ -156,9 +157,9 @@ bdboard never reads `issues.jsonl` and never writes to `.beads/`
   lazy `snapshot()` — can't produce overlapping `bd` queries or torn cache
   writes.
 - **History snapshot is decoupled on purpose.** The board's date-bounded closed
-  set (`BOARD_CLOSED_WINDOW_DAYS`) and the History page's count-capped set
-  (`HISTORY_CLOSED_LIMIT`) are different fetches and different caches. Widening
-  the History range never touches the board's closed lane, and vice versa.
+  set (`BOARD_CLOSED_WINDOW_DAYS`) and the History page's full uncapped closed
+  set are different fetches and different caches. Widening the History range
+  never touches the board's closed lane, and vice versa.
 - **`by_id` skips malformed rows.** The index comprehension guards
   `isinstance(b.get("id"), str)`, so a row with a missing/non-string id is
   silently excluded from `bead(id)` lookups rather than crashing the index
@@ -197,8 +198,8 @@ bdboard never reads `issues.jsonl` and never writes to `.beads/`
   - `invalidate_caches` (~448): clears show/history/memories/status caches.
   - `update_field` (~662) / `remember` / `forget` / `rename_bead` / `pour`:
     mutations that invalidate caches inline.
-- `src/bdboard/derive/lanes.py` — `BOARD_CLOSED_WINDOW_DAYS = 3` (~40),
-  `HISTORY_CLOSED_LIMIT = 50` (~45): the window/cap constants the fetches use.
+- `src/bdboard/derive/lanes.py` — `BOARD_CLOSED_WINDOW_DAYS = 3` (~40): the
+  board's closed-window constant. (History fetches uncapped, no count constant.)
 - `src/bdboard/app.py` — `_settle_task` (~253) / `store.refresh()` call (~268):
   the watcher path that drives refresh; mutating routes' inline
   `store.refresh()` (~942) for immediate post-mutation freshness.

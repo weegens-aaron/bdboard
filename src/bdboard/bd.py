@@ -11,9 +11,11 @@ Design notes:
     - list_closed: closed issues bounded by the board's date window
       (BOARD_CLOSED_WINDOW_DAYS) via --closed-after, NOT a static count
       cap. Powers the Closed lane and the closed header count.
-- list_closed_history: closed issues capped by count (HISTORY_CLOSED_LIMIT,
-  sorted by closed_at desc). Powers the long-window History page, which is
-  intentionally decoupled from the board's short date filter.
+- list_closed_history: the FULL closed record (bd list --limit 0, sorted by
+  closed_at desc). Powers the long-window History page, whose range /
+  custom-date / pagination controls bound the result set in-app — so the
+  fetch is deliberately uncapped (bdboard-a194) rather than truncated to a
+  static count, which would make anything older than the cap unreachable.
 - show_long / history power bead-detail views and are cached with TTL +
   in-flight dedup.
 - All share _subprocess_gate, an asyncio.Semaphore(1). bd's embedded
@@ -278,22 +280,24 @@ class BdClient:
         return closed
 
     async def list_closed_history(self, limit: int | None = None) -> list[dict[str, Any]]:
-        """Fetch closed issues for the HISTORY page, capped by count.
+        """Fetch the FULL closed record for the HISTORY page (uncapped).
 
         Distinct from :meth:`list_closed` (the board path): History is the
-        long-window retrospective surface and keeps the original count-capped
-        fetch so its behaviour is unchanged by the board's switch to a
-        date-bounded closed set (bdboard-p8v).
+        long-window retrospective surface, so it fetches every closed issue
+        (``bd list --limit 0``, sorted by closed_at desc) rather than a
+        count-capped slice. The page's range / custom-date / pagination
+        controls do the bounding in-app; a static fetch cap would silently
+        truncate to the newest N closures and make anything older
+        unreachable regardless of the filters (bdboard-a194).
 
         Args:
-            limit: Max closed issues to fetch. Defaults to
-                HISTORY_CLOSED_LIMIT from derive.lanes.
+            limit: Optional explicit fetch cap. Defaults to ``None`` =
+                unbounded (``--limit 0``). Pass a positive int only when a
+                caller genuinely wants a truncated fetch (e.g. a smoke test).
 
         Raises on subprocess failure or malformed JSON.
         """
-        from bdboard.derive.lanes import HISTORY_CLOSED_LIMIT
-
-        cap = limit if limit is not None else HISTORY_CLOSED_LIMIT
+        cap = 0 if limit is None else limit
         closed = await self._run_json(
             ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", str(cap)],
             timeout=LIST_TIMEOUT_S,

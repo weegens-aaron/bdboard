@@ -221,6 +221,37 @@ def test_all_range_includes_old_beads() -> None:
     assert 'hx-get="/api/history?range=7d&page=1&page_size=50"' in body
 
 
+def test_all_range_pages_through_more_than_fifty_closed() -> None:
+    # bdboard-a194: with >50 closed beads and range=all, the History page must
+    # be able to page through ALL of them, and the total must reflect the true
+    # in-window closed count — not a hidden 50-cap. We spread the closes over
+    # distinct days so range=all (no upper bound) keeps every one in-window.
+    beads = [_bead(f"b{i}", days_ago=i) for i in range(120)]
+    _stub_snapshot(beads)
+
+    # Walk every page at the default page size of 50 and collect the bead ids
+    # that surface in the rendered cards.
+    seen: set[str] = set()
+    page = 1
+    while True:
+        status, body = _call(range="all", page=page, page_size=50)
+        assert status == 200
+        found = {f"b{i}" for i in range(120) if f"Bead b{i}<" in body}
+        if not found:
+            break
+        seen |= found
+        page += 1
+        if page > 10:  # safety net against an accidental infinite loop
+            break
+
+    # Every one of the 120 closed beads is reachable across the pages — the
+    # old HISTORY_CLOSED_LIMIT=50 would have made b50..b119 unreachable.
+    assert seen == {f"b{i}" for i in range(120)}
+    # The result-count line reflects the TRUE closed total, not 50.
+    _, page1 = _call(range="all", page=1, page_size=50)
+    assert "120" in page1
+
+
 def test_closed_list_renders_within_range() -> None:
     _stub_snapshot([_bead("a", days_ago=1)])
 

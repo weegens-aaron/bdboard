@@ -40,10 +40,11 @@ CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
 BOARD_CLOSED_WINDOW_DAYS = 3
 
 # The History page is the long-window retrospective surface (7d/30d/90d/All).
-# It keeps a count-capped closed fetch so its behaviour is unchanged by the
-# board's switch to a date-bounded closed set (bdboard-p8v).
-HISTORY_CLOSED_LIMIT = 50
-
+# Unlike the board's date-bounded closed set, History fetches the FULL closed
+# record (bd list --limit 0) so the page's range / custom-date / pagination
+# controls bound the result set — not a hidden count cap (bdboard-a194). It
+# was previously truncated to the 50 newest closures, which made anything
+# older unreachable no matter how the filters were set.
 _STATUS_META: dict[str, tuple[str, str]] = {
     "open": ("○", "Open"),
     "in_progress": ("▶", "In Progress"),
