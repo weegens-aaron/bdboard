@@ -4,6 +4,9 @@ Part of the **Board** page. The "+ Pour Formula" button in the masthead opens a
 modal that turns a bd *formula* (a reusable template of beads) into real,
 live beads on the board — without leaving the dashboard or touching the CLI.
 
+> **Architecture decision:** the formula-pour write surface is recorded in
+> [ADR 0007](../decisions/0007-formula-pour-ui-write-surface.md).
+
 ## What it shows
 
 A native `<dialog>` (`#formula-dialog`, title **"Pour a Formula"**) launched by

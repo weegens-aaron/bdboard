@@ -5,6 +5,14 @@
 - **Status:** spike / recommendation only — **no shipped UI under this bead**
 - **Date:** 2026-05-29
 
+> **Distilled into [ADR 0007](../../decisions/0007-formula-pour-ui-write-surface.md)**
+> (2026-06-02): the durable decision that bdboard exposes a UI-triggered,
+> workspace-mutating formula pour via `bd mol pour` now lives in that ADR. This
+> spike remains the empirical working material behind it. NB: §1.3 below
+> predates the non-recursive watcher of ADR 0005 and still says the watch is
+> "recursive" — that is point-in-time spike text; the shipped watcher is
+> non-recursive (see ADR 0005).
+
 > Deliverable for bdboard-9n4. De-risks the formula-to-board capability by
 > determining, **empirically against the installed bd**, exactly how bdboard
 > should (a) enumerate formulas + their variables, (b) pour a formula and land

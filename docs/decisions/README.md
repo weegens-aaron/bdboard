@@ -22,6 +22,7 @@ not a bead note, not a code comment, not a one-off design doc.
 | [0004](0004-runtime-source-of-truth-bd-cli-json.md) | Runtime source of truth is the `bd` CLI JSON | accepted |
 | [0005](0005-live-refresh-architecture.md) | Live-refresh architecture (watcher → Store.refresh → SSE) | accepted |
 | [0006](0006-manual-field-editing-model.md) | Manual field-editing model (registry, whitelist, append-only) | accepted |
+| [0007](0007-formula-pour-ui-write-surface.md) | UI-triggered formula pour (workspace-mutating write surface via `bd mol pour`) | accepted |
 
 > Keep this table in sync when you add an ADR. The number is the next free,
 > zero-padded, monotonically increasing integer — never reuse one.
