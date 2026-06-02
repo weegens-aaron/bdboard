@@ -19,6 +19,24 @@ web view of a workspace's beads without leaving their terminal-driven workflow.
 | Node + `npx` | only for `make duplication` (jscpd) | bundled toolchains skip this |
 | `lychee` | only for `make links` | `brew install lychee` |
 
+## Quick start (fresh clone)
+
+The full setup, in order. A fresh clone has **no bead database**, so
+`bd bootstrap` comes *first* — skip it and `bdboard` renders an empty board
+(see [Getting the bead history](#getting-the-bead-history-fresh-clone)).
+
+```sh
+git clone https://github.com/weegens-aaron/bdboard.git
+cd bdboard
+bd bootstrap --yes          # hydrate the bead DB (one-time; fresh clones ship none)
+make install                # uv venv + editable install (resolves against public PyPI)
+source .venv/bin/activate   # activate the venv (run once per shell session)
+make test                   # optional: confirm the suite is green
+bdboard                     # binds 127.0.0.1:7332 and opens a browser
+```
+
+The sections below break these steps out individually.
+
 ## Install (dev)
 
 ```sh
