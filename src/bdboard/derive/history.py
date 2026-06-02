@@ -131,6 +131,26 @@ def _resolve_bounds(
     return _range_to_cutoff(range_key, now=now), None
 
 
+def resolve_history_bounds(
+    range_key: str,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    now: datetime | None = None,
+) -> tuple[datetime | None, datetime | None]:
+    """Public alias for :func:`_resolve_bounds` — the History window's bounds.
+
+    Exposed so the API route can resolve the SAME ``(cutoff, ceiling)`` the
+    derive functions compute internally, then push ``cutoff`` down to the bd
+    query as ``--closed-after`` (bdboard-gp06). Sharing one resolver is what
+    guarantees the server-side fetch filter and the in-memory
+    :func:`history_window` slice agree on the same lower bound with no
+    off-by-one between them. ``cutoff`` is the inclusive lower bound (None for
+    the unbounded ``all`` view); ``ceiling`` is the exclusive upper bound
+    (None unless a custom ``to_date`` was supplied).
+    """
+    return _resolve_bounds(range_key, from_date, to_date, now=now)
+
+
 def _closed_in_window(
     beads: list[dict[str, Any]],
     cutoff: datetime | None,

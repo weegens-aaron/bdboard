@@ -9,6 +9,7 @@ import secrets
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -519,37 +520,50 @@ async def api_history(
         range control marks the synthetic ``custom`` preset active so the UI
     reflects the custom selection after each HTMX swap.
     """
-    beads = await store.snapshot_history()
-    # Normalise the range once so the template's active-state cues and the
-    # derive calls agree on the same key (a bad ?range= degrades to default).
+    # Resolve the filter window ONCE, from a single ``now``, so the server-side
+    # bd query bound and every in-memory derive slice agree on the exact same
+    # lower bound with no off-by-one drift between them (bdboard-gp06). A bad
+    # ?range= degrades to the default inside the resolver; an explicit custom
+    # from/to supersedes the preset.
+    now = datetime.now(UTC)
     range_key = (range or "").strip().lower()
     if range_key not in derive.HISTORY_RANGES:
         range_key = derive.DEFAULT_HISTORY_RANGE
     page = max(1, page)
     # Clamp page_size to the allowed set; missing/invalid -> default 50.
     size = derive.clamp_page_size(page_size)
-    # Custom date window. Resolve the bounds once so we know
-    # whether a valid custom selection is active; if so the template's range
-    # control highlights the synthetic 'custom' option instead of a preset.
+    cutoff, _ceiling = derive.resolve_history_bounds(range_key, from_date, to_date, now=now)
+    # Custom date window. A valid custom selection (resolved above) flips the
+    # range control to the synthetic 'custom' preset so the UI reflects it.
     custom_lo, custom_hi = derive.custom_bounds(from_date, to_date)
     is_custom = custom_lo is not None or custom_hi is not None
     active_range = "custom" if is_custom else range_key
+    # Push the resolved lower bound down to the bd query: a narrow range
+    # fetches only the beads closed inside its window rather than slurping the
+    # entire closed table into memory. range=all resolves cutoff=None and
+    # stays a genuine unbounded fetch by design.
+    beads = await store.snapshot_history(closed_after=cutoff)
     window = derive.history_window(
         beads,
         range_key=range_key,
         page=page,
         page_size=size,
+        now=now,
         from_date=from_date,
         to_date=to_date,
     )
-    series = derive.throughput(beads, range_key=range_key, from_date=from_date, to_date=to_date)
-    stats = derive.lead_time_stats(beads, range_key=range_key, from_date=from_date, to_date=to_date)
+    series = derive.throughput(
+        beads, range_key=range_key, now=now, from_date=from_date, to_date=to_date
+    )
+    stats = derive.lead_time_stats(
+        beads, range_key=range_key, now=now, from_date=from_date, to_date=to_date
+    )
     # Beads created per day: day-bucketed by created_at. The
     # standalone series is no longer charted on its own (it was merged
     # into the combined chart), but we still tally it for the legend's
     # range-scoped 'Created' count.
     created_series = derive.created(
-        beads, range_key=range_key, from_date=from_date, to_date=to_date
+        beads, range_key=range_key, now=now, from_date=from_date, to_date=to_date
     )
     # Combined created+closed series: created and closed counts
     # zipped onto ONE continuous timeline so the History page renders a single
@@ -557,7 +571,7 @@ async def api_history(
     # throughput (net flow / backlog burn) readable at a glance. Range/custom
     # window semantics match the sibling series exactly.
     combined_series = derive.combined(
-        beads, range_key=range_key, from_date=from_date, to_date=to_date
+        beads, range_key=range_key, now=now, from_date=from_date, to_date=to_date
     )
     created_total = sum(d["count"] for d in created_series)
     # Shared y-axis peak for the combined chart so created and closed bars are

@@ -43,7 +43,7 @@ bd CLI (bd list/show/history/status --json, backed by the dolt DB)
   → BdClient subprocess wrapper (src/bdboard/bd.py)
       ├─ list_active()         → Store active snapshot
       ├─ list_closed()         → Store board-closed snapshot (date-bounded)
-      ├─ list_closed_history() → Store history-closed snapshot (uncapped)
+      ├─ list_closed_history() → Store history-closed snapshot (window-bounded)
       └─ show_long()/history()/status_summary()/memories()
                                → BdClient per-key TTL caches
         → Store in-memory _Snapshot(beads, by_id) caches
@@ -61,13 +61,18 @@ bd CLI (bd list/show/history/status --json, backed by the dolt DB)
   `bd --closed-after`. Fetched via `bd.list_closed()`. Powers both the
   Closed lane *and* the masthead CLOSED KPI so the two numbers always agree
   (bdboard-p8v).
-- **History-closed** — the FULL closed record (uncapped, `bd list --limit 0`,
-  sorted by `closed_at` desc) via `bd.list_closed_history()`. Powers the
-  long-window History page, which is intentionally decoupled from the board's
-  short date filter and does its range / custom-date / pagination bounding
-  in-app (bdboard-a194). It was previously truncated to the 50 newest closures
-  (`HISTORY_CLOSED_LIMIT`), which made anything older unreachable no matter how
-  the page's filters were set.
+- **History-closed** — the closed record for the long-window History page,
+  sorted by `closed_at` desc, fetched via `bd.list_closed_history()`. It is
+  never *count*-capped (`bd list --limit 0`); it was previously truncated to
+  the 50 newest closures (`HISTORY_CLOSED_LIMIT`), which made anything older
+  unreachable no matter how the page's filters were set (bdboard-a194). It IS
+  *window*-bounded, though: the active range / custom-date lower bound is
+  pushed down to the bd query via `--closed-after` so a narrow range fetches
+  only its beads instead of slurping the whole closed table into memory on
+  every snapshot (bdboard-gp06). The `all` range passes `closed_after=None`
+  and stays a genuine full-table read by design. The cache is window-aware —
+  a wider cached window already covers any narrower sub-window, so the Store
+  only re-queries bd when a request reaches further back than what it holds.
 
 **Read accessors** (all `async`, all lazy-loading on first call):
 

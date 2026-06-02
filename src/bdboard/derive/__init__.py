@@ -35,6 +35,7 @@ from bdboard.derive.history import (
     custom_bounds,
     history_window,
     lead_time_stats,
+    resolve_history_bounds,
     status_timeline,
     throughput,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "HISTORY_PAGE_SIZES",
     "clamp_page_size",
     "custom_bounds",
+    "resolve_history_bounds",
     # dependency helpers
     "get_dependency_list",
     "get_dependency_type",

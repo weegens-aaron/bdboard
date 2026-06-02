@@ -71,6 +71,60 @@ def test_explicit_limit_is_passed_through() -> None:
     ]
 
 
+def test_closed_after_pushes_lower_bound_to_query() -> None:
+    # bdboard-gp06: a narrow range/custom-date selection bounds the fetch at
+    # the bd query layer via --closed-after, so the History page fetches only
+    # the beads closed inside the active window instead of slurping the whole
+    # closed table. The cutoff is serialised as an ISO Z timestamp.
+    from datetime import UTC, datetime
+
+    client, calls = _client_returning([])
+    cutoff = datetime(2026, 5, 1, 12, 30, 0, tzinfo=UTC)
+
+    asyncio.run(client.list_closed_history(closed_after=cutoff))
+
+    assert calls == [
+        [
+            "list",
+            "--status",
+            "closed",
+            "--sort",
+            "closed",
+            "--no-pager",
+            "--limit",
+            "0",
+            "--closed-after",
+            "2026-05-01T12:30:00Z",
+        ]
+    ]
+
+
+def test_closed_after_none_stays_unbounded() -> None:
+    # bdboard-gp06: the 'all' range passes closed_after=None and must NOT add
+    # a --closed-after bound — it stays a genuine full-table read by design.
+    client, calls = _client_returning([])
+
+    asyncio.run(client.list_closed_history(closed_after=None))
+
+    assert calls == [
+        ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", "0"]
+    ]
+    assert all("--closed-after" not in args for args in calls)
+
+
+def test_naive_closed_after_is_serialised_without_crashing() -> None:
+    # A tz-naive datetime (no tzinfo) is treated as UTC rather than raising,
+    # so callers that pass a naive cutoff still get a well-formed query.
+    from datetime import datetime
+
+    client, calls = _client_returning([])
+    cutoff = datetime(2026, 5, 1, 0, 0, 0)  # noqa: DTZ001 - intentional naive input
+
+    asyncio.run(client.list_closed_history(closed_after=cutoff))
+
+    assert calls[0][-2:] == ["--closed-after", "2026-05-01T00:00:00Z"]
+
+
 def test_non_list_payload_raises() -> None:
     # A malformed (non-array) payload is a contract failure and must raise so
     # the Store's except-and-keep-previous-cache path can log it loudly.

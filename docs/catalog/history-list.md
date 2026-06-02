@@ -65,12 +65,18 @@ URLs), not element-borne, keeping the wiring DRY.
      count (pre-pagination), `has_more` is `end < total`.
   Page-size validation lives in `derive.clamp_page_size` (~40), the single
   source of truth shared by the route and the selector.
-- **Source of truth:** `await store.snapshot_history()` in `src/bdboard/store.py`
-  (~117), which returns the **active + history-closed** (uncapped, full closed
-  record) issues.
+- **Source of truth:** `await store.snapshot_history(closed_after=cutoff)` in
+  `src/bdboard/store.py` (~117), which returns the **active + history-closed**
+  issues bounded by the active range's lower bound.
   The History page deliberately uses the long-window history-closed cache —
   **not** the board's short date-windowed closed set — so ranges wider than the
   board's closed window don't silently miss older closed work (bdboard-p8v).
+  The history fetch is never *count*-capped (anything older than a static cap
+  would be unreachable, bdboard-a194) but IS *window*-bounded: the route
+  resolves the range / custom-date lower bound once and pushes it down to the
+  bd query via `--closed-after`, so a narrow range fetches only its beads
+  rather than slurping the whole closed table (bdboard-gp06). `range=all`
+  passes `closed_after=None` and stays a genuine full-table read by design.
   Underneath it is still the in-memory Store cache (lazily loaded from the bd
   CLI, refreshed by the file watcher).
 - **Templates:**
@@ -158,10 +164,14 @@ Triggers and controls that re-render it:
 - **Count badge is the full total, not the page size.** The `{{ total }}` badge
   reflects every closed bead in the window, even when only one page is shown —
   it is `window["total"]`, computed pre-pagination.
-- **Long-window source, not the board window.** The list slices
-  `store.snapshot_history()` (uncapped history-closed), so the `90d`/`All`
-  ranges surface closed work older than the board's short closed window
-  (bdboard-p8v). The cap is a count cap, not a date cap.
+- **Long-window source, bounded by the active filter window.** The list
+  slices `store.snapshot_history(closed_after=cutoff)` — the history-closed
+  cache, count-uncapped but window-bounded by the active range's lower bound
+  pushed down to the bd query (bdboard-gp06) — so the `90d`/`All` ranges
+  surface closed work older than the board's short closed window (bdboard-p8v)
+  without slurping the whole closed table. The CLI fetch bound and the
+  in-memory `history_window` slice share one resolved cutoff, so there is no
+  off-by-one between them.
 - **`history_skeleton.html` placeholder.** The list region is reserved by six
   `.skeleton-row` blocks (and a title line) that mirror the real layout so the
   page paints instantly and hydrates without a layout shift. It is decorative

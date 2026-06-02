@@ -11,11 +11,14 @@ Design notes:
     - list_closed: closed issues bounded by the board's date window
       (BOARD_CLOSED_WINDOW_DAYS) via --closed-after, NOT a static count
       cap. Powers the Closed lane and the closed header count.
-- list_closed_history: the FULL closed record (bd list --limit 0, sorted by
-  closed_at desc). Powers the long-window History page, whose range /
-  custom-date / pagination controls bound the result set in-app — so the
-  fetch is deliberately uncapped (bdboard-a194) rather than truncated to a
-  static count, which would make anything older than the cap unreachable.
+- list_closed_history: the closed record for the long-window History page,
+  sorted by closed_at desc and never *count*-capped (bd list --limit 0,
+  bdboard-a194) — a static count cap would make anything older than the cap
+  unreachable. It IS bounded by the page's active filter *window* though:
+  closed_after pushes the range / custom-date lower bound down to the query
+  via --closed-after (bdboard-gp06), so a narrow range fetches only its
+  beads instead of slurping the whole closed table. The 'all' range passes
+  closed_after=None and stays a genuine full-table read by design.
 - show_long / history power bead-detail views and are cached with TTL +
   in-flight dedup.
 - All share _subprocess_gate, an asyncio.Semaphore(1). bd's embedded
@@ -279,27 +282,46 @@ class BdClient:
             )
         return closed
 
-    async def list_closed_history(self, limit: int | None = None) -> list[dict[str, Any]]:
-        """Fetch the FULL closed record for the HISTORY page (uncapped).
+    async def list_closed_history(
+        self,
+        limit: int | None = None,
+        closed_after: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch the closed record for the HISTORY page, count-uncapped.
 
         Distinct from :meth:`list_closed` (the board path): History is the
-        long-window retrospective surface, so it fetches every closed issue
-        (``bd list --limit 0``, sorted by closed_at desc) rather than a
-        count-capped slice. The page's range / custom-date / pagination
-        controls do the bounding in-app; a static fetch cap would silently
-        truncate to the newest N closures and make anything older
-        unreachable regardless of the filters (bdboard-a194).
+        long-window retrospective surface, so it never applies a *count* cap
+        (``--limit 0``); a static fetch cap would silently truncate to the
+        newest N closures and make anything older unreachable regardless of
+        the filters (bdboard-a194).
+
+        It IS, however, bounded by the page's active filter *window* when one
+        is supplied: ``closed_after`` pushes the range / custom-date lower
+        bound down to the bd query via ``--closed-after`` (mirroring the
+        board path), so a narrow range fetches only the beads closed inside
+        it rather than slurping every closed bead into memory on every
+        History snapshot (bdboard-gp06). The unbounded ``all`` view passes
+        ``closed_after=None`` and stays a genuine full-table read by design.
 
         Args:
             limit: Optional explicit fetch cap. Defaults to ``None`` =
-                unbounded (``--limit 0``). Pass a positive int only when a
-                caller genuinely wants a truncated fetch (e.g. a smoke test).
+                count-unbounded (``--limit 0``). Pass a positive int only
+                when a caller genuinely wants a truncated fetch (e.g. a
+                smoke test).
+            closed_after: Optional inclusive lower bound on ``closed_at``.
+                When supplied, shells ``--closed-after <iso>`` so the result
+                set is bounded by the chosen filter window. ``None`` (the
+                default) issues an unbounded query for the ``all`` range.
 
         Raises on subprocess failure or malformed JSON.
         """
         cap = 0 if limit is None else limit
+        args = ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", str(cap)]
+        if closed_after is not None:
+            cutoff = closed_after.astimezone(UTC) if closed_after.tzinfo else closed_after
+            args += ["--closed-after", cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")]
         closed = await self._run_json(
-            ["list", "--status", "closed", "--sort", "closed", "--no-pager", "--limit", str(cap)],
+            args,
             timeout=LIST_TIMEOUT_S,
         )
         if not isinstance(closed, list):

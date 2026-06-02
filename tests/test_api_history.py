@@ -59,14 +59,19 @@ def _bead(bead_id, *, days_ago, priority=2, assignee="dev", reason="done"):
 
 
 def _stub_snapshot(beads):
-    async def fake_snapshot():
+    async def fake_snapshot(closed_after=None):
         return beads
 
     # The board path uses snapshot(); the History page uses snapshot_history()
     # (bdboard-p8v split the two so the board's short date window doesn't
-    # truncate the long-window History view). Stub both so tests stay
-    # decoupled from which path the route under test happens to call.
-    app_module.store.snapshot = fake_snapshot  # type: ignore[assignment]
+    # truncate the long-window History view). The History path now also pushes
+    # the active range's lower bound down as ``closed_after`` (bdboard-gp06),
+    # so the history stub accepts (and ignores) that kwarg. Stub both so tests
+    # stay decoupled from which path the route under test happens to call.
+    async def fake_board_snapshot():
+        return beads
+
+    app_module.store.snapshot = fake_board_snapshot  # type: ignore[assignment]
     app_module.store.snapshot_history = fake_snapshot  # type: ignore[assignment]
 
 
@@ -522,3 +527,92 @@ def test_no_custom_dates_keeps_preset_behaviour() -> None:
     # Without from/to, the preset wins and its badge is pressed.
     assert 'aria-pressed="true"' in body
     assert 'hx-get="/api/history?range=90d&page=1&page_size=50"' in body
+
+
+# --- Filter-bounded fetch (bdboard-gp06) --------------------------------
+
+
+def _stub_snapshot_recording(beads):
+    """Like _stub_snapshot but records the closed_after the route forwards.
+
+    Returns a list capturing every ``closed_after`` value the route hands to
+    ``store.snapshot_history`` so tests can assert the active filter window is
+    pushed down to the data layer (bdboard-gp06).
+    """
+    seen: list = []
+
+    async def fake_snapshot(closed_after=None):
+        seen.append(closed_after)
+        return beads
+
+    app_module.store.snapshot_history = fake_snapshot  # type: ignore[assignment]
+    return seen
+
+
+def test_narrow_range_pushes_lower_bound_to_fetch() -> None:
+    # A narrow range bounds the fetch at the data layer: the route forwards a
+    # concrete closed_after cutoff (not None) so bd only pulls the in-window
+    # closures rather than slurping the whole closed table.
+    seen = _stub_snapshot_recording([_bead("a", days_ago=1)])
+
+    _call(range="7d")
+
+    assert len(seen) == 1
+    cutoff = seen[0]
+    assert cutoff is not None
+    delta = datetime.now(UTC) - cutoff
+    assert timedelta(days=6, hours=23) <= delta <= timedelta(days=7, hours=1)
+
+
+def test_all_range_keeps_fetch_unbounded() -> None:
+    # range=all is unbounded by design: the route forwards closed_after=None
+    # so the data layer issues a genuine full-table read.
+    seen = _stub_snapshot_recording([_bead("a", days_ago=1)])
+
+    _call(range="all")
+
+    assert seen == [None]
+
+
+def test_custom_window_pushes_from_date_lower_bound() -> None:
+    # A custom from/to selection bounds the fetch by the from_date lower
+    # bound, mirroring the preset path.
+    seen = _stub_snapshot_recording([_bead("a", days_ago=1)])
+
+    _call_custom(from_date="2026-05-01", to_date="2026-05-31")
+
+    assert len(seen) == 1
+    cutoff = seen[0]
+    assert cutoff is not None
+    assert cutoff.strftime("%Y-%m-%d") == "2026-05-01"
+
+
+def test_custom_to_only_leaves_fetch_unbounded() -> None:
+    # An open-ended lower bound (only a to_date, no from_date) resolves
+    # cutoff=None, so the fetch stays unbounded — the user explicitly chose
+    # no lower bound.
+    seen = _stub_snapshot_recording([_bead("a", days_ago=1)])
+
+    _call_custom(to_date="2026-05-31")
+
+    assert seen == [None]
+
+
+def test_window_kpi_throughput_consistent_across_ranges() -> None:
+    # The displayed closed-list total, the 'Closed (range)' KPI (stats n), and
+    # the throughput series must all reflect the SAME in-window closed set for
+    # every range (no off-by-one between the bd fetch bound and the derive
+    # slice). Asserted at the derive layer over one snapshot, sharing one now.
+    from bdboard import derive
+
+    now = datetime.now(UTC)
+    beads = [_bead(f"in{i}", days_ago=i) for i in range(1, 6)] + [_bead("out", days_ago=400)]
+
+    for range_key in ("7d", "30d", "90d", "all"):
+        window = derive.history_window(beads, range_key=range_key, page_size=100, now=now)
+        stats = derive.lead_time_stats(beads, range_key=range_key, now=now)
+        series = derive.throughput(beads, range_key=range_key, now=now)
+        combined = derive.combined(beads, range_key=range_key, now=now)
+        series_total = sum(d["count"] for d in series)
+        combined_total = sum(d["closed"] for d in combined)
+        assert window["total"] == stats["n"] == series_total == combined_total

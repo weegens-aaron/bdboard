@@ -13,10 +13,14 @@ The Store maintains THREE caches:
   2. Board-closed snapshot: closed issues bounded by the board's date
      window (BOARD_CLOSED_WINDOW_DAYS). Powers the Closed lane AND the
      header CLOSED KPI so the two numbers agree.
-  3. History-closed snapshot: the FULL closed record (uncapped fetch).
-     Powers the long-window History page, which is intentionally decoupled
-     from the board's date filter and does its own range/page bounding
-     in-app (bdboard-a194).
+  3. History-closed snapshot: the closed record for the long-window History
+     page. Never *count*-capped (anything older than a static cap would be
+     unreachable, bdboard-a194) but *window*-bounded: the active range /
+     custom-date lower bound is pushed down to the bd query via
+     --closed-after so a narrow range fetches only its beads instead of
+     slurping the whole closed table (bdboard-gp06). The 'all' range stays a
+     genuine full-table read by design. The cache is window-aware — a wider
+     cached window already covers any narrower sub-window.
 
 This split enables lazy-loading of the closed lane (bdboard-0yy):
   - First paint: /api/lanes fetches active-only (~5KB, fast)
@@ -36,8 +40,9 @@ Access patterns:
   * snapshot() — active + board-closed issues. Powers the header counts and
     the cached bead-lookup fallback. Lazy-loads on first call.
 
-  * snapshot_history() — active + history-closed (full closed record) issues.
-    For the History page only. Lazy-loads on first call.
+  * snapshot_history(closed_after) — active + history-closed issues bounded
+    by the active range/custom-date lower bound. For the History page only.
+    Lazy-loads (and re-queries on an uncovered, wider window) on first call.
 
   * refresh() — what the watcher calls. Pulls fresh data for ALL caches,
     compares against previous, returns True iff something changed.
@@ -55,6 +60,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from bdboard.bd import BdClient
@@ -76,6 +82,11 @@ class Store:
         self._active_snap: _Snapshot | None = None
         self._closed_snap: _Snapshot | None = None
         self._history_snap: _Snapshot | None = None
+        # The closed_at lower bound the cached history snapshot was fetched
+        # with (None == unbounded "all" fetch). Tracked so the window-aware
+        # cache can answer "does the cached set already cover this narrower
+        # request?" without re-querying bd (bdboard-gp06).
+        self._history_cutoff: datetime | None = None
         # Serializes refresh() so a burst of watcher events (or a watcher
         # event landing concurrently with a lazy snapshot load) results in
         # exactly one bd list call — not N parallel ones piling up against
@@ -115,24 +126,59 @@ class Store:
         closed = self._closed_snap.beads if self._closed_snap else []
         return active + closed
 
-    async def snapshot_history(self) -> list[dict[str, Any]]:
-        """Return active + history-closed (full closed record) issues.
+    async def snapshot_history(self, closed_after: datetime | None = None) -> list[dict[str, Any]]:
+        """Return active + history-closed issues, bounded by ``closed_after``.
 
         For the History page only. The History page is a long-window
-        retrospective surface (7d/30d/90d/All), so it needs the FULL closed
-        set — uncapped and NOT bounded by the board's short date window —
-        otherwise ranges wider than BOARD_CLOSED_WINDOW_DAYS, or pages past
-        the first, would silently miss older closed work (bdboard-a194).
-        Lazy-loads both the active cache and the history-closed cache on
-        first call.
+        retrospective surface (7d/30d/90d/All), so it is NOT count-capped
+        (anything older than a static cap would be unreachable, bdboard-a194).
+        It IS, however, bounded by the active filter *window*: ``closed_after``
+        (the range / custom-date lower bound resolved by the route) is pushed
+        down to the bd query via ``--closed-after`` so a narrow range fetches
+        only the beads closed inside it instead of slurping every closed bead
+        into memory on every snapshot (bdboard-gp06). ``closed_after=None`` is
+        the unbounded ``all`` view and stays a genuine full-table read by
+        design.
+
+        The history cache is window-aware: a cached snapshot fetched with a
+        lower (or absent) bound already covers any narrower sub-window, so we
+        only re-query bd when the request reaches further back than what we
+        hold (:meth:`_history_covers`). Lazy-loads the active cache and the
+        history-closed cache on the first/uncovered call.
         """
         if self._active_snap is None:
             await self._load_active()
-        if self._history_snap is None:
-            await self._load_history()
+        if not self._history_covers(closed_after):
+            await self._load_history(closed_after)
         active = self._active_snap.beads if self._active_snap else []
         history = self._history_snap.beads if self._history_snap else []
         return active + history
+
+    def _history_covers(self, requested_cutoff: datetime | None) -> bool:
+        """Does the cached history snapshot already cover ``requested_cutoff``?
+
+        The cache was fetched with ``--closed-after self._history_cutoff``
+        (None == unbounded). A request for closed-after ``requested_cutoff``
+        is satisfiable from cache iff the cache reaches at least as far back:
+
+          * an unbounded cache (cutoff None) covers any request;
+          * a bounded cache covers a request only when the request also has a
+            lower bound AND that bound is no earlier than the cache's
+            (``self._history_cutoff <= requested_cutoff``) — i.e. the request
+            is a sub-window of what we already hold;
+          * an unbounded request (None) is NOT covered by a bounded cache.
+
+        Returns False when nothing is cached yet. The in-memory derive layer
+        re-applies the exact bounds, so serving a wider superset is correct
+        — it just avoids a redundant bd query (bdboard-gp06).
+        """
+        if self._history_snap is None:
+            return False
+        if self._history_cutoff is None:
+            return True
+        if requested_cutoff is None:
+            return False
+        return self._history_cutoff <= requested_cutoff
 
     async def _load_active(self) -> None:
         """Load active issues into cache. Called on first snapshot_active()."""
@@ -164,16 +210,22 @@ class Store:
                 by_id={b["id"]: b for b in fresh if isinstance(b.get("id"), str)},
             )
 
-    async def _load_history(self) -> None:
-        """Load history-closed issues into cache. Called on first
-        snapshot_history(). Uses the uncapped full-record fetch so the
-        History page sees ALL closed work regardless of the board's date
-        filter, with range/page bounding done in-app (bdboard-a194)."""
+    async def _load_history(self, closed_after: datetime | None = None) -> None:
+        """Load history-closed issues into cache, bounded by ``closed_after``.
+
+        Called on the first snapshot_history() or whenever the request reaches
+        further back than the cached window. The fetch is never *count*-capped
+        (anything older than a static cap would be unreachable, bdboard-a194)
+        but IS *window*-bounded: ``closed_after`` pushes the active range's
+        lower bound down to the bd query so a narrow range fetches only its
+        beads rather than the whole closed table (bdboard-gp06). Records the
+        cutoff the snapshot was fetched with so :meth:`_history_covers` can
+        reuse it for narrower sub-windows."""
         async with self._refresh_lock:
-            if self._history_snap is not None:
-                return  # another coroutine loaded while we waited
+            if self._history_covers(closed_after):
+                return  # another coroutine loaded a covering window while we waited
             try:
-                fresh = await self.bd.list_closed_history()
+                fresh = await self.bd.list_closed_history(closed_after=closed_after)
             except Exception:
                 log.exception("store: bd list_closed_history failed; history cache stays empty")
                 return
@@ -181,6 +233,7 @@ class Store:
                 beads=fresh,
                 by_id={b["id"]: b for b in fresh if isinstance(b.get("id"), str)},
             )
+            self._history_cutoff = closed_after
 
     async def refresh(self) -> bool:
         """Re-fetch from bd and update both caches. Returns True iff the
@@ -223,13 +276,17 @@ class Store:
                     by_id={b["id"]: b for b in fresh_closed if isinstance(b.get("id"), str)},
                 )
 
-            # The History page's full (uncapped) closed cache is a separate
-            # data path (bdboard-p8v). Only refresh it if it was already
-            # lazy-loaded — no point paying for a long-window fetch nobody
-            # has asked for yet.
+            # The History page's closed cache is a separate, window-bounded
+            # data path (bdboard-p8v, bdboard-gp06). Only refresh it if it was
+            # already lazy-loaded — no point paying for a long-window fetch
+            # nobody has asked for yet — and re-fetch with the SAME cutoff the
+            # cache currently holds so the refreshed set stays the same window
+            # the page is viewing (not silently widened to unbounded).
             if self._history_snap is not None:
                 try:
-                    fresh_history = await self.bd.list_closed_history()
+                    fresh_history = await self.bd.list_closed_history(
+                        closed_after=self._history_cutoff
+                    )
                 except Exception:
                     log.exception("store: bd list_closed_history failed; keeping previous history")
                 else:
