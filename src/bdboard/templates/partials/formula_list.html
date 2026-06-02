@@ -1,29 +1,28 @@
 {# Formula picker — HTMX swap target for /api/formulas.
-   Lists each formula by name + description. Selecting one loads its variable
-   form into #formula-form via HTMX. Symmetric with partials/memory_list.html. #}
-
-{% set n = formulas|length %}
+   A single <select> dropdown of formulas. Choosing one fires an HTMX GET to
+   /api/formulas/{name}/form, swapping its variable form into #formula-form —
+   preserving the existing two-step pour flow. The load-error state is rendered
+   by the route (app.py); this partial owns the populated + empty states.
+   Symmetric with partials/memory_list.html. #}
 
 {% if formulas %}
-<ul class="formula-list" role="list">
-  {% for f in formulas %}
-  <li class="formula-card">
-    <button
-      type="button"
-      class="formula-pick-btn"
-      hx-get="/api/formulas/{{ f.name | urlencode }}/form"
-      hx-target="#formula-form"
-      hx-swap="innerHTML"
-      aria-label="Configure and pour {{ f.name }}"
-    >
-      <span class="formula-name">{{ f.name }}</span>
-      {% if f.description %}
-      <span class="formula-desc">{{ f.description }}</span>
-      {% endif %}
-    </button>
-  </li>
-  {% endfor %}
-</ul>
+<div class="formula-picker">
+  <label class="formula-picker-label" for="formula-select">Formula</label>
+  <select
+    id="formula-select"
+    class="formula-select"
+    aria-label="Choose a formula to pour"
+    autocomplete="off"
+    hx-on:change="if (this.value) htmx.ajax('GET', '/api/formulas/' + encodeURIComponent(this.value) + '/form', {target: '#formula-form', swap: 'innerHTML'})"
+  >
+    <option value="" selected>Choose a formula…</option>
+    {% for f in formulas %}
+    <option value="{{ f.name }}"{% if f.description %} title="{{ f.description }}"{% endif %}>
+      {{ f.name }}{% if f.description %} — {{ f.description }}{% endif %}
+    </option>
+    {% endfor %}
+  </select>
+</div>
 {% else %}
 <p class="formula-empty muted">
   No formulas found — add one under <code>.beads/formulas/</code> or run

@@ -132,6 +132,44 @@ def test_api_formulas_renders_picker() -> None:
     assert "Audit" in body
 
 
+def test_api_formulas_renders_dropdown_not_buttons() -> None:
+    """Picker is a single <select> dropdown with accessible labeling, and an
+    HTMX change handler that loads the variable form — not a list of buttons."""
+    _stub_list_formulas(
+        [
+            {"name": "code-health-audit", "description": "Audit", "source": "/a"},
+            {"name": "docs-validation", "description": "Docs", "source": "/b"},
+        ]
+    )
+    resp = asyncio.run(app_module.api_formulas(_get_request("/api/formulas")))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    # A real dropdown, not the old button list.
+    assert "<select" in body
+    assert 'id="formula-select"' in body
+    assert "formula-pick-btn" not in body
+    # One <option> per formula (plus the placeholder).
+    assert body.count("<option") == 3
+    assert 'value="code-health-audit"' in body
+    assert 'value="docs-validation"' in body
+    # Accessible labeling: a real <label for> and/or aria-label.
+    assert 'for="formula-select"' in body
+    assert "aria-label" in body
+    # Change fires the HTMX two-step form load into #formula-form.
+    assert "#formula-form" in body
+    assert "/api/formulas/" in body
+
+
+def test_api_formulas_empty_state() -> None:
+    """No formulas → friendly empty-state message, no <select>."""
+    _stub_list_formulas([])
+    resp = asyncio.run(app_module.api_formulas(_get_request("/api/formulas")))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    assert "<select" not in body
+    assert "No formulas found" in body
+
+
 def test_api_formulas_degrades_on_bd_failure() -> None:
     _stub_list_formulas(RuntimeError("bd down"))
     resp = asyncio.run(app_module.api_formulas(_get_request("/api/formulas")))
