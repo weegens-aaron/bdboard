@@ -15,12 +15,19 @@ max_retries = 2
 accept = ["200..=299", "301", "302", "307", "308"]
 
 # Skip noise: virtualenvs, caches, deps, VCS internals.
+#
+# NB: exclude_path entries are REGEXES matched against the whole path, not
+# literal substrings. An unanchored ".git" matches "-git" too (the `.` is the
+# any-char metachar), which silently dropped docs/decisions/
+# 0003-beads-sync-via-dolt-git-refs.md from the sweep. Anchor every entry to a
+# path boundary -- (^|/)NAME(/|$) -- and escape literal dots so we only ever
+# exclude real directory names. (bdboard-mol-h8p)
 exclude_path = [
-    ".venv",
-    "node_modules",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".git",
+    "(^|/)\\.venv(/|$)",
+    "(^|/)node_modules(/|$)",
+    "(^|/)\\.pytest_cache(/|$)",
+    "(^|/)\\.ruff_cache(/|$)",
+    "(^|/)\\.git(/|$)",
 ]
 
 # Don't hammer mailto/tel links (off by default; explicit for clarity).
