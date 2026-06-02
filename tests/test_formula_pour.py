@@ -78,6 +78,15 @@ def _stub_read_vars(result: Any) -> None:
     app_module.bd.read_formula_variables = fake  # type: ignore[assignment]
 
 
+def _stub_read_detail(result: Any) -> None:
+    def fake(source: str) -> Any:
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    app_module.bd.read_formula_detail = fake  # type: ignore[assignment]
+
+
 def _stub_pour(result: Any) -> list[tuple[str, dict]]:
     calls: list[tuple[str, dict]] = []
 
@@ -137,21 +146,25 @@ def test_api_formula_form_renders_variables() -> None:
     _stub_list_formulas(
         [{"name": "demo", "description": "Demo formula", "source": "/x.formula.json"}]
     )
-    _stub_read_vars(
-        [
-            {
-                "name": "repo",
-                "description": "Repo",
-                "default": "bdboard",
-                "required": False,
-            },
-            {
-                "name": "token",
-                "description": "Token",
-                "default": None,
-                "required": True,
-            },
-        ]
+    _stub_read_detail(
+        {
+            "description": "Demo formula",
+            "variables": [
+                {
+                    "name": "repo",
+                    "description": "Repo",
+                    "default": "bdboard",
+                    "required": False,
+                },
+                {
+                    "name": "token",
+                    "description": "Token",
+                    "default": None,
+                    "required": True,
+                },
+            ],
+            "steps": [],
+        }
     )
     resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/demo/form"), "demo"))
     body = resp.body.decode()
@@ -166,6 +179,64 @@ def test_api_formula_form_404_for_unknown() -> None:
     _stub_list_formulas([{"name": "demo", "source": "/x"}])
     resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/nope/form"), "nope"))
     assert resp.status_code == 404
+
+
+def test_api_formula_form_shows_full_description_and_steps() -> None:
+    """bdboard-078p: the full (untruncated) description renders and a collapsed
+    <details> disclosure surfaces every step — even with no variables."""
+    long_desc = (
+        "A thorough audit that walks the entire codebase looking for smells, "
+        "dead code, and missing tests — the kind of description the list "
+        "payload would truncate with an ellipsis."
+    )
+    _stub_list_formulas(
+        [{"name": "demo", "description": long_desc[:20] + "\u2026", "source": "/x.formula.json"}]
+    )
+    _stub_read_detail(
+        {
+            "description": long_desc,
+            "variables": [],
+            "steps": [
+                {
+                    "id": "demo.scan",
+                    "title": "Scan the repo",
+                    "description": "Walk every file.",
+                    "type": "task",
+                    "priority": 2,
+                },
+                {
+                    "id": "demo.report",
+                    "title": "Write the report",
+                    "description": "Summarise findings.",
+                    "type": "task",
+                    "priority": 2,
+                },
+            ],
+        }
+    )
+    resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/demo/form"), "demo"))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    # Full, untruncated description (no ellipsis truncation from the list payload).
+    assert long_desc in body
+    assert "\u2026" not in body
+    # Collapsed-by-default native disclosure exposes the steps.
+    assert "<details" in body
+    assert "<details open" not in body  # collapsed by default
+    assert "Scan the repo" in body
+    assert "Write the report" in body
+    # Works with no variables.
+    assert "takes no variables" in body
+
+
+def test_api_formula_form_no_steps_block_when_empty() -> None:
+    """A formula with no steps shows no disclosure (clean degrade)."""
+    _stub_list_formulas([{"name": "demo", "description": "d", "source": "/x.formula.json"}])
+    _stub_read_detail({"description": "d", "variables": [], "steps": []})
+    resp = asyncio.run(app_module.api_formula_form(_get_request("/api/formulas/demo/form"), "demo"))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    assert "<details" not in body
 
 
 # ----- POST /api/formulas/{name}/pour -----

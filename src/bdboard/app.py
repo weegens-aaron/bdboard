@@ -825,14 +825,18 @@ async def api_formulas(request: Request) -> HTMLResponse:
 async def api_formula_form(request: Request, name: str) -> HTMLResponse:
     """Render the variable form for one formula (HTMX swap target).
 
-    Variables are read by PARSING the ``*.formula.json`` file directly (path
-    from ``source`` in ``formula list --json``) — NOT from
-    ``formula show --json`` (omits variables) nor the ``vars`` count (always
-    0). See the bd CLI formula gotchas documented in docs/design/.
+    The full (untruncated) description, variables AND step list are read by
+    PARSING the ``*.formula.json`` file directly (path from ``source`` in
+    ``formula list --json``) via :meth:`BdClient.read_formula_detail` — a
+    single file read. We do NOT use the list payload's ``description`` (it is
+    truncated), ``formula show --json`` (omits variables) nor the ``vars``
+    count (always 0). See the bd CLI formula gotchas documented in
+    docs/design/.
 
     One field per variable: ``description`` is the label/help, ``default`` is
     the prefilled value, and no-default variables are marked ``required`` so
-    the pour button pre-flight (§4.4) blocks until they are filled.
+    the pour button pre-flight (§4.4) blocks until they are filled. The steps
+    render inside a collapsed ``<details>`` disclosure (bdboard-078p).
     """
     try:
         formulas = await bd.list_formulas()
@@ -851,21 +855,26 @@ async def api_formula_form(request: Request, name: str) -> HTMLResponse:
         )
     source = match.get("source") or ""
     try:
-        variables = bd.read_formula_variables(source)
+        detail = bd.read_formula_detail(source)
     except RuntimeError as err:
-        log.warning("read_formula_variables(%s) failed: %s", source, err)
+        log.warning("read_formula_detail(%s) failed: %s", source, err)
         return HTMLResponse(
             '<p class="formula-error" role="alert">Couldn\u2019t read this '
-            "formula\u2019s variables. Please try again.</p>",
+            "formula\u2019s details. Please try again.</p>",
             status_code=200,
         )
+    # Prefer the full description parsed from the *.formula.json file; the
+    # `formula list --json` description is truncated (trailing …). Fall back to
+    # the list value only if the file somehow lacks one.
+    description = detail["description"] or (match.get("description") or "")
     return TEMPLATES.TemplateResponse(
         request,
         "partials/formula_form.html",
         {
             "name": name,
-            "description": match.get("description") or "",
-            "variables": variables,
+            "description": description,
+            "variables": detail["variables"],
+            "steps": detail["steps"],
         },
     )
 

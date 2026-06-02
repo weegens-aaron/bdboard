@@ -118,6 +118,108 @@ def test_read_formula_variables_bad_json_raises(tmp_path) -> None:
         client.read_formula_variables(str(path))
 
 
+# ----- read_formula_detail (bdboard-078p) -----
+
+
+def test_read_formula_detail_returns_description_vars_and_steps(tmp_path) -> None:
+    data = {
+        "formula": "demo",
+        "description": "A long, untruncated description of the demo formula.",
+        "variables": {
+            "repo": {"description": "Repo under audit", "default": "bdboard"},
+        },
+        "steps": [
+            {
+                "id": "root",
+                "title": "Umbrella epic",
+                "description": "Parents the tree",
+                "type": "epic",
+                "priority": 2,
+            },
+            {
+                "id": "child",
+                "title": "A child task",
+                "description": "Does work",
+                "type": "task",
+                "priority": 1,
+            },
+        ],
+    }
+    path = tmp_path / "demo.formula.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    client = BdClient()
+
+    detail = client.read_formula_detail(str(path))
+
+    assert detail["description"] == ("A long, untruncated description of the demo formula.")
+    assert detail["variables"] == [
+        {
+            "name": "repo",
+            "description": "Repo under audit",
+            "default": "bdboard",
+            "required": False,
+        }
+    ]
+    assert detail["steps"] == [
+        {
+            "id": "root",
+            "title": "Umbrella epic",
+            "description": "Parents the tree",
+            "type": "epic",
+            "priority": 2,
+        },
+        {
+            "id": "child",
+            "title": "A child task",
+            "description": "Does work",
+            "type": "task",
+            "priority": 1,
+        },
+    ]
+
+
+def test_read_formula_detail_no_steps_or_vars_is_empty(tmp_path) -> None:
+    path = tmp_path / "bare.formula.json"
+    path.write_text(
+        json.dumps({"formula": "bare", "description": "Just a desc"}),
+        encoding="utf-8",
+    )
+    client = BdClient()
+
+    detail = client.read_formula_detail(str(path))
+
+    assert detail == {
+        "description": "Just a desc",
+        "variables": [],
+        "steps": [],
+    }
+
+
+def test_read_formula_detail_skips_malformed_steps(tmp_path) -> None:
+    path = tmp_path / "messy.formula.json"
+    path.write_text(
+        json.dumps(
+            {
+                "formula": "messy",
+                "steps": ["not-a-dict", {"id": "ok", "title": "OK"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = BdClient()
+
+    steps = client.read_formula_detail(str(path))["steps"]
+
+    assert steps == [{"id": "ok", "title": "OK", "description": "", "type": "", "priority": None}]
+
+
+def test_read_formula_detail_missing_file_raises() -> None:
+    client = BdClient()
+
+    with pytest.raises(RuntimeError, match="Could not read formula file"):
+        client.read_formula_detail("/no/such/path.formula.json")
+
+
 # ----- pour_formula -----
 
 

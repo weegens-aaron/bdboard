@@ -670,6 +670,43 @@ class BdClient:
 
         Raises RuntimeError if the file is missing or unparseable.
         """
+        return self._parse_variables(self._load_formula_json(source))
+
+    def read_formula_detail(self, source: str) -> dict[str, Any]:
+        """Parse a formula's full description + variables + steps in one read.
+
+        ``source`` is the absolute path bd reports in ``formula list --json``.
+        We read the on-disk ``*.formula.json`` template because it is the ONLY
+        reliable source for BOTH the untruncated description and the step list:
+          - ``formula list --json`` TRUNCATES the description (trailing ``…``).
+          - ``formula show --json`` omits variables and isn't relied on here.
+
+        Returns::
+
+            {"description": str,                 # full, untruncated
+             "variables": [ {name, description,  # same shape as
+                             default, required} ],#   read_formula_variables
+             "steps": [ {id, title, description, type, priority} ]}
+
+        Sharing :meth:`_load_formula_json` keeps this single-read and DRY with
+        :meth:`read_formula_variables` (which the pour route still uses on its
+        own). Raises RuntimeError if the file is missing or unparseable.
+        """
+        data = self._load_formula_json(source)
+        return {
+            "description": data.get("description") or "",
+            "variables": self._parse_variables(data),
+            "steps": self._parse_steps(data),
+        }
+
+    @staticmethod
+    def _load_formula_json(source: str) -> dict[str, Any]:
+        """Read + parse a ``*.formula.json`` file into a dict.
+
+        Shared loader for :meth:`read_formula_variables` and
+        :meth:`read_formula_detail`. Raises RuntimeError on a missing file,
+        invalid JSON, or a non-object top level.
+        """
         path = Path(source)
         try:
             raw = path.read_text(encoding="utf-8")
@@ -679,6 +716,13 @@ class BdClient:
             data = json.loads(raw)
         except json.JSONDecodeError as err:
             raise RuntimeError(f"Formula file is not valid JSON: {err}") from err
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Formula file is not a JSON object ({type(data).__name__})")
+        return data
+
+    @staticmethod
+    def _parse_variables(data: dict[str, Any]) -> list[dict[str, Any]]:
+        """Extract the ordered variable descriptors from parsed formula data."""
         variables = data.get("variables")
         if not isinstance(variables, dict):
             # No variables block (or a malformed one) → an empty form, which is
@@ -694,6 +738,33 @@ class BdClient:
                     "description": spec.get("description") or "",
                     "default": default,
                     "required": default is None,
+                }
+            )
+        return result
+
+    @staticmethod
+    def _parse_steps(data: dict[str, Any]) -> list[dict[str, Any]]:
+        """Extract the ordered step descriptors from parsed formula data.
+
+        Each step exposes the fields the modal surfaces: ``id``, ``title``,
+        ``description``, ``type`` and ``priority``. Non-dict entries (a
+        malformed steps array) are skipped rather than raising — a partial
+        step list is more useful in the disclosure than a hard error.
+        """
+        steps = data.get("steps")
+        if not isinstance(steps, list):
+            return []
+        result: list[dict[str, Any]] = []
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            result.append(
+                {
+                    "id": step.get("id") or "",
+                    "title": step.get("title") or "",
+                    "description": step.get("description") or "",
+                    "type": step.get("type") or "",
+                    "priority": step.get("priority"),
                 }
             )
         return result

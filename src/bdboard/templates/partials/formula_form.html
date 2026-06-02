@@ -22,6 +22,30 @@
   <p class="formula-form-desc muted">{{ description }}</p>
   {% endif %}
 
+  {% if steps %}
+  <details class="formula-steps">
+    <summary class="formula-steps-summary">
+      Show all steps
+      <span class="formula-steps-count">({{ steps | length }})</span>
+    </summary>
+    <ol class="formula-steps-list">
+      {% for s in steps %}
+      <li class="formula-step">
+        <div class="formula-step-head">
+          <span class="formula-step-title">{{ s.title or s.id }}</span>
+          {% if s.type %}
+          <span class="formula-step-type">{{ s.type }}</span>
+          {% endif %}
+        </div>
+        {% if s.description %}
+        <p class="formula-step-desc">{{ s.description }}</p>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </details>
+  {% endif %}
+
   {% if variables %}
   <div class="formula-fields">
     {% for v in variables %}
