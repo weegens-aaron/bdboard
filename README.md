@@ -97,8 +97,9 @@ make test              # runs the full pytest suite against this repo's own .bea
 
 ## Code health (CI gates)
 
-The mechanical, deterministic code-health checks run on every push/PR via
-`.github/workflows/code-health.yml` and gate merges. Run the exact same set
+The mechanical, deterministic code-health checks run on every pull request and
+on pushes to `main`/`working` via `.github/workflows/code-health.yml` and gate
+merges. Run the exact same set
 locally with:
 
 ```sh
