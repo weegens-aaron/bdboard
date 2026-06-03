@@ -9,9 +9,10 @@ swim lanes, the epic strip, the masthead counts, the activity feed, and every
 History-page series and KPI. It owns **no I/O, no caching, and no global
 state**: each function takes the snapshot list (plus optional plain arguments
 like a range key or page number) and returns a fresh value. Freshness is the
-[Store](store-snapshot-cache.md)'s job; *talking to bd* is the
-[`Bd` client](bd-cli-source-of-truth.md)'s job; the derive layer's only job is
-**shaping**.
+Store's job; *talking to bd* is the `Bd` client's job; the derive layer's only
+job is **shaping**. (The Store and `Bd` client each get their own Concept doc —
+`store-snapshot-cache.md` and `bd-cli-source-of-truth.md`, manifest items 022
+and 021 — once those beads land; see [Related](#related).)
 
 ## Why this approach
 
@@ -121,9 +122,10 @@ flowchart TD
 | Consumer | How |
 | --- | --- |
 | [`app.py:api_lanes`](../../src/bdboard/app.py) | `derive.epic_lane(...)`, `derive.lanes(beads)`, `derive.activity(beads)` shape the board view |
+| [`app.py:_hydrate_epic_dependencies`](../../src/bdboard/app.py) | `derive.get_dependency_list(full)` reads each epic's dep edges before `epic_lane`; called from `api_lanes` |
 | [`app.py:api_counts`](../../src/bdboard/app.py) | `derive.counts(await store.snapshot())` powers the masthead KPI strip |
 | [`app.py:api_history`](../../src/bdboard/app.py) | `resolve_history_bounds` / `clamp_page_size` / `history_window` / `throughput` / `created` / `combined` / `lead_time_stats` build the entire History page; `HISTORY_RANGES` / `HISTORY_PAGE_SIZES` populate the filter controls |
-| [`app.py:api_bead_audit` / `api_bead`](../../src/bdboard/app.py) | `derive.status_timeline(entries)` enriches the audit view; `derive.get_dependency_list(full)` reads dep edges |
+| [`app.py:api_bead_audit`](../../src/bdboard/app.py) | `derive.status_timeline(entries)` enriches the audit view with the per-bead status-transition timeline |
 | [`app.py` Jinja filters](../../src/bdboard/app.py) | `humanize_ts` / `humanize_hours` registered as template filters |
 | [`app.py` edit guard](../../src/bdboard/app.py) | `_LOCKED_EDIT_STATUSES = derive.CLOSED_STATUSES \| {"in_progress"}` — one definition of "closed" |
 | [`bd.py`](../../src/bdboard/bd.py) | Imports `BOARD_CLOSED_WINDOW_DAYS` to bound the board's closed fetch (`--closed-after`) consistently with the lane derivation |
@@ -136,8 +138,8 @@ flowchart TD
 > - **Stay pure.** No `bd` calls, no file reads, no caching, no `datetime.now()`
 >   baked into business logic. Time-dependent functions (`_range_to_cutoff`,
 >   `throughput`, `lead_time_stats`, …) take an injectable `now` so tests are
->   deterministic. Freshness belongs to the [Store](store-snapshot-cache.md);
->   fetching belongs to the [`Bd` client](bd-cli-source-of-truth.md).
+>   deterministic. Freshness belongs to the Store (`store-snapshot-cache.md`);
+>   fetching belongs to the `Bd` client (`bd-cli-source-of-truth.md`).
 > - **Read fields through the accessors.** bd's JSON shape varies — deps live
 >   under `deps` *or* `dependencies`, a dep type under `type` *or*
 >   `dependency_type`, a target under `depends_on_id` / `target` / `id` /
@@ -187,8 +189,10 @@ flowchart TD
 
 ## Related
 
-- [Concept: bd CLI as runtime source of truth](bd-cli-source-of-truth.md)
-- [Concept: Store snapshot cache & change detection](store-snapshot-cache.md)
+- Concept: bd CLI as runtime source of truth — `Concepts/bd-cli-source-of-truth.md`
+  *(forthcoming; manifest item 021)*
+- Concept: Store snapshot cache & change detection — `Concepts/store-snapshot-cache.md`
+  *(forthcoming; manifest item 022)*
 - [Concept: Watcher debounce/cooldown & self-feedback skip](watcher-scheduling.md)
 - [Concept: HTMX + server-rendered partials](htmx-partials-architecture.md)
 - [Architecture](../Architecture.md)
