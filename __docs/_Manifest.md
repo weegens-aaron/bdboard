@@ -7,10 +7,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 11
-- **Remaining:** 14
+- **Done:** 12
+- **Remaining:** 13
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 3/7 | Views 3/3 | Concepts 5/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 4/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -33,7 +33,7 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 3/7 | Views 3/3 | Concepts 5/5
 - [ ] 011 | Endpoint: SSE events (/api/events) -> [sse-events](Endpoints/sse-events.md)
 - [ ] 012 | Endpoint: Lanes API (/api/lanes, /api/lanes/closed, /api/counts) -> [lanes-api](Endpoints/lanes-api.md)
 - [ ] 013 | Endpoint: History API (/api/history) -> [history-api](Endpoints/history-api.md)
-- [ ] 014 | Endpoint: Memory API (/api/memory GET/POST/DELETE) -> [memory-api](Endpoints/memory-api.md)
+- [x] 014 | Endpoint: Memory API (/api/memory GET/POST/DELETE) -> [memory-api](Endpoints/memory-api.md)
 - [x] 015 | Endpoint: Formulas API (/api/formulas, form, pour) -> [formulas-api](Endpoints/formulas-api.md)
 - [x] 016 | Endpoint: Bead detail API (/api/bead/{id}, /audit, /raw) -> [bead-detail-api](Endpoints/bead-detail-api.md)
 - [x] 017 | Endpoint: Bead field-edit API (POST /api/bead/{id}/field) -> [bead-field-edit-api](Endpoints/bead-field-edit-api.md)
