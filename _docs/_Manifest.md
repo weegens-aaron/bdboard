@@ -8,10 +8,10 @@
 ## Progress
 
 - **Total items:** 15
-- **Done:** 13
-- **Remaining:** 2
+- **Done:** 14
+- **Remaining:** 1
 
-By section: Features 4/6 | Concepts 4/4 | Guides 5/5
+By section: Features 5/6 | Concepts 4/4 | Guides 5/5
 
 > [!IMPORTANT]
 > **Section choice for the user edition.** Per the FlowDoc contract, **Endpoint**
@@ -28,7 +28,7 @@ By section: Features 4/6 | Concepts 4/4 | Guides 5/5
 ## Features
 
 - [ ] 001 | Feature: The board (swim lanes & activity) -> [the-board](Features/the-board.md)
-- [ ] 002 | Feature: Bead detail & editing -> [bead-detail-and-editing](Features/bead-detail-and-editing.md)
+- [x] 002 | Feature: Bead detail & editing -> [bead-detail-and-editing](Features/bead-detail-and-editing.md)
 - [x] 003 | Feature: History & trends -> [history-and-trends](Features/history-and-trends.md)
 - [x] 004 | Feature: Memory manager -> [memory-manager](Features/memory-manager.md)
 - [x] 005 | Feature: Create from formulas -> [create-from-formulas](Features/create-from-formulas.md)
