@@ -7,10 +7,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 20
-- **Remaining:** 5
+- **Done:** 21
+- **Remaining:** 4
 
-By section: Features 1/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
+By section: Features 2/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -18,7 +18,7 @@ By section: Features 1/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 - [ ] 002 | Feature: Bead detail & inline editing -> [bead-detail-and-inline-editing](Features/bead-detail-and-inline-editing.md)
 - [ ] 003 | Feature: History & trends -> [history-and-trends](Features/history-and-trends.md)
 - [ ] 004 | Feature: Memory management -> [memory-management](Features/memory-management.md)
-- [ ] 005 | Feature: Formula pour -> [formula-pour](Features/formula-pour.md)
+- [x] 005 | Feature: Formula pour -> [formula-pour](Features/formula-pour.md)
 - [x] 006 | Feature: Live auto-refresh -> [live-auto-refresh](Features/live-auto-refresh.md)
 
 ## Flows
