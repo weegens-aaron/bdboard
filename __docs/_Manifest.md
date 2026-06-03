@@ -7,10 +7,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 0
-- **Remaining:** 25
+- **Done:** 1
+- **Remaining:** 24
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 0/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 1/5
 
 ## Features
 
@@ -50,4 +50,4 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 0/5
 - [ ] 022 | Concept: Store snapshot cache & change detection -> [store-snapshot-cache](Concepts/store-snapshot-cache.md)
 - [ ] 023 | Concept: Derive layer (pure view shaping) -> [derive-layer](Concepts/derive-layer.md)
 - [ ] 024 | Concept: Watcher debounce/cooldown & self-feedback skip -> [watcher-scheduling](Concepts/watcher-scheduling.md)
-- [ ] 025 | Concept: HTMX + server-rendered partials -> [htmx-partials-architecture](Concepts/htmx-partials-architecture.md)
+- [x] 025 | Concept: HTMX + server-rendered partials -> [htmx-partials-architecture](Concepts/htmx-partials-architecture.md)
