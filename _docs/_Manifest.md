@@ -8,10 +8,10 @@
 ## Progress
 
 - **Total items:** 15
-- **Done:** 9
-- **Remaining:** 6
+- **Done:** 10
+- **Remaining:** 5
 
-By section: Features 0/6 | Concepts 4/4 | Guides 5/5
+By section: Features 1/6 | Concepts 4/4 | Guides 5/5
 
 > [!IMPORTANT]
 > **Section choice for the user edition.** Per the FlowDoc contract, **Endpoint**
@@ -32,7 +32,7 @@ By section: Features 0/6 | Concepts 4/4 | Guides 5/5
 - [ ] 003 | Feature: History & trends -> [history-and-trends](Features/history-and-trends.md)
 - [ ] 004 | Feature: Memory manager -> [memory-manager](Features/memory-manager.md)
 - [ ] 005 | Feature: Create from formulas -> [create-from-formulas](Features/create-from-formulas.md)
-- [ ] 006 | Feature: Live updates -> [live-updates](Features/live-updates.md)
+- [x] 006 | Feature: Live updates -> [live-updates](Features/live-updates.md)
 
 ## Concepts
 
