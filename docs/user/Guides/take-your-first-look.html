@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to: Take your first look — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="../Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="../Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="../Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="../Features/create-from-formulas.html">Create-from-formulas</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-updates.html">Live-updates</a>
+<a href="../Features/memory-manager.html">Memory-manager</a>
+<a href="../Features/the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="index.html">Index</a>
+<a href="create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="edit-a-bead.html">Edit-a-bead</a>
+<a href="explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="manage-agent-memories.html">Manage-agent-memories</a>
+<a href="take-your-first-look.html" class="active">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="how-to-take-your-first-look">How to: Take your first look</h1>
+<h2 id="goal">Goal</h2>
+<p>Open bdboard for the very first time and get your bearings. By the end of this guide you'll have the dashboard up in your browser, you'll know what every part of the <strong>Board</strong> is telling you — the title, the running counts, the swim lanes, the epics strip, and the live activity feed — and you'll know how to peek inside a single bead, switch between the three main pages, dim the lights with dark mode, and narrow the board to just the last few hours or days. Think of this as the orientation tour before any of the task-focused guides.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>A project that bdboard can read — that is, a workspace that already has beads in it. bdboard is a <em>window onto</em> your existing bead data; it doesn't create the project for you.</li>
+<li>A way to launch bdboard. You start it the way you normally start it for your setup; when it launches it prints an address and usually pops open a browser tab for you. If a tab doesn't open on its own, open the address it shows you.</li>
+<li>A web browser. There's nothing to install in the browser, no account, and no sign-in — everything you see is read straight from your own project on your own machine. See the <a href="../Concepts/index.html">Concepts</a> section — <em>Your data is local &amp; safe</em> — for where what you see actually comes from.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>The Board is a <em>live, read-only</em> view of your work. Just looking around — clicking a bead open, switching pages, flipping to dark mode, or changing the time window — never changes your beads. You can explore the whole tour freely without worrying about altering anything.</p></div>
+<h2 id="steps">Steps</h2>
+<p>Here's the shape of the tour: get the board open, read each part of the screen from the top down, then try the handful of things you can click.</p>
+<pre class="mermaid">
+flowchart TD
+    A[Launch bdboard] --&gt; B[A browser tab opens at the address shown]
+    B --&gt; C[Read the title and the counts strip]
+    C --&gt; D[Scan the Epics strip]
+    D --&gt; E[Read the swim lanes left to right]
+    E --&gt; F[Skim the Activity feed]
+    F --&gt; G{Want a closer look?}
+    G --&gt;|Open one bead| H[Click any bead card]
+    G --&gt;|See finished work| I[Click History in the top bar]
+    G --&gt;|Adjust the view| J[Try dark mode or the time filter]
+</pre>
+<h3 id="open-the-board">Open the board</h3>
+<ol>
+<li>Launch bdboard the way you normally do for your setup — *expected result: after a moment a browser tab opens at the address bdboard prints when it starts. If no tab opens automatically, open that address yourself. The page that loads is the <strong>Board</strong>.*</li>
+<li>Give the page a second to fill in — *expected result: the layout appears right away as a set of empty-looking columns (placeholders), then the real numbers and bead cards fade in a heartbeat later. This two-stage paint is normal: bdboard shows you the page shape instantly and then drops in the live data so nothing jumps around.*</li>
+</ol>
+<h3 id="read-the-top-of-the-screen">Read the top of the screen</h3>
+<ol>
+<li>Look at the top-left of the page — *expected result: your workspace's name is shown as the page title, so you can tell at a glance which project you're looking at.*</li>
+<li>Look at the strip of figures along the top-right, next to the title — *expected result: a small row of running totals for your workspace, labelled <strong>Open</strong>, <strong>Blocked</strong>, <strong>Deferred</strong>, and <strong>Closed</strong>, each with its count. A label that reads zero is shown muted rather than hidden, so the strip keeps a steady shape and never jumps around as numbers change.*</li>
+</ol>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>You won't see an "In Progress" tally in that top strip, and that's on purpose. bdboard treats work as one-thing-at-a-time, so a count that only ever reads 0 or 1 would just be clutter. The single active item already has its own column further down the page (see the next steps), which is the clearer place to look for "what's being worked on right now".</p></div>
+<h3 id="read-the-second-row">Read the second row</h3>
+<ol>
+<li>Just below the title, find the row of page links: <strong>Board</strong>, <strong>History</strong>, and <strong>Memory</strong> — *expected result: three text links sitting together. <strong>Board</strong> is shown as the current page (it's emphasised and marked as where you are). These are how you move between the three main areas of bdboard.*</li>
+<li>Over on the right of that same row, find the <strong>Dark</strong> / <strong>Light</strong> toggle and the <strong>+ Pour Formula</strong> button — *expected result: the toggle's label tells you which mode you'd switch <em>to</em>, and the button is your entry point for creating new beads from a saved formula (covered in its own guide).*</li>
+</ol>
+<h3 id="read-the-swim-lanes">Read the swim lanes</h3>
+<ol>
+<li>Look at the <strong>Epics</strong> strip near the top of the main area — *expected result: a horizontal row of larger cards, one per active epic, each showing its id, priority, title, and current status. Epics are the big umbrella items that group smaller beads together; if there are none active you'll see a quiet "(no active epics)" note instead.*</li>
+<li>Below the epics, read the columns (the "swim lanes") from left to right — <strong>Deferred</strong>, <strong>Blocked</strong>, <strong>Ready</strong>, and <strong>In Progress</strong> — each with a count beside its name — *expected result: every lane holds the beads in that state as small cards. <strong>Deferred</strong> is parked-for-later, <strong>Blocked</strong> is waiting on something else, <strong>Ready</strong> is fair game to pick up, and **In Progress** holds the item being worked on right now. An empty lane shows a gentle "(empty)" marker so you can tell it loaded but has nothing in it.* For the full story of how a bead moves between these lanes, see the <a href="../Concepts/index.html">Concepts</a> section — <em>Bead lifecycle &amp; the lanes</em>.</li>
+<li>Find the <strong>Closed</strong> lane — *expected result: it briefly shows shimmering placeholder cards, then fills with recently closed beads. It loads a moment after the other lanes by design, so the rest of the board is usable straight away. The Board only keeps <em>recently</em> closed work here; the full back catalogue lives on the <strong>History</strong> page.*</li>
+<li>Find the <strong>Activity</strong> feed — *expected result: a running list of the latest things that have happened — beads created, claimed, updated, and closed — newest first, each line showing roughly when it happened, what happened, who did it, and which bead. If nothing's happened yet you'll see "no activity yet".*</li>
+</ol>
+<h3 id="read-a-bead-card">Read a bead card</h3>
+<ol>
+<li>Look at any single card in a lane — *expected result: each card shows the bead's id and, where set, a priority badge, its title, and a line of extra detail such as who it's assigned to, its type, and a marker if it has dependencies. That's the at-a-glance summary; the full detail is one click away.<em> For what a bead actually </em>is*, see the <a href="../Concepts/index.html">Concepts</a> section — <em>What is a bead?</em>.</li>
+</ol>
+<h3 id="try-the-few-things-you-can-click">Try the few things you can click</h3>
+<ol>
+<li>Click any bead card (or an epic, or a line in the Activity feed) — *expected result: a detail view opens over the board showing everything bdboard knows about that bead. Close it to return to the board exactly where you were.* To go further and change a bead's contents, see <a href="edit-a-bead.html">Edit a bead</a>.</li>
+<li>Above the lanes on the right, find the small time-window buttons — <strong>12h</strong>, <strong>1d</strong>, and <strong>3d</strong> — and click a different one — *expected result: the one you pick becomes highlighted and the board narrows to show work from just that window. It starts on <strong>1d</strong> (the last day). For looking further back than a few days, that's what the History page is for.*</li>
+<li>Click the <strong>Dark</strong> / <strong>Light</strong> toggle on the top row — *expected result: the whole page switches between light and dark appearance, and the toggle's label flips to offer the other mode. Your choice sticks, so bdboard remembers it next time.*</li>
+<li>Click <strong>History</strong> in the top row, then <strong>Memory</strong>, then <strong>Board</strong> again — *expected result: each link takes you to that page, and the link for wherever you are is always shown as the current one. You've now seen all three areas; Board is home base.* From here, dig into finished work with <a href="explore-history-and-trends.html">Explore history &amp; trends</a> or browse saved notes with <a href="manage-agent-memories.html">Manage agent memories</a>.</li>
+</ol>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>The board updates itself live — when work changes, the lanes, counts, and activity feed refresh on their own within a moment, with no need to reload. That's why a card may appear, move, or vanish while you're looking: someone (or something) just changed a bead. See the <a href="../Features/index.html">Features</a> section — <em>Live updates</em>.</p></div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table><thead><tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr></thead><tbody>
+<tr>
+<td>No browser tab opened when I launched bdboard.</td>
+<td>bdboard prints an address when it starts — open that address in your browser yourself. (Some setups deliberately don't auto-open a tab.)</td>
+</tr>
+<tr>
+<td>The page title says "workspace not ready" and it won't show a board.</td>
+<td>bdboard was started somewhere that isn't a bead project. Start it from inside your project's directory, or point it at your project, then reload.</td>
+</tr>
+<tr>
+<td>The board loads but every lane is empty.</td>
+<td>Your project genuinely has no beads yet, or its history hasn't been brought onto this machine. Once there are beads to show, they'll appear; until then the empty lanes are expected.</td>
+</tr>
+<tr>
+<td>The columns appear but the numbers and cards never fill in.</td>
+<td>bdboard paints the page shape first and then loads the live data. If the data never arrives, reload the page; if it still won't load, the underlying bead tool may be stuck — wait a moment and try again.</td>
+</tr>
+<tr>
+<td>The Closed lane just shows shimmering placeholders forever.</td>
+<td>The Closed lane loads a beat after the others. Give it a second; if it never settles, reload the page.</td>
+</tr>
+<tr>
+<td>I changed the time window and beads disappeared.</td>
+<td>That's the filter working — the board is now showing only the chosen window (12h, 1d, or 3d). Pick a wider button, or visit <strong>History</strong> to look further back.</td>
+</tr>
+<tr>
+<td>The board "reset" or a card jumped while I was reading.</td>
+<td>bdboard refreshes itself live when work changes, so the view can shift on its own as beads are created, claimed, or closed. Nothing's broken — it's just staying current.</td>
+</tr>
+<tr>
+<td>Dark mode (or my time-window choice) didn't stick.</td>
+<td>These preferences are remembered in your browser. If they reset, your browser may be clearing site data between visits — check its privacy settings.</td>
+</tr>
+</tbody></table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/index.html">Features</a> — includes <em>The board (swim lanes &amp; activity)</em>, a fuller tour of everything the Board page shows, and <em>Live updates</em>, why the board refreshes itself when work changes.</li>
+<li><a href="../Concepts/index.html">Concepts</a> — includes <em>What is a bead?</em> (the basic unit you see on every card), <em>Bead lifecycle &amp; the lanes</em> (how a bead travels from filed to closed, which is what the lanes represent), and *Your data is local &amp; safe* (where what you see actually comes from).</li>
+<li><a href="edit-a-bead.html">Edit a bead</a> — opening a bead and changing its contents.</li>
+<li><a href="explore-history-and-trends.html">Explore history &amp; trends</a> — reviewing finished work over time.</li>
+<li><a href="create-beads-from-a-formula.html">Create beads from a formula</a> — using the <strong>+ Pour Formula</strong> button.</li>
+<li><a href="manage-agent-memories.html">Manage agent memories</a> — the <strong>Memory</strong> page.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

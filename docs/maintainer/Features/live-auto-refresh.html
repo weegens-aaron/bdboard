@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Live auto-refresh — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="../Concepts/derive-layer.html">Derive-layer</a>
+<a href="../Concepts/htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="../Concepts/store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="../Concepts/watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="index.html">Index</a>
+<a href="bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="formula-pour.html">Formula-pour</a>
+<a href="history-and-trends.html">History-and-trends</a>
+<a href="live-auto-refresh.html" class="active">Live-auto-refresh</a>
+<a href="memory-management.html">Memory-management</a>
+<a href="swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-live-auto-refresh">Feature: Live auto-refresh</h1>
+<h2 id="what-it-does">What it does</h2>
+<p>Live auto-refresh keeps every open bdboard tab in lock-step with the underlying <code>bd</code> workspace <strong>without polling and without a manual reload</strong>. The moment a bead changes — whether the write came from this tab, another tab, a CLI <code>bd</code> command, another agent, or a <code>/bead-chain</code> run — the board, KPI counts, history, and memory regions re-render within roughly a second. bdboard is a pure <em>observer</em> on the dolt-native source of truth: this feature never writes beads, it only notices that they changed (via a filesystem watcher) or is told that they changed (via an in-process optimistic broadcast from bdboard's own write routes), and then pushes a content-free "go re-fetch" signal over a long-lived Server-Sent Events (SSE) stream to every connected browser.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>A bead board is only trustworthy if it reflects <em>current</em> state. The whole point of bdboard is to be a glanceable, always-correct window onto a workspace that is being mutated continuously by humans and agents from outside the browser. If the user had to hit reload — or if the page polled on a timer — the board would be either stale or wasteful, and an agent finishing a bead in the terminal wouldn't visibly land on the board. Three concrete needs drive this feature:</p>
+<ol>
+<li><strong>External writes must show up live.</strong> The dominant write path is <em>not</em> the browser — it's <code>bd</code> on the CLI and agents. A timer-poll would add latency and load; nothing would feel "live."</li>
+<li><strong>The acting tab and its peers must update instantly.</strong> When you edit a field or pour a formula <em>in</em> bdboard, waiting out the filesystem→watcher latency feels laggy, so write routes broadcast optimistically the instant their <code>bd</code> subprocess returns.</li>
+<li><strong>It must degrade to "last-good," never to "broken."</strong> A flaky filesystem event, a transient <code>bd list</code> failure, or a dropped SSE socket must leave the board showing the previous snapshot and silently self-heal — never flash empty or spin.</li>
+</ol>
+<h2 id="how-it-works">How it works</h2>
+<h3 id="user-perspective">User perspective</h3>
+<p>The user opens the board and sees a <strong>live-status pill</strong> in the footer (the <code>#live-status</code> text next to the <code>#live-dot</code>). It starts at <code>connecting…</code>, flips to <code>live · push</code> once the SSE stream connects, and shows <code>reconnecting…</code> if the connection drops (it auto-recovers). From then on the user does nothing: when a bead is created, edited, closed, or poured — from anywhere — the relevant region visibly updates in place a beat later. There is no reload button, no spinner storm, no flicker; regions swap their fresh HTML and any client-side filter the user had applied is re-applied after the swap.</p>
+<h3 id="system-perspective">System perspective</h3>
+<p>There are <strong>two entry points</strong> that both end in the same broadcast, plus a freshly-connected tab's bootstrap:</p>
+<ol>
+<li><strong>Filesystem path (canonical, for external writes).</strong> On boot, <code>lifespan</code> spawns the <code>_watch_beads()</code> task, which watches a small fixed set of dolt <code>noms/</code> dirs + <code>.beads/</code> itself, <em>non-recursively</em>. Each <code>watchfiles.awatch</code> batch calls <code>RefreshScheduler.notify()</code>. The scheduler debounces the burst (~250 ms), waits out any cooldown remainder (~1 s), then runs <code>store.refresh()</code>. <code>refresh()</code> first compares the dolt manifest <code>revision_signature()</code>; if the committed state is byte-identical (i.e. the event was bdboard's <em>own</em> read echoing back), it skips the <code>bd list</code> subprocess and returns <code>False</code>. Otherwise it re-runs <code>bd list --json</code> and structurally diffs against the cached snapshot. **Only if the bead list actually changed** does the scheduler call <code>bus.broadcast("beads_changed")</code>.</li>
+<li><strong>Optimistic in-process path (for bdboard's own writes).</strong> A write route (field edit, formula pour, memory mutation) mutates via <code>bd</code>, calls <code>store.refresh()</code> itself, then calls <code>bus.broadcast("beads_changed")</code> directly — so it doesn't wait for the watcher latency.</li>
+<li><strong>Bootstrap.</strong> A brand-new SSE connection is handed a one-shot <code>beads_changed</code>/<code>bootstrap</code> frame the instant it subscribes, so a freshly opened tab paints immediately.</li>
+</ol>
+<p>The broadcast pushes the opaque string <code>"beads_changed"</code> onto every subscriber queue. The <code>/api/events</code> SSE endpoint relays each frame to its browser. The browser's <code>EventSource</code> listener dispatches a synthetic <code>refresh</code> <code>CustomEvent</code> on <code>document.body</code>; every region with <code>hx-trigger="refresh from:body"</code> re-fetches its HTML partial (lanes, counts, history, memory) and HTMX swaps it in. The payload carries <strong>no bead data</strong> — the authoritative render always comes from the normal partial-fetch request path through the <a href="../Concepts/derive-layer.html">derive layer</a>.</p>
+<h2 id="sequence">Sequence</h2>
+<pre class="mermaid">
+sequenceDiagram
+    actor User
+    participant CLI as bd CLI / agent
+    participant FS as .beads/ noms (dolt)
+    participant W as watchfiles + RefreshScheduler
+    participant S as Store
+    participant Bus as EventBus
+    participant Tab as Browser (EventSource)
+    participant HX as HTMX regions
+
+    CLI-&gt;&gt;FS: bd write (manifest + journal.idx mutate)
+    FS-&gt;&gt;W: awatch batch -&gt; scheduler.notify()
+    W-&gt;&gt;W: debounce ~250ms + cooldown ~1s
+    W-&gt;&gt;S: store.refresh()
+    S-&gt;&gt;S: revision_signature unchanged? -&gt; skip (return False)
+    S--&gt;&gt;W: changed? (True only if bead list differs)
+    W-&gt;&gt;Bus: broadcast("beads_changed")  [iff changed]
+    Bus--&gt;&gt;Tab: SSE frame: event beads_changed
+    Tab-&gt;&gt;Tab: body.dispatchEvent('refresh')
+    Tab-&gt;&gt;HX: hx-trigger="refresh from:body" re-fetch
+    HX-&gt;&gt;S: GET /api/lanes, /api/counts (cached snapshot)
+    HX--&gt;&gt;User: swapped fresh HTML
+    Note over User,Tab: Optimistic path: a bdboard write route&lt;br/&gt;calls store.refresh() then broadcast() directly,&lt;br/&gt;skipping the FS-&gt;watcher latency.
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table><thead><tr>
+<th>Concern</th>
+<th>Where</th>
+<th>Notes</th>
+</tr></thead><tbody>
+<tr>
+<td>Watcher boot / target enumeration</td>
+<td><code>src/bdboard/app.py:lifespan</code> → <code>app.py:_watch_beads</code></td>
+<td>Spawns watcher task; non-recursive watch of dolt <code>noms/</code> + <code>.beads/</code>.</td>
+</tr>
+<tr>
+<td>Target re-scan (inode swap / new db)</td>
+<td><code>app.py:_rescan_targets</code></td>
+<td>Polls <code>bd.watch_signature()</code> every <code>WATCHER_RESCAN_S</code> and trips <code>awatch</code>'s <code>stop_event</code>.</td>
+</tr>
+<tr>
+<td>Debounce / cooldown / in-flight protection</td>
+<td><code>src/bdboard/watcher.py:RefreshScheduler</code> (<code>notify</code>, <code>_settle</code>)</td>
+<td>Coalesces FS bursts into one refresh; never cancels an in-flight refresh.</td>
+</tr>
+<tr>
+<td>Snapshot refresh + change diff</td>
+<td><code>src/bdboard/store.py:Store.refresh</code></td>
+<td>Returns <code>True</code> only if the bead list actually changed — the broadcast gate.</td>
+</tr>
+<tr>
+<td>Self-feedback skip (dolt revision check)</td>
+<td><code>src/bdboard/bd.py:BdClient.revision_signature</code></td>
+<td>Manifest root-hash fingerprint; skips <code>bd list</code> when bytes are identical.</td>
+</tr>
+<tr>
+<td>SSE fan-out bus</td>
+<td><code>src/bdboard/events.py:EventBus</code> (<code>broadcast</code>, <code>subscribe</code>)</td>
+<td>Per-subscriber bounded queue (16), drop-oldest on overflow.</td>
+</tr>
+<tr>
+<td>SSE endpoint</td>
+<td><code>app.py:sse_events</code> (<code>GET /api/events</code>)</td>
+<td>Bootstrap frame on connect, 15 s heartbeat, disconnect cleanup.</td>
+</tr>
+<tr>
+<td>Optimistic broadcast (write routes)</td>
+<td><code>app.py</code> — field edit / formula pour / memory routes call <code>bus.broadcast("beads_changed")</code></td>
+<td>Drives the acting tab + peers instantly.</td>
+</tr>
+<tr>
+<td>Client SSE wiring + status pill</td>
+<td><code>templates/base.html</code> (<code>EventSource('/api/events')</code>, <code>#live-status</code>, <code>#live-dot</code>)</td>
+<td>Translates <code>beads_changed</code> → synthetic <code>refresh</code> DOM event.</td>
+</tr>
+<tr>
+<td>Live regions</td>
+<td><code>templates/dashboard.html</code>, <code>partials/lanes.html</code>, <code>history.html</code>, <code>memory.html</code></td>
+<td><code>hx-trigger="load, refresh from:body"</code> regions that re-fetch on each event.</td>
+</tr>
+</tbody></table>
+<h2 id="config">Config</h2>
+<table><thead><tr>
+<th>Name</th>
+<th>Where</th>
+<th>Default</th>
+<th>Effect</th>
+</tr></thead><tbody>
+<tr>
+<td><code>WATCHER_DEBOUNCE_S</code></td>
+<td><code>app.py</code> → <code>RefreshScheduler(debounce_s=…)</code></td>
+<td><code>0.25</code></td>
+<td>Trailing quiet-window that collapses a multi-file <code>bd update</code> burst into one refresh.</td>
+</tr>
+<tr>
+<td><code>WATCHER_COOLDOWN_S</code></td>
+<td><code>app.py</code> → <code>RefreshScheduler(cooldown_s=…)</code></td>
+<td><code>1.0</code></td>
+<td>Minimum gap between <em>successful</em> refreshes; throttles a write storm.</td>
+</tr>
+<tr>
+<td><code>WATCHER_RESCAN_S</code></td>
+<td><code>app.py</code> → <code>_rescan_targets</code></td>
+<td><code>3.0</code></td>
+<td>How often the watcher re-checks its target inode signature for a new db / replaced <code>noms/</code>.</td>
+</tr>
+<tr>
+<td><code>_QUEUE_SIZE</code></td>
+<td><code>events.py</code></td>
+<td><code>16</code></td>
+<td>Per-subscriber SSE queue depth; overflow drops the oldest event.</td>
+</tr>
+<tr>
+<td>SSE heartbeat interval</td>
+<td><code>app.py:sse_events</code> (<code>asyncio.wait_for(..., timeout=15.0)</code>)</td>
+<td><code>15 s</code></td>
+<td>Comment-line keep-alive so proxies/load-balancers don't kill the idle stream.</td>
+</tr>
+</tbody></table>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>The broadcast is **gated on <code>store.refresh()</code> returning <code>True</code>**. Never broadcast unconditionally on a watcher event — pure dolt-internal churn and memory-only <code>bd remember</code> writes produce no issue-state change, and a flood of no-op broadcasts would make every tab re-fetch for nothing. Structural equality of the cached snapshot is the dedup.</p></div>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>- <strong>Self-feedback loop.</strong> A <em>read-only</em> <code>bd list</code> still makes dolt re-touch   <code>journal.idx</code>/<code>manifest</code> inside the watched <code>noms/</code> dir, so the watcher fires   for bdboard's own read ~1.3 s later. Two guards sever the loop: <code>notify()</code>   never cancels an <strong>in-flight</strong> refresh (only the cancellable debounce/cooldown   sleep), and <code>Store.refresh()</code> skips <code>bd list</code> entirely when the dolt   <code>revision_signature()</code> is byte-identical to last time. Break either and the   board freezes until relaunch (regression <code>bdboard-ywep</code>). - <strong>Trailing / isolated write inside cooldown.</strong> The <em>last</em> event of a burst   has no successor, so a single <code>bd update</code> that lands inside the cooldown   window must not be dropped. The scheduler waits out the remaining cooldown and   then refreshes rather than discarding it (regression <code>bdboard-xbc7</code> #1). - <strong>Inode swap / new db after startup.</strong> macOS kqueue watches inodes, not   paths; a dolt-replaced <code>noms/</code> dir or a brand-new db would silently stop   firing events. <code>_rescan_targets</code> detects the signature change and re-enters   <code>awatch</code> with fresh targets — no process restart (regression <code>bdboard-xbc7</code> #2). - <strong>Slow / dead SSE client.</strong> A subscriber's bounded 16-deep queue drops its   oldest event on overflow, so a slow tab can never back-pressure the   broadcaster. Losing a freshness blip is safe — the next event re-triggers the   same re-fetch. - <strong>No-op writes.</strong> <code>bd remember</code> and other memory-only or dolt-internal writes   change no bead state; the structural snapshot diff returns <code>False</code> and no SSE   frame is sent.</p></div>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Do not stuff bead data into the SSE payload to "save a round-trip." The event is intentionally a content-free <code>"beads_changed"</code> signal; the authoritative render always comes from a fresh partial fetch through the derive layer. Smuggling data through the event would create a second, divergent render path and defeat the single-source-of-truth posture.</p></div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table><thead><tr>
+<th>What fails</th>
+<th>What the user sees</th>
+<th>How the system degrades</th>
+</tr></thead><tbody>
+<tr>
+<td><code>bd list --json</code> raises during <code>store.refresh()</code></td>
+<td>Board keeps showing the previous snapshot (no flash-empty)</td>
+<td>Refresh returns <code>False</code>, <strong>no broadcast</strong>; the cooldown clock is <strong>not</strong> advanced so the next event retries promptly (<code>bdboard-xbc7</code> #3).</td>
+</tr>
+<tr>
+<td>Watcher task crashes / <code>.beads/</code> missing</td>
+<td>No visible change; updates briefly pause</td>
+<td><code>_watch_beads()</code> logs and restarts after 2 s; a not-yet-present <code>.beads/</code> simply retries. The watcher can never permanently die.</td>
+</tr>
+<tr>
+<td>SSE socket dropped (server restart, proxy timeout)</td>
+<td>Live-status pill flips to <code>reconnecting…</code></td>
+<td><code>EventSource</code> auto-reconnects with exponential backoff; on reconnect the bootstrap frame repaints the tab.</td>
+</tr>
+<tr>
+<td>Subscriber queue overflow (slow tab)</td>
+<td>At worst one missed intermediate frame</td>
+<td>Oldest event dropped; the next event re-triggers the identical re-fetch, so final state is still correct.</td>
+</tr>
+<tr>
+<td>Optimistic write route's <code>bd</code> mutation fails</td>
+<td>The acting tab sees the route's error response</td>
+<td>The route does <strong>not</strong> broadcast on failure, so peers aren't told of a change that didn't happen; the filesystem path remains the backstop.</td>
+</tr>
+</tbody></table>
+<h2 id="testing">Testing</h2>
+<p>The timing-critical logic is unit-tested in isolation (no FastAPI / watchfiles / real <code>bd</code> workspace required), and the broadcast contract is tested at the route level:</p>
+<ul>
+<li><code>tests/test_watcher_scheduler.py</code> — <code>test_isolated_event_refreshes_and_broadcasts</code> (one event ⇒ one refresh+broadcast), <code>test_trailing_event_after_cooldown_still_refreshes</code> (<code>bdboard-xbc7</code> #1), <code>test_burst_collapses_to_single_refresh</code> (debounce), <code>test_no_change_suppresses_broadcast</code> (broadcast dedup gate), and <code>test_transient_refresh_failure_does_not_wedge_live_sync</code> / failure-doesn't-advance-cooldown (<code>bdboard-xbc7</code> #3).</li>
+<li><code>tests/test_watcher_self_feedback.py</code> — <code>revision_signature</code> fingerprinting, <code>test_store_refresh_skips_bd_list_when_revision_unchanged</code>, <code>test_store_refresh_runs_bd_list_when_revision_changes</code>, <code>test_store_refresh_never_skips_without_dolt_signal</code>, and <code>test_inflight_refresh_is_not_cancelled_by_self_event</code> (the <code>bdboard-ywep</code> fix).</li>
+<li><code>tests/test_watch_targets.py</code> — non-recursive bounded watch targets, and <code>watch_signature()</code> changing when a new db appears or a <code>noms/</code> inode is replaced (but stable on mere content changes).</li>
+<li><code>tests/test_formula_pour.py</code> — <code>test_pour_success_renames_and_broadcasts</code> asserts the optimistic <code>"beads_changed"</code> broadcast fires on a successful pour.</li>
+<li><code>tests/test_memory_mutations.py</code> — <code>test_create_memory_broadcasts_sse_on_success</code> and <code>test_delete_memory_broadcasts_sse_on_success</code> assert the optimistic broadcast on memory writes.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a> — the end-to-end mechanics this feature presents; the step-by-step, data transformations, and full failure matrix live there.</li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (<code>/api/events</code>)</a> — the long-lived stream, heartbeat, and bootstrap frame this feature pushes onto.</li>
+<li><a href="../Endpoints/lanes-api.html">Endpoint: Lanes API (<code>/api/lanes</code>)</a> — the primary region re-fetched on each <code>refresh</code>.</li>
+<li><a href="../Concepts/watcher-scheduling.html">Concept: Watcher debounce/cooldown &amp; self-feedback skip</a> — the timing model (debounce, cooldown, in-flight protection) behind the scheduler.</li>
+<li><a href="../Concepts/store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a> — the cache <code>refresh()</code> rebuilds and the structural-equality diff that gates the broadcast.</li>
+<li><a href="../Concepts/bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a> — why bdboard observes dolt via <code>bd list</code> subprocesses instead of reading files directly.</li>
+<li><a href="../Concepts/htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a> — how the synthetic <code>refresh</code> event drives the partial re-fetch/swap.</li>
+<li><a href="../Concepts/derive-layer.html">Concept: Derive layer (pure view shaping)</a> — how the refreshed snapshot is shaped into lanes/activity/counts on each re-fetch.</li>
+<li><a href="../Flows/field-edit-write-path.html">Flow: Inline field-edit write path</a> — a write flow that drives the optimistic-broadcast half of this feature.</li>
+<li><a href="../Flows/formula-pour-fanout.html">Flow: Formula pour fan-out</a> — the sibling write flow that piggybacks on this broadcast → re-fetch machinery.</li>
+<li><a href="../Views/board-page.html">View: Board page</a> — the page whose lanes/counts regions this feature keeps live, and host of the live-status pill.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

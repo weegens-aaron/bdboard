@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frequently Asked Questions — bdboard — User Guide</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="index.html">Index</a>
+<a href="FAQ.html" class="active">FAQ</a>
+<a href="Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="Concepts/index.html">Index</a>
+<a href="Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="Features/index.html">Index</a>
+<a href="Features/bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="Features/create-from-formulas.html">Create-from-formulas</a>
+<a href="Features/history-and-trends.html">History-and-trends</a>
+<a href="Features/live-updates.html">Live-updates</a>
+<a href="Features/memory-manager.html">Memory-manager</a>
+<a href="Features/the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="Guides/index.html">Index</a>
+<a href="Guides/create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="Guides/edit-a-bead.html">Edit-a-bead</a>
+<a href="Guides/explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="Guides/manage-agent-memories.html">Manage-agent-memories</a>
+<a href="Guides/take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="frequently-asked-questions">Frequently Asked Questions</h1>
+<p>Quick answers to the things that most often surprise people while using <strong>bdboard</strong>. Most of these aren't bugs — they're deliberate behaviours that make more sense once you know the <em>why</em> behind them. Each answer links to the fuller write-up if you want the whole story.</p>
+<p>New here? Start with the <a href="Overview.html">Overview</a> and <a href="Guides/take-your-first-look.html">Take your first look</a>.</p>
+<h2 id="the-board-the-lanes">The board &amp; the lanes</h2>
+<p><strong>Why can't I drag a card from one lane to another?</strong> There's nothing to drag. Each card sits in a lane because of the bead's <em>real state</em> — bdboard reads that state and groups the cards for you. Browsing the board never changes anything; the board stays honest precisely because you can't push cards around to fake progress. Change a bead's actual state and its lane follows. See <a href="Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a>.</p>
+<p><strong>Why didn't the time filter hide an old in-progress bead?</strong> The time window (12h / 1d / 3d) only narrows the <strong>Closed</strong> lane. The other lanes — Ready, Blocked, In Progress, Deferred — show their current contents no matter what window you pick, because they represent <em>live</em> state, not dated events. See <a href="Features/the-board.html">The board</a>.</p>
+<p><strong>The Closed lane is empty — does that mean nothing got done?</strong> Not necessarily. The board only looks back a few days. Work that finished earlier hasn't vanished; it's simply older than the window shows. Head to <a href="Features/history-and-trends.html">History &amp; trends</a> to see the longer story.</p>
+<p><strong>Where did my older work go? I can't find it on the board.</strong> The board's windows stop at three days by design — it's meant for <em>recent</em> activity. For anything older, use History instead of widening in circles. See <a href="Concepts/time-ranges-and-recent-work.html">Time ranges &amp; recent work</a>.</p>
+<h2 id="editing-beads">Editing beads</h2>
+<p><strong>Why are the Edit controls missing on some beads?</strong> Only <strong>open</strong> beads can be edited. Once a bead is in progress or closed, its fields go read-only and the Edit controls disappear. That's deliberate — it stops an edit from quietly clobbering in-flight work or rewriting finished history. See <a href="Features/bead-detail-and-editing.html">Bead detail &amp; editing</a>.</p>
+<p><strong>My save was rejected and asked me to refresh — what did I do wrong?</strong> Nothing. If someone else (or an agent) changed the same bead after you opened its panel, bdboard refuses your save so their change isn't overwritten. It's a safety net, not an error. Reload, reopen the bead, and re-apply your edit. See <a href="Guides/edit-a-bead.html">Edit a bead</a>.</p>
+<p><strong>A bead changed "on its own" while I was looking at it.</strong> Almost always that means the same bead was updated somewhere else — another tab, another window, or an agent working alongside you. bdboard shows those changes live, with no refresh. See <a href="Features/live-updates.html">Live updates</a>.</p>
+<h2 id="creating-beads-from-formulas">Creating beads from formulas</h2>
+<p><strong>I poured a formula — why is the count off by one?</strong> Every pour quietly adds one behind-the-scenes wrapper that isn't part of your visible count. That's expected. See <a href="Features/create-from-formulas.html">Create from formulas</a>.</p>
+<p><strong>Something failed mid-pour. Did I end up with half a batch?</strong> No. A pour is all-or-nothing: if anything goes wrong while the batch is being created, nothing is added, so your board is never left half-built with orphaned beads. See <a href="Guides/create-beads-from-a-formula.html">Create beads from a formula</a>.</p>
+<p><strong>Beads appeared out of nowhere.</strong> Check whether you — or an agent — just poured a formula in another tab or window. Freshly poured beads show up everywhere bdboard is open. See <a href="Features/live-updates.html">Live updates</a>.</p>
+<h2 id="history-trends">History &amp; trends</h2>
+<p><strong>I set a custom date range, then it jumped back to the last 30 days.</strong> A live update (for example, a bead closing in the background) snaps History back to its default last-30-days window. Just reopen <strong>Custom</strong> or click your preset to re-apply your range. See <a href="Guides/explore-history-and-trends.html">Explore history &amp; trends</a>.</p>
+<p><strong>Why don't the Total and Closed tallies change when I move the range?</strong> They're deliberately whole-workspace figures: <strong>Total</strong> and <strong>Closed</strong> count your entire workspace as it stands right now, not just the selected window. If a number doesn't budge when you change the range, that's one of these standing counts sitting next to the figures that <em>do</em> respond. See <a href="Features/history-and-trends.html">History &amp; trends</a>.</p>
+<p><strong>Can I tell the created and closed bars apart without colour?</strong> Yes. The "created" bar carries a diagonal hatch pattern as well as its colour, so it stays distinguishable in greyscale or with colour-blind vision. Hovering or reading with a screen reader gives the exact counts per day. See <a href="Guides/explore-history-and-trends.html">Explore history &amp; trends</a>.</p>
+<h2 id="agent-memories">Agent memories</h2>
+<p><strong>I saved a memory and it replaced an existing one — why?</strong> Re-using a Key overwrites that memory's Body, with no "are you sure?" prompt. That's how you keep a single note up to date. If you wanted a separate note, give it a different Key. See <a href="Features/memory-manager.html">Memory manager</a>.</p>
+<p><strong>I forgot a memory by mistake — can I undo it?</strong> There's no undo, and the cost is invisible: agents simply stop knowing whatever that note taught them. When in doubt, <strong>edit</strong> a memory to trim or correct it rather than forgetting it outright; if you've already forgotten one, re-create it with the same Key and original text. See <a href="Guides/manage-agent-memories.html">Manage agent memories</a>.</p>
+<h2 id="live-updates-connection">Live updates &amp; connection</h2>
+<p><strong>The connection indicator says "reconnecting…" — is something broken?</strong> Usually not. After your computer sleeps or the network blips, bdboard drops its live link and then re-establishes it on its own; the indicator just tells you it's catching back up. See <a href="Features/live-updates.html">Live updates</a>.</p>
+<p><strong>Do I need to refresh to see new activity?</strong> No. The board, counts, and activity feed update themselves within a moment whenever work changes — which is also why a card may appear, move, or vanish while you watch. See <a href="Guides/take-your-first-look.html">Take your first look</a>.</p>
+<h2 id="your-data-safety">Your data &amp; safety</h2>
+<p><strong>Is bdboard my backup?</strong> No. bdboard <em>reads</em> your local data; it doesn't copy it anywhere safe for you. If the only copy lives on one machine, one mishap loses it — keep your own backup or off-machine copy. See <a href="Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>.</p>
+<p><strong>Can I open the board from another device?</strong> Not by default. bdboard is set up to be reached from the same machine it runs on. See <a href="Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>.</p>
+<h2 id="beads-themselves">Beads themselves</h2>
+<p><strong>Some of a bead's sections are empty — is it broken?</strong> No. Not every bead has every field filled in. A quickly-filed bead might carry just a name and a kind; a well-groomed one has a full description, a "done" check, links, and a thick log of notes. An empty section just means that detail wasn't recorded. See <a href="Concepts/what-is-a-bead.html">What is a bead?</a>.</p>
+<p><strong>Should I put several jobs into one bead to save time?</strong> Better not to. A bead that's really three tasks in a trench coat can never be cleanly finished and quietly breaks the board's ability to show honest progress. Split it into separate beads instead. And don't judge a bead by its title alone — the headline is a label, not the whole story. See <a href="Concepts/what-is-a-bead.html">What is a bead?</a>.</p>
+<hr>
+<p>Still stuck? Browse the <a href="Guides/index.html">Guides</a> for step-by-step how-tos, or the <a href="Concepts/index.html">Concepts</a> for the ideas behind how bdboard behaves.</p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

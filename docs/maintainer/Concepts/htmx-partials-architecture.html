@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: HTMX + server-rendered partials — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="index.html">Index</a>
+<a href="bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="derive-layer.html">Derive-layer</a>
+<a href="htmx-partials-architecture.html" class="active">Htmx-partials-architecture</a>
+<a href="store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-htmx-server-rendered-partials">Concept: HTMX + server-rendered partials</h1>
+<h2 id="what-is-it">What is it</h2>
+<p>bdboard's entire UI is built with <strong>HTMX over server-rendered Jinja2 partials</strong>: the browser loads one HTML shell per page, then HTMX fetches small HTML fragments from FastAPI routes and swaps them into the DOM. There is no client-side framework, no JSON-to-DOM rendering layer, and no build step — the server is the single renderer of truth and HTML is the wire format.</p>
+<h2 id="why-this-approach">Why this approach</h2>
+<p>The alternative — a SPA (React/Vue/etc.) talking to a JSON API — would force bdboard to maintain <em>two</em> renderers: one server-side for the data and one client-side for the markup, with a JSON contract glued between them. For a single-user localhost dashboard that mostly <em>reflects</em> <code>bd</code> workspace state, that is pure ceremony. HTMX lets the server keep ownership of all rendering, so:</p>
+<ul>
+<li><strong>One renderer.</strong> A bead card looks the same whether it arrives on first paint or via a live SSE-triggered refresh, because the same Jinja partial (<code>partials/bead_card.html</code>) emits it both times. No drift between an "initial render" path and an "update" path.</li>
+<li><strong>No build toolchain.</strong> HTMX is a single <code>&lt;script&gt;</code> tag pulled from a CDN (<code>base.html</code> → <code>https://unpkg.com/htmx.org@1.9.12</code>). There is no bundler, no transpile, no <code>node_modules</code>.</li>
+<li><strong>HTML is the API.</strong> Endpoints return HTML fragments, not JSON. The <a href="../Endpoints/index.html">Endpoint docs</a> describe <code>/api/lanes</code>, <code>/api/counts</code>, <code>/api/history</code>, etc. — every one of them renders a partial. This keeps the contract human-inspectable with <code>curl</code>.</li>
+<li><strong>Cheap, non-blocking first paint.</strong> Page routes (<code>/</code>, <code>/memory</code>, <code>/history</code>) return an instant shell with skeleton placeholders; the expensive <code>bd</code>-backed data hydrates afterward via HTMX <code>load</code> triggers. See the <a href="../Flows/server-startup.html">server-startup flow</a> and <a href="../Flows/live-refresh-pipeline.html">live-refresh pipeline</a>.</li>
+<li><strong>Progressive enhancement for free.</strong> Mutations carry both an <code>hx-headers</code> CSRF token <em>and</em> a hidden form field, so the write paths degrade to plain <code>&lt;form&gt;</code> POSTs if JS is unavailable.</li>
+</ul>
+<h2 id="how-it-works">How it works</h2>
+<p>Each page is a thin <strong>shell</strong> (<code>{% extends "base.html" %}</code>) containing one or more <strong>swap regions</strong>. A swap region is just an element carrying HTMX attributes that declare <em>when</em> to fetch (<code>hx-trigger</code>), <em>what</em> to fetch (<code>hx-get</code>/<code>hx-post</code>), <em>where</em> to put the result (<code>hx-target</code>), and <em>how</em> to insert it (<code>hx-swap</code>). The matching FastAPI route renders a Jinja <strong>partial</strong> under <code>templates/partials/</code> and returns it as <code>HTMLResponse</code>.</p>
+<p>The flow for the board's swim lanes:</p>
+<ol>
+<li><code>GET /</code> returns <code>dashboard.html</code> — a shell whose <code>.lanes-region</code> ships a skeleton and declares <code>hx-get="/api/lanes" hx-trigger="load, refresh from:body"</code>.</li>
+<li>On <code>load</code>, HTMX fetches <code>/api/lanes</code>. The route (<code>app.py:api_lanes</code>) shapes a snapshot via the <a href="derive-layer.html">derive layer</a> and renders <code>partials/lanes.html</code>.</li>
+<li>HTMX swaps that HTML into <code>.lanes-region</code> (<code>hx-swap="innerHTML"</code>).</li>
+<li>When the filesystem changes, the <a href="watcher-scheduling.html">watcher</a> → Store → SSE pipeline pushes a <code>beads_changed</code> event; <code>base.html</code>'s <code>EventSource</code> handler dispatches a synthetic <code>refresh</code> DOM event on <code>&lt;body&gt;</code>; the <code>refresh from:body</code> trigger re-fetches <code>/api/lanes</code> and re-swaps — same partial, live data.</li>
+</ol>
+<pre class="mermaid">
+flowchart TD
+    Shell["Page shell (dashboard.html)&lt;br/&gt;skeleton + hx-* attrs"]
+    Trigger["hx-trigger: load / refresh from:body"]
+    Route["FastAPI route (/api/lanes)&lt;br/&gt;HTMLResponse"]
+    Derive["derive layer shapes snapshot"]
+    Partial["Jinja partial (partials/lanes.html)"]
+    Swap["hx-swap into hx-target region"]
+    SSE["SSE beads_changed → body 'refresh'"]
+
+    Shell --&gt; Trigger --&gt; Route --&gt; Derive --&gt; Partial --&gt; Swap
+    SSE -.-&gt;|re-fires| Trigger
+</pre>
+<p>A minimal illustrative example — the route returns <em>HTML</em>, not JSON:</p>
+<pre><code class="language-python"># src/bdboard/app.py (shape)
+@app.get("/api/counts", response_class=HTMLResponse)
+async def api_counts(request: Request) -&gt; HTMLResponse:
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/counts.html",                       # a fragment, not a page
+        {"counts": derive.counts(await store.snapshot())},
+    )</code></pre>
+<pre><code class="language-html">&lt;!-- dashboard.html: the swap region that consumes it --&gt;
+&lt;div class="masthead-counts" id="counts"
+     aria-busy="true"
+     hx-get="/api/counts"
+     hx-trigger="load, refresh from:body"
+     hx-swap="innerHTML"&gt;
+  {% include "partials/counts_skeleton.html" %}   &lt;!-- instant placeholder --&gt;
+&lt;/div&gt;</code></pre>
+<p>Two patterns recur and are worth naming:</p>
+<ul>
+<li><strong>Out-of-band (OOB) swaps.</strong> A single response can update <em>more than one</em> region. The History endpoint returns the <code>#history-region</code> body <strong>and</strong> an <code>hx-swap-oob="true"</code> stats fragment (<code>partials/history_stats.html</code>) that HTMX peels off and swaps into the masthead <code>#history-stats</code> by id. The bead detail audit (<code>partials/bead_audit.html</code>) and the modal priority badge (<code>partials/bead_priority_badge.html</code>) use the same trick to update a sibling region from one fetch.</li>
+<li>**<code>htmx:configRequest</code> interception.** <code>base.html</code> listens for <code>htmx:configRequest</code> to inject parameters that aren't in the markup — e.g. the persisted History page-size and the active date window — so bare <code>load</code> / SSE-<code>refresh</code> fetches don't silently reset user state. This is the seam where client-side state is reconciled with server-rendered requests.</li>
+</ul>
+<h2 id="where-used">Where used</h2>
+<table><thead><tr>
+<th>Consumer</th>
+<th>How</th>
+</tr></thead><tbody>
+<tr>
+<td>Board swim lanes (<code>dashboard.html</code>)</td>
+<td><code>.lanes-region</code> <code>hx-get="/api/lanes"</code> on <code>load, refresh from:body</code>; closed lane lazy-loads via <code>/api/lanes/closed</code></td>
+</tr>
+<tr>
+<td>Counts strip (<code>partials/counts.html</code>)</td>
+<td><code>#counts</code> <code>hx-get="/api/counts"</code>, swapped on <code>load</code> + SSE refresh</td>
+</tr>
+<tr>
+<td>Bead detail modal (<code>partials/bead_modal.html</code>)</td>
+<td>Card <code>hx-get="/api/bead/{id}"</code> → <code>hx-target="#bead-modal"</code>; instant skeleton painted on <code>htmx:beforeRequest</code></td>
+</tr>
+<tr>
+<td>Inline field edit (<code>partials/field_row.html</code>)</td>
+<td><code>hx-post="/api/bead/{id}/field"</code> → <code>hx-swap="outerHTML"</code> on the row; see <a href="../Flows/field-edit-write-path.html">field-edit write path</a></td>
+</tr>
+<tr>
+<td>History page (<code>history.html</code>)</td>
+<td><code>#history-region</code> <code>hx-get="/api/history"</code>; range/pager links re-swap; stats delivered OOB</td>
+</tr>
+<tr>
+<td>Memory page (<code>memory.html</code>)</td>
+<td>Search box <code>hx-get="/api/memory"</code> on debounced <code>keyup</code>; create form <code>hx-post="/api/memory"</code></td>
+</tr>
+<tr>
+<td>Formula pour (<code>partials/formula_form.html</code>)</td>
+<td>Dialog loads picker (<code>/api/formulas</code>), then variable form, then <code>hx-post=".../pour"</code>; see <a href="../Flows/formula-pour-fanout.html">formula pour fan-out</a></td>
+</tr>
+<tr>
+<td>Live updates (<code>base.html</code>)</td>
+<td><code>EventSource('/api/events')</code> → <code>body</code> <code>refresh</code> event drives every <code>refresh from:body</code> region</td>
+</tr>
+</tbody></table>
+<h2 id="conventions">Conventions</h2>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>When adding or touching HTMX UI, follow the patterns already in the tree: - **Render fragments, never pages, from <code>/api/*</code> routes.** Return a   <code>partials/*.html</code> via <code>TEMPLATES.TemplateResponse(... response_class=HTMLResponse)</code>.   Page routes (<code>/</code>, <code>/memory</code>, <code>/history</code>) return the shell only. - <strong>One partial, two callers.</strong> First paint and SSE refresh must render the   <em>same</em> partial so they can't drift. Wire live regions with   <code>hx-trigger="load, refresh from:body"</code>. - <strong>Skeleton-first.</strong> Give every async region an <code>aria-busy="true"</code>   placeholder (<code>partials/*_skeleton.html</code>); the <code>htmx:afterSettle</code> handler in   <code>base.html</code> flips <code>aria-busy</code> to <code>false</code> once real content lands. - <strong>Mutations carry CSRF twice.</strong> Every write form includes   <code>hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'</code> <strong>and</strong> a hidden   <code>csrf_token</code> input; the server validates either via   <code>_check_csrf</code>. Keep both for JS-off fallback. - **Inject hidden state in <code>htmx:configRequest</code>, not the markup**, when a   bare <code>load</code>/<code>refresh</code> fetch must preserve client-side state (page size,   active window). Explicit user requests already carrying the param must win. - <strong>Use OOB swaps to update siblings from one response</strong> rather than firing a   second request. Mark the extra fragment <code>hx-swap-oob="true"</code> and target it   by stable <code>id</code>. - <strong>Pin the HTMX version</strong> in <code>base.html</code> (<code>htmx.org@1.9.12</code>) so behavior is   reproducible; bump deliberately, not implicitly.</p></div>
+<h2 id="anti-patterns">Anti-patterns</h2>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Things that break the HTMX-partials model — don't do these: - <strong>Don't add a client-side framework or JSON render layer.</strong> That   reintroduces the two-renderer split this architecture exists to avoid. If   you're rendering markup from JSON in the browser, you've left the pattern. - **Don't return a full page from an <code>/api/*</code> route.** Returning a   <code>{% extends "base.html" %}</code> document into an <code>innerHTML</code> swap nests a whole   page (duplicate <code>&lt;head&gt;</code>, re-loaded HTMX) inside a region. Return the   fragment only. - <strong>Don't poll on a timer for "live" updates.</strong> Live data rides the existing   SSE → <code>refresh from:body</code> pipeline (see   <a href="watcher-scheduling.html">watcher-scheduling</a>). Adding <code>hx-trigger="every Ns"</code>   duplicates work the EventBus already does and hammers the <code>bd</code> CLI. - <strong>Don't bind JS listeners directly to swap-target elements.</strong> They're   replaced on every swap, so the listener dies. Delegate from <code>document</code>   (not <code>document.body</code> in <code>&lt;head&gt;</code> scripts, which is still <code>null</code> there) —   this exact bug killed the History custom-range toggle once already. - <strong>Don't drop CSRF on a new write path.</strong> A POST/DELETE without the   <code>X-CSRF-Token</code> header <em>and</em> hidden field will 403 via <code>_check_csrf</code>. - <strong>Don't let a 4xx/5xx silently wipe a row.</strong> HTMX won't swap non-2xx by   default, but render the server's error into the region's <code>aria-live</code>   feedback slot (see the <code>htmx:beforeSwap</code> handler in <code>base.html</code>) instead of   losing it.</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="derive-layer.html">Concept: Derive layer (pure view shaping)</a></li>
+<li><a href="store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a></li>
+<li><a href="watcher-scheduling.html">Concept: Watcher debounce/cooldown &amp; self-feedback skip</a></li>
+<li><a href="bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a></li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a></li>
+<li><a href="../Flows/field-edit-write-path.html">Flow: Inline field-edit write path</a></li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (/api/events)</a></li>
+<li><a href="../Endpoints/lanes-api.html">Endpoint: Lanes API (/api/lanes, /api/lanes/closed, /api/counts)</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

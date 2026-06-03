@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: bd CLI as runtime source of truth — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="index.html">Index</a>
+<a href="bd-cli-source-of-truth.html" class="active">Bd-cli-source-of-truth</a>
+<a href="derive-layer.html">Derive-layer</a>
+<a href="htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-bd-cli-as-runtime-source-of-truth">Concept: bd CLI as runtime source of truth</h1>
+<h2 id="what-is-it">What is it</h2>
+<p>bdboard treats the **<code>bd</code> command-line tool as its one and only runtime data backend**: every read shells out to <code>bd … --json</code> and every write is a <code>bd update</code> / <code>bd remember</code> / <code>bd forget</code> / formula <code>pour</code> subprocess. bdboard never opens the dolt database directly and never reads or writes <code>.beads/issues.jsonl</code> — that file is a passive export, not the wire it talks to. All of this lives behind one async wrapper, <code>BdClient</code>.</p>
+<h2 id="why-this-approach">Why this approach</h2>
+<p><code>bd</code> issues are stored in an <strong>embedded dolt database</strong> (<code>.beads/embeddeddolt/&lt;db&gt;/.dolt/</code>), a content-addressed, single-writer store with its own commit/merge semantics and a JSON wire format that evolves across <code>bd</code> releases. bdboard could in principle reach past <code>bd</code> and read the dolt tables (or the <code>issues.jsonl</code> export) itself, but every alternative was rejected for a concrete reason:</p>
+<ul>
+<li>**Reading <code>.beads/issues.jsonl</code> directly<em>* — the JSONL is a </em>secondary export* that may be absent (modern dolt-backed workspaces don't require it), stale (it only refreshes on certain <code>bd</code> operations), or schema-skewed from the live DB. Treating it as truth means rendering a board that disagrees with what <code>bd ready</code> / <code>bd show</code> report. So <code>validate()</code> deliberately does <strong>not</strong> require the JSONL to exist — only a <code>.beads/</code> dir and a working <code>bd</code> binary.</li>
+<li><strong>Linking a dolt client and querying tables ourselves</strong> — it couples bdboard to dolt's storage internals and to <code>bd</code>'s schema, duplicates <code>bd</code>'s derivation logic (dependency resolution, status rollups, lead-time math), and races <code>bd</code>'s single-writer lock from outside <code>bd</code>'s own serialization. We'd be re-implementing <code>bd</code> badly.</li>
+<li>**Going through <code>bd</code> via <code>--json</code>** — <code>bd</code> already owns the schema, the derivations, and the write lock. By shelling out we inherit <em>exactly</em> what the agents using <code>bd</code> on the command line see, for free, across <code>bd</code> version bumps. The cost is subprocess latency (~700 ms per <code>bd list</code> on a real workspace), which we pay for with the in-memory <a href="store-snapshot-cache.html">Store cache</a> rather than by bypassing <code>bd</code>.</li>
+</ul>
+<p>The trade is deliberate: <strong>correctness and version-resilience over raw speed</strong>, with the speed clawed back by caching reads, not by changing the source of truth.</p>
+<h2 id="how-it-works">How it works</h2>
+<p><code>BdClient</code> is a thin async wrapper that turns each bdboard concern into a <code>bd</code> subcommand. Reads run <code>bd … --json</code> through <code>_run_json</code>, parse stdout, and (for detail views) sit behind a TTL cache with in-flight dedup (<code>_cached</code>). Writes run through <code>_run_mutate</code> (no <code>--json</code>, exit-code checked, bd's stderr surfaced) and then invalidate the relevant caches so the next read reflects the mutation.</p>
+<p>Two cross-cutting invariants hold the whole thing together:</p>
+<ol>
+<li><strong>One subprocess at a time.</strong> Every read and write acquires <code>_subprocess_gate</code>, an <code>asyncio.Semaphore(1)</code>. <code>bd</code>'s embedded dolt server is single-writer and can lock-wait under concurrent CLI invocations, so process-wide serialization keeps a burst of requests reliable instead of deadlocking on the dolt lock.</li>
+<li><strong>Drain pipes on every exit path.</strong> <code>create_subprocess_exec</code> with <code>PIPE</code> opens file descriptors that only close when <code>communicate()</code> finishes. Because the <a href="watcher-scheduling.html">watcher/debounce</a> machinery can cancel a refresh mid-flight, <code>_run_json</code> / <code>_run_mutate</code> call <code>communicate()</code> even on timeout/cancellation (via <code>_safe_kill</code>, which swallows <code>ProcessLookupError</code> from an already-dead pid) — otherwise each cancellation leaks ~3 fds until <code>RLIMIT_NOFILE</code> is exhausted and <em>every</em> new subprocess starts failing.</li>
+</ol>
+<pre><code class="language-python"># The shape of a read: bd &lt;args&gt; --json, serialized, drained on every path.
+# (src/bdboard/bd.py, abridged)
+async def _run_json(self, args: list[str], timeout: float) -&gt; Any:
+    async with self._subprocess_gate:                # bd dolt is single-writer
+        proc = await asyncio.create_subprocess_exec(
+            self.bd_bin, *args, "--json",
+            cwd=str(self.workspace),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=timeout
+            )
+        except BaseException:                         # incl. CancelledError
+            _safe_kill(proc)                          # tolerate dead pid
+            await proc.communicate()                  # MUST drain → no fd leak
+            raise
+        if proc.returncode != 0:
+            raise RuntimeError("Could not load bead data right now.")
+        return json.loads(stdout)                     # bd --json is the truth</code></pre>
+<p>The read surface is split by <em>shape and cost</em>, not by table:</p>
+<ul>
+<li><code>list_active</code> — <code>bd list --no-pager --limit 0</code> (active issues only, the fast ~5 KB first-paint path).</li>
+<li><code>list_closed</code> — <code>bd list --status closed --closed-after &lt;iso&gt; --sort closed</code> (board Closed lane, bounded by a date <em>window</em>, not a count cap).</li>
+<li><code>list_closed_history</code> — count-uncapped (<code>--limit 0</code>) closed record for the long-window History page, window-bounded via <code>--closed-after</code>.</li>
+<li><code>show_long</code> / <code>history</code> — <code>bd show &lt;id&gt; --long</code> / <code>bd history &lt;id&gt;</code> for bead detail, cached with TTL + in-flight dedup.</li>
+<li><code>status_summary</code>, <code>memories</code>, <code>list_formulas</code> — workspace-global reads.</li>
+</ul>
+<p>Crucially, even a <em>read-only</em> <code>bd list</code> makes dolt re-touch the watched <code>noms/</code> files, so the watcher fires for our own read. <code>revision_signature()</code> (the dolt manifest root-hash, read directly off disk — the one place we touch dolt files, and only to <em>fingerprint</em> them, never to read issue data) lets the <a href="store-snapshot-cache.html">Store</a> tell "dolt really changed" from "our own read jiggled the files" and skip the redundant subprocess.</p>
+<p>The write surface is the same gate in reverse:</p>
+<ul>
+<li><code>update_field</code> — <code>bd update &lt;id&gt; &lt;flag&gt; &lt;value&gt;</code>; long markdown (<code>--description</code> / <code>--design</code>) is streamed on <strong>stdin</strong> via <code>--body-file -</code> / <code>--design-file -</code> (see <code>_STDIN_FLAG_ALIASES</code>) to dodge shell-arg length limits. <code>--actor</code> is forwarded so the human edit is attributed correctly in the audit trail.</li>
+<li><code>remember</code> / <code>forget</code> — <code>bd remember "&lt;body&gt;" --key &lt;key&gt;</code> / <code>bd forget</code>.</li>
+<li><code>rename_bead</code>, <code>pour_formula</code> — retitle and formula materialization.</li>
+</ul>
+<pre class="mermaid">
+flowchart TD
+    subgraph bdboard
+        R["HTTP routes (app.py)"] --&gt; ST["Store cache"]
+        ST --&gt;|miss / refresh| BC["BdClient"]
+        W["watcher"] --&gt;|"refresh()"| ST
+    end
+    BC --&gt;|"_run_json: bd … --json"| GATE["_subprocess_gate Semaphore(1)"]
+    BC --&gt;|"_run_mutate: bd update/remember/…"| GATE
+    GATE --&gt; CLI["bd CLI subprocess"]
+    CLI --&gt; DOLT[("embedded dolt DB&lt;br/&gt;(single writer)")]
+    BC -. "revision_signature(): read manifest bytes only" .-&gt; DOLT
+    JSONL[".beads/issues.jsonl"]:::ignored
+    classDef ignored fill:#fdd,stroke:#c00,stroke-dasharray:5 5
+    BC -. "NEVER read" .-x JSONL
+</pre>
+<h2 id="where-used">Where used</h2>
+<table><thead><tr>
+<th>Consumer</th>
+<th>How</th>
+</tr></thead><tbody>
+<tr>
+<td><code>Store.refresh</code> / <code>_load_active</code> / <code>_load_closed</code> / <code>_load_history</code></td>
+<td>call <code>list_active</code> / <code>list_closed</code> / <code>list_closed_history</code> to populate the in-memory snapshots</td>
+</tr>
+<tr>
+<td><code>Store</code> self-feedback skip</td>
+<td>calls <code>revision_signature()</code> + <code>invalidate_caches()</code> to gate refreshes — see <a href="store-snapshot-cache.html">store snapshot cache</a></td>
+</tr>
+<tr>
+<td><code>app.py</code> bead modal / audit / raw</td>
+<td><code>show_long(id, fresh=…)</code> and <code>history(id)</code> for bead detail — see <a href="../Endpoints/bead-detail-api.html">bead detail API</a></td>
+</tr>
+<tr>
+<td><code>app.py</code> field-edit route</td>
+<td><code>update_field(...)</code> then a <code>fresh=True</code> <code>show_long</code> re-read — see <a href="../Flows/field-edit-write-path.html">field-edit write path</a></td>
+</tr>
+<tr>
+<td><code>app.py</code> memory page/API</td>
+<td><code>memories()</code>, <code>remember()</code>, <code>forget()</code> — see <a href="../Endpoints/memory-api.html">memory API</a></td>
+</tr>
+<tr>
+<td><code>app.py</code> formulas / pour</td>
+<td><code>list_formulas()</code>, <code>read_formula_*</code>, <code>pour_formula()</code>, <code>rename_bead()</code> — see <a href="../Flows/formula-pour-fanout.html">formula pour fan-out</a></td>
+</tr>
+<tr>
+<td><code>app.py</code> history headline</td>
+<td><code>status_summary()</code> for bd's own point-in-time KPIs — see <a href="../Endpoints/history-api.html">history API</a></td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>resolves the workspace + <code>bd</code> binary path (<code>--dir</code>, <code>--bd</code>) that construct the <code>BdClient</code> at startup — see <a href="../Flows/server-startup.html">server startup</a></td>
+</tr>
+<tr>
+<td><code>watcher</code></td>
+<td>observes <code>watch_targets()</code> / <code>watch_signature()</code> (the dolt <code>noms/</code> dirs <code>bd</code> writes touch) to know <em>when</em> to re-read — see <a href="watcher-scheduling.html">watcher scheduling</a></td>
+</tr>
+</tbody></table>
+<h2 id="conventions">Conventions</h2>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>When touching the <code>bd</code>-access layer, preserve these invariants: - **All <code>bd</code> access goes through <code>BdClient</code>.** Routes, the Store, and the   watcher never spawn <code>bd</code> themselves — one wrapper owns the gate, the caches,   and the error mapping. - **Serialize every subprocess on <code>_subprocess_gate</code>.<em>* Reads </em>and* writes   take the <code>Semaphore(1)</code>; <code>bd</code>'s dolt store is single-writer and lock-waits   under concurrency. - <strong>Drain pipes on every exit path.</strong> Always <code>communicate()</code> after   <code>_safe_kill</code> on timeout/cancellation, or you leak fds until subprocess   creation fails wholesale. - <strong>Invalidate caches after a mutation.</strong> Every write method calls   <code>invalidate_caches()</code> (and clears <code>_show_cache</code>) so the next read returns   post-mutation state instead of an up-to-<code>SUCCESS_TTL_S</code>-stale snapshot. - <strong>Stream long markdown on stdin.</strong> Use the <code>_STDIN_FLAG_ALIASES</code> file-flag   variants (<code>--body-file -</code> / <code>--design-file -</code>) for <code>--description</code> /   <code>--design</code>; never pass large bodies as positional args. - **Validate <code>bd --json</code> shapes.** <code>bd</code> returns a JSON array even for   single-bead <code>show</code>; check <code>isinstance(..., list)</code> / unwrap, and treat a   non-list / malformed payload as an error, not a crash. - **Surface <code>bd</code>'s stderr on write failure.** <code>_run_mutate</code> raises with the   decoded stderr so users see <em>why</em> <code>bd update</code>/<code>forget</code> rejected the edit.</p></div>
+<h2 id="anti-patterns">Anti-patterns</h2>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Mistakes that break correctness or stability — don't do these: - **Don't read <code>.beads/issues.jsonl</code> as truth.** It can be absent, stale, or   schema-skewed; the live <code>bd … --json</code> output is the only source of truth.   <code>validate()</code> intentionally does not even require the JSONL to exist. - <strong>Don't open the dolt DB directly for issue data.</strong> The only sanctioned   direct file touch is <code>revision_signature()</code> reading the tiny <code>manifest</code> bytes   to <em>fingerprint</em> state — never to read issues. Querying dolt tables yourself   duplicates <code>bd</code>'s logic and races its write lock from outside its   serialization. - **Don't spawn <code>bd</code> with <code>shell=True</code> or string-built commands.** Always use   <code>create_subprocess_exec</code> with an arg list — it's shell-safe (no quoting   fragility, no injection) and is what lets non-stdin flags pass values   directly. - **Don't run <code>bd</code> concurrently outside the gate.** Parallel CLI invocations   serialize on dolt's lock anyway and can deadlock; bypassing   <code>_subprocess_gate</code> reintroduces exactly that hazard. - **Don't skip the draining <code>communicate()</code> on the error path.** A bare   <code>proc.kill()</code> (or letting <code>ProcessLookupError</code> escape) leaks the pipe fds and   masks the original <code>CancelledError</code>, eventually wedging all subprocess   creation. - **Don't <code>bd list --json</code> on every HTTP request.** That's the ~700 ms,   dolt-lock-contending regression the <a href="store-snapshot-cache.html">Store cache</a>   exists to prevent — read from the cache, let the watcher trigger refreshes. - <strong>Don't forget to invalidate after a write.</strong> A mutation that leaves the   read caches warm serves pre-edit data for up to the cache TTL.</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a></li>
+<li><a href="watcher-scheduling.html">Concept: Watcher debounce/cooldown &amp; self-feedback skip</a></li>
+<li><a href="derive-layer.html">Concept: Derive layer (pure view shaping)</a></li>
+<li><a href="htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a></li>
+<li><a href="../Flows/server-startup.html">Flow: Server startup &amp; workspace resolution</a></li>
+<li><a href="../Flows/field-edit-write-path.html">Flow: Inline field-edit write path</a></li>
+<li><a href="../Flows/formula-pour-fanout.html">Flow: Formula pour fan-out</a></li>
+<li><a href="../Endpoints/bead-detail-api.html">Endpoint: Bead detail API (/api/bead/{id}, /audit, /raw)</a></li>
+<li><a href="../Endpoints/memory-api.html">Endpoint: Memory API (/api/memory GET/POST/DELETE)</a></li>
+<li><a href="../Endpoints/formulas-api.html">Endpoint: Formulas API (/api/formulas, form, pour)</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+<li>Source: <code>src/bdboard/bd.py</code>, <code>src/bdboard/cli.py</code>, <code>src/bdboard/store.py</code></li>
+<li>Tests: <code>tests/test_safe_kill.py</code> (fd-safe subprocess cleanup), <code>tests/test_bd_closed_history.py</code> (count-uncapped, window-bounded closed reads), <code>tests/test_bd_status_summary.py</code> (<code>bd status --json</code> parsing), <code>tests/test_bd_memories.py</code> (memory reads + schema-sentinel stripping), <code>tests/test_memory_mutations.py</code> (<code>remember</code>/<code>forget</code> write paths), <code>tests/test_field_edit.py</code> (<code>update_field</code> flag routing + stdin streaming)</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

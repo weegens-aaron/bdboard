@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Memory page (`/memory`) — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="../Concepts/derive-layer.html">Derive-layer</a>
+<a href="../Concepts/htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="../Concepts/store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="../Concepts/watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="index.html">Index</a>
+<a href="board-page.html">Board-page</a>
+<a href="history-page.html">History-page</a>
+<a href="memory-page.html" class="active">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-memory-page-memory">View: Memory page (<code>/memory</code>)</h1>
+<h2 id="route">Route</h2>
+<table><thead><tr>
+<th>Path</th>
+<th>Handler</th>
+<th>Template</th>
+</tr></thead><tbody>
+<tr>
+<td><code>/memory</code></td>
+<td><code>app.py:page_memory</code></td>
+<td><code>templates/memory.html</code></td>
+</tr>
+</tbody></table>
+<p>The handler is deliberately trivial: it runs the shared <code>_validate_or_warn()</code> workspace guard and, on success, renders <code>memory.html</code> with only three context values (<code>workspace</code>, <code>workspace_path</code>, <code>active="memory"</code>). It never calls <code>bd</code> — the actual memory data is fetched lazily by the page's HTMX <code>load</code> trigger against <a href="../Endpoints/memory-api.html"><code>/api/memory</code></a>. This keeps first paint instant and keeps the slow subprocess off the page-render path, mirroring the Board (<code>/</code>) and History (<code>/history</code>) routes.</p>
+<h2 id="what-it-does">What it does</h2>
+<p>The Memory page is the human-facing console for <strong>bd memories</strong> — the keyed knowledge snippets that <code>bd</code> injects into every agent session at <code>bd prime</code>. It presents the full memory corpus as a searchable list of cards (key heading + markdown-rendered body) and gives a maintainer the three CRUD affordances that the CLI exposes (<code>bd memories</code>, <code>bd remember</code>, <code>bd forget</code>) without leaving the browser. Because a stray edit or delete silently degrades <em>every future agent run</em>, the page is built around safe, deliberate curation: debounced search, a modal create/edit form, and a confirm-before-forget dialog.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>Memories are the project's durable, cross-session knowledge layer, but on the CLI they are only visible via ad-hoc <code>bd memories</code> invocations and are easy to forget you even have. Surfacing them as a first-class dashboard page makes the corpus discoverable, searchable, and editable at a glance — turning an invisible side-channel into a curatable knowledge base that sits alongside the Board and History views (design parity, AGENTS "persistent knowledge" workflow).</p>
+<h2 id="user-actions">User actions</h2>
+<ul>
+<li><strong>Search memories</strong> — type in the search strip; a debounced (<code>keyup changed delay:250ms</code>) <code>hx-get</code> to <code>/api/memory?q=…</code> swaps the list region with server-side substring matches. The native search-field clear () re-fires via the <code>search</code> event, returning to the full list.</li>
+<li><strong>Create a memory</strong> — click <strong>+ New Memory</strong> to open the <code>#memory-form-dialog</code> modal, enter a key + body (markdown), and submit; the form <code>hx-post</code>s to <code>/api/memory</code> and swaps the refreshed list in.</li>
+<li><strong>Edit a memory</strong> — click the edit (pencil) button on a card. <code>editMemory(key, body)</code> pre-fills the same dialog, marks the key input <code>readonly</code> (you cannot rename a key — <code>bd remember</code> upserts by key), and submitting re-saves the body.</li>
+<li><strong>Forget a memory</strong> — click the forget (trash) button on a card. <code>confirmForget(key)</code> opens the dedicated <code>#memory-forget-dialog</code> confirmation modal; confirming fires an <code>hx-delete</code> to <code>/api/memory/{key}</code> and swaps in the updated list.</li>
+<li><strong>See live updates</strong> — edits made elsewhere (another tab, the CLI) appear automatically via the SSE <code>refresh</code> pipeline (see <a href="#state">State</a>).</li>
+<li><strong>Switch pages / toggle theme</strong> — the shared masthead nav (<code>partials/nav.html</code>) and theme toggle (<code>partials/theme_toggle.html</code>) are present on every row.</li>
+</ul>
+<h2 id="page-structure">Page structure</h2>
+<pre class="mermaid">
+flowchart TD
+    Page["memory.html (extends base.html)"]
+    Page --&gt; Masthead["header.masthead"]
+    Masthead --&gt; Brand["Brand: Memory title"]
+    Masthead --&gt; NavRow["nav row"]
+    NavRow --&gt; Nav["partials/nav.html (Board / History / Memory)"]
+    NavRow --&gt; Theme["partials/theme_toggle.html"]
+    Page --&gt; Main["main.layout-memory"]
+    Main --&gt; Region["section.memory-region"]
+    Region --&gt; Toolbar["memory-toolbar"]
+    Toolbar --&gt; Search["form.memory-search (hx-get /api/memory)"]
+    Toolbar --&gt; NewBtn["+ New Memory button"]
+    Region --&gt; List["#memory-list (hx-get /api/memory on load, refresh)"]
+    List --&gt; Skeleton["partials/memory_skeleton.html (first paint)"]
+    List -.swapped.-&gt; ListPartial["partials/memory_list.html"]
+    Page --&gt; FormDialog["dialog#memory-form-dialog (create / edit)"]
+    Page --&gt; ForgetDialog["dialog#memory-forget-dialog (confirm forget)"]
+</pre>
+<h2 id="components-partials">Components / partials</h2>
+<table><thead><tr>
+<th>Partial</th>
+<th>Purpose</th>
+</tr></thead><tbody>
+<tr>
+<td><code>partials/nav.html</code></td>
+<td>Shared primary nav (Board / History / Memory) with <code>aria-current</code> on the active page.</td>
+</tr>
+<tr>
+<td><code>partials/theme_toggle.html</code></td>
+<td>Light/dark theme toggle, shared across all pages.</td>
+</tr>
+<tr>
+<td><code>partials/memory_skeleton.html</code></td>
+<td>Decorative shimmer placeholder (<code>aria-hidden</code>) painted instantly so the list never flashes empty before the first <code>/api/memory</code> fetch.</td>
+</tr>
+<tr>
+<td><code>partials/memory_list.html</code></td>
+<td>The HTMX swap target body: an <code>aria-live</code> result count, the <code>memory-card</code> list (key heading, edit/forget actions, <code>md</code>-rendered body), and the three context-appropriate empty states.</td>
+</tr>
+<tr>
+<td><code>dialog#memory-form-dialog</code> (inline in <code>memory.html</code>)</td>
+<td>Native <code>&lt;dialog&gt;</code> modal for create/edit; <code>hx-post</code>s to <code>/api/memory</code> and self-closes via JS on submit.</td>
+</tr>
+<tr>
+<td><code>dialog#memory-forget-dialog</code> (inline in <code>memory.html</code>)</td>
+<td>Native <code>&lt;dialog&gt;</code> confirmation modal; its button's <code>hx-delete</code> URL is set dynamically by <code>confirmForget(key)</code>.</td>
+</tr>
+<tr>
+<td><code>base.html</code></td>
+<td>Layout shell: HTML scaffold, <code>EventSource('/api/events')</code> SSE wiring, theme bootstrap, and the bare-URL HTMX request shaping.</td>
+</tr>
+</tbody></table>
+<h2 id="state">State</h2>
+<ul>
+<li>**Search query (<code>q</code>)** — transient client state held only in the search input; passed to <code>/api/memory?q=…</code> and echoed back in the <code>memory-count</code> status line. Not persisted; not a URL param on <code>/memory</code> itself (the page route takes no query string).</li>
+<li><strong>Theme</strong> — read from <code>localStorage</code> and applied by the base-layout bootstrap; the toggle's <code>aria-pressed</code> reflects current mode.</li>
+<li><strong>CSRF token</strong> — <code>csrf_token</code>, injected as a Jinja global ([<code>app.py</code> <code>TEMPLATES.env.globals["csrf_token"]</code>](../../src/bdboard/app.py)), embedded both as a hidden form field and an <code>X-CSRF-Token</code> header on the create and delete requests; validated server-side by <code>_check_csrf</code>.</li>
+<li><strong>SSE live-refresh</strong> — the <code>#memory-list</code> region carries <code>hx-trigger="load, refresh from:body"</code>. <code>base.html</code> opens an <code>EventSource('/api/events')</code>; on a <code>beads_changed</code> server event it dispatches a bubbling <code>refresh</code> DOM event on <code>&lt;body&gt;</code>, which re-fetches the list. Mutations also call <code>bus.broadcast("beads_changed")</code> so other tabs/clients converge. See the <a href="../Concepts/htmx-partials-architecture.html">HTMX + server-rendered partials</a> concept and the <a href="../Flows/live-refresh-pipeline.html">live-refresh pipeline</a>.</li>
+<li><strong>Dialog state</strong> — the create/edit modal is reset to "New Memory" on its <code>close</code> event (clears inputs, removes the <code>readonly</code> flag) so the next open starts fresh; this is plain JS in <code>memory.html</code>, not server state.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>The page route holds <strong>no</strong> memory data. All memory state lives in <code>bd</code>'s dolt store and is read on demand via <code>/api/memory</code>, which is in turn cached/deduped by <code>Bd.memories</code> (see the <a href="../Concepts/store-snapshot-cache.html">store snapshot cache</a> concept). The view is intentionally stateless beyond the transient search box.</p></div>
+<h2 id="api-dependencies">API dependencies</h2>
+<table><thead><tr>
+<th>Endpoint</th>
+<th>Used for</th>
+</tr></thead><tbody>
+<tr>
+<td><code>GET /api/memory</code></td>
+<td>Renders the <code>memory_list.html</code> region; fired on page <code>load</code>, on SSE <code>refresh from:body</code>, and on every debounced search keystroke. See <a href="../Endpoints/memory-api.html">Memory API</a>.</td>
+</tr>
+<tr>
+<td><code>POST /api/memory</code></td>
+<td>Create/upsert a memory (the create/edit dialog form); returns the refreshed list partial for the swap.</td>
+</tr>
+<tr>
+<td><code>DELETE /api/memory/{key}</code></td>
+<td>Forget a memory (confirm dialog); returns the refreshed list partial.</td>
+</tr>
+<tr>
+<td><code>GET /api/events</code></td>
+<td>SSE stream wired in <code>base.html</code>; a <code>beads_changed</code> event triggers a <code>refresh</code> of the list region. See <a href="../Endpoints/sse-events.html">SSE events</a>.</td>
+</tr>
+</tbody></table>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>Forget is destructive and irreversible — there is no undo. The confirm dialog exists precisely because a dropped memory silently degrades every future <code>bd prime</code>. The forget button's <code>hx-delete</code> target is rewritten at click time by <code>confirmForget(key)</code> and re-processed with <code>htmx.process</code>, so it always points at the correct path-encoded key (keys with <code>/</code> work because the route uses <code>{key:path}</code>).</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Endpoints/memory-api.html">Endpoint: Memory API (<code>/api/memory</code> GET/POST/DELETE)</a></li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (<code>/api/events</code>)</a></li>
+<li><a href="../Features/memory-management.html">Feature: Memory management</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a></li>
+<li><a href="board-page.html">View: Board page (<code>/</code>)</a></li>
+<li><a href="history-page.html">View: History page (<code>/history</code>)</a></li>
+<li><a href="../Concepts/htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a></li>
+<li><a href="../Concepts/bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a></li>
+<li><a href="../Concepts/store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

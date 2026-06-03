@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: History page (`/history`) — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="../Concepts/derive-layer.html">Derive-layer</a>
+<a href="../Concepts/htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="../Concepts/store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="../Concepts/watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="index.html">Index</a>
+<a href="board-page.html">Board-page</a>
+<a href="history-page.html" class="active">History-page</a>
+<a href="memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-history-page-history">View: History page (<code>/history</code>)</h1>
+<h2 id="route">Route</h2>
+<table><thead><tr>
+<th>Path</th>
+<th>Handler</th>
+<th>Template</th>
+</tr></thead><tbody>
+<tr>
+<td><code>/history</code></td>
+<td><code>app.py:page_history</code></td>
+<td><code>templates/history.html</code></td>
+</tr>
+</tbody></table>
+<p>Like the Board (<code>/</code>) and Memory (<code>/memory</code>) routes, the handler is deliberately thin: it runs the shared <code>_validate_or_warn()</code> workspace guard (rendering <code>error.html</code> with a <code>500</code> on failure so a broken workspace fails <em>visibly</em> rather than painting an empty page) and, on success, renders <code>history.html</code> with only three context values — <code>workspace</code>, <code>workspace_path</code>, and <code>active="history"</code>. It <strong>never</strong> calls <code>bd</code>. All of the actual history data is fetched lazily by the page's HTMX <code>load</code> trigger against <a href="../Endpoints/history-api.html"><code>/api/history</code></a>, so first paint stays instant and the slow snapshot/derive work is kept off the page-render path. This is the same "trivial page shell + lazy region fetch" shape the whole dashboard shares (design §D4) — see <a href="../Concepts/htmx-partials-architecture.html">HTMX + server-rendered partials</a>.</p>
+<h2 id="what-it-does">What it does</h2>
+<p>The History page is the dashboard's <strong>analytics / retrospective</strong> surface. Where the Board shows <em>what is in flight</em> and Memory shows <em>durable knowledge</em>, History answers <em>what got done, how fast, and at what rate</em>. It presents three things over a selectable time window:</p>
+<ol>
+<li>A <strong>masthead stats strip</strong> of headline KPIs — bd's workspace-global totals (Total / Closed all-time) alongside range-scoped metrics (Avg lead, Closed in range, Median lead, Throughput).</li>
+<li>A <strong>"Created vs closed" grouped-bar chart</strong> — created and closed counts per day on one shared timeline, so net flow / backlog burn reads at a glance.</li>
+<li>A <strong>paginated list of closed beads</strong>, newest-closed first, each card opening the shared bead modal on click.</li>
+</ol>
+<p>Everything reacts to a single time-range control (7d / 30d / 90d / All, default 30d) plus an optional custom from/to date window.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>Throughput, lead time, and the closed backlog are the data a maintainer needs to reason about velocity and cycle time, but on the CLI those answers are scattered across ad-hoc <code>bd list --status=closed</code> invocations and manual date math. Surfacing them as a first-class, range-filterable dashboard page turns "how are we trending?" into a glance. It deliberately mirrors the Board's chrome (same masthead, same filter-badge idiom, same SSE live-refresh) so the three pages feel like one product, and it reuses the snapshot the rest of the app already holds — the entire region is **pure derivation over one <code>bd</code> snapshot, no new subprocess per render** (design §4; see <a href="../Concepts/derive-layer.html">Derive layer</a>).</p>
+<h2 id="user-actions">User actions</h2>
+<ul>
+<li><strong>Switch the time window</strong> — click a range badge (<code>7d</code> / <code>30d</code> / <code>90d</code> / <code>All</code>). Each fires <code>hx-get /api/history?range=&lt;r&gt;&amp;page=1&amp;page_size=&lt;active&gt;</code> with <code>hx-target="#history-region"</code>, re-rendering the whole region (charts, KPIs, and list) for that window. <code>aria-pressed</code> marks the active range.</li>
+<li><strong>Pick a custom date range</strong> — click the <strong>Custom</strong> badge to open the <code>#history-custom-range</code> popover (a real <code>&lt;form role="dialog"&gt;</code> with From/To <code>type="date"</code> inputs). Submitting <code>hx-get</code>s <code>/api/history</code> with <code>from_date</code>/<code>to_date</code>, which supersede <code>range=</code> server-side; the region re-swaps with the popover re-rendered hidden, and <strong>Clear</strong> returns to the last preset.</li>
+<li><strong>Page through closed beads</strong> — the pager's <strong>‹ Newer</strong> / <strong>Older ›</strong> buttons re-fetch the adjacent page within the current window (preserving the active range or custom dates via <code>window_qs</code>).</li>
+<li><strong>Change page size</strong> — the "Per page" <code>&lt;select&gt;</code> (25 / 50 / 100) resets to page 1 and re-swaps the region; the chosen size is mirrored into <code>localStorage</code> (<code>bdboard-history-page-size</code>) by <code>base.html</code> so it survives reloads and SSE refreshes, like the theme toggle.</li>
+<li><strong>Open a closed bead</strong> — click any history card to <code>hx-get</code> <code>/api/bead/{id}</code> into the shared <code>#bead-modal</code>. The card is reused from the Board (<code>partials/bead_card.html</code>), rendered with <code>meta="history"</code> so it shows assignee + close reason and the humanized close timestamp.</li>
+<li><strong>See live updates</strong> — a bead closing elsewhere (another tab, the CLI) re-renders the region automatically via the shared SSE <code>refresh</code> pipeline (see <a href="#state">State</a>).</li>
+<li><strong>Switch pages / toggle theme</strong> — the shared masthead nav (<code>partials/nav.html</code>) and theme toggle (<code>partials/theme_toggle.html</code>) are present on every page.</li>
+</ul>
+<h2 id="page-structure">Page structure</h2>
+<pre class="mermaid">
+flowchart TD
+    Page["history.html (extends base.html)"]
+    Page --&gt; Masthead["header.masthead"]
+    Masthead --&gt; TopRow["masthead-row"]
+    TopRow --&gt; Brand["Brand: History title"]
+    TopRow --&gt; Stats["#history-stats (counts_skeleton -&gt; OOB stats dl)"]
+    Masthead --&gt; NavRow["masthead-nav-row"]
+    NavRow --&gt; Nav["partials/nav.html (Board / History / Memory)"]
+    NavRow --&gt; Theme["partials/theme_toggle.html"]
+    Page --&gt; Main["main.layout-history"]
+    Main --&gt; Region["#history-region (hx-get /api/history on load, refresh)"]
+    Region --&gt; Skeleton["partials/history_skeleton.html (first paint)"]
+    Region -.swapped.-&gt; Partial["partials/history.html"]
+    Partial --&gt; Toolbar["history-toolbar: range badges + Custom popover"]
+    Partial --&gt; Chart["history-throughput: Created vs closed grouped bars"]
+    Partial --&gt; List["history-list-section: closed cards + pager"]
+    List --&gt; Card["partials/bead_card.html (meta=history) -&gt; #bead-modal"]
+    Partial -.hx-swap-oob.-&gt; Stats
+</pre>
+<h2 id="components-partials">Components / partials</h2>
+<table><thead><tr>
+<th>Partial</th>
+<th>Purpose</th>
+</tr></thead><tbody>
+<tr>
+<td><code>base.html</code></td>
+<td>Layout shell: HTML scaffold, the <code>EventSource('/api/events')</code> SSE wiring, theme bootstrap, the History page-size persistence + bare-<code>/api/history</code> active-window injection, and the Custom-popover open/close/Escape/click-outside JS.</td>
+</tr>
+<tr>
+<td><code>partials/nav.html</code></td>
+<td>Shared primary nav (Board / History / Memory) with <code>aria-current</code> + <code>.is-active</code> on the active page.</td>
+</tr>
+<tr>
+<td><code>partials/theme_toggle.html</code></td>
+<td>Light/dark theme toggle, shared across all pages.</td>
+</tr>
+<tr>
+<td><code>partials/counts_skeleton.html</code></td>
+<td>Instant shimmer placeholder for the masthead <code>#history-stats</code> host (rendered <code>with cells = 6</code>) so the stats columns are reserved before the first OOB stats swap lands — no layout shift.</td>
+</tr>
+<tr>
+<td><code>partials/history_skeleton.html</code></td>
+<td>Decorative (<code>aria-hidden</code>) shimmer mirroring the region's real layout (range toolbar → one combined chart → closed list) so <code>#history-region</code> never flashes empty before the first <code>/api/history</code> fetch.</td>
+</tr>
+<tr>
+<td><code>partials/history.html</code></td>
+<td>The HTMX swap-target body: range control + Custom popover, the "Created vs closed" grouped-bar chart, the paginated closed list + pager + page-size selector — and, appended, the OOB stats fragment.</td>
+</tr>
+<tr>
+<td><code>partials/history_stats.html</code></td>
+<td>The KPI <code>&lt;dl&gt;</code> emitted with <code>hx-swap-oob="true"</code>; HTMX peels it off the same <code>/api/history</code> response and swaps it into the masthead <code>#history-stats</code> host. Carries <code>aria-live</code> + per-cell info-icon popovers explaining each metric.</td>
+</tr>
+<tr>
+<td><code>partials/bead_card.html</code></td>
+<td>Shared clickable bead tile, reused here with <code>card_class="history-card"</code>, <code>show_closed_when=true</code>, <code>meta="history"</code>; opens <code>/api/bead/{id}</code> in <code>#bead-modal</code>.</td>
+</tr>
+</tbody></table>
+<h2 id="state">State</h2>
+<ul>
+<li>**Time range (<code>range</code>)** — <code>7d</code> / <code>30d</code> / <code>90d</code> / <code>all</code>; transient state carried only in the query string the range badges fire (not on the <code>/history</code> route itself). An unknown/missing value degrades to the default (<code>30d</code>) inside <code>derive.resolve_history_bounds</code>. The active badge is rendered server-side from <code>active_range</code> so it survives every swap.</li>
+<li>**Custom window (<code>from_date</code>/<code>to_date</code>)** — <code>YYYY-MM-DD</code> values from the Custom popover. When either parses, <code>is_custom</code> is true, <code>active_range</code> becomes the synthetic <code>custom</code> preset, and the window supersedes <code>range=</code> for the charts, KPIs, <em>and</em> the closed list (the precedence is resolved once in the derive layer). The inputs echo the submitted values so the popover repopulates after each swap.</li>
+<li>**Pagination (<code>page</code> / <code>page_size</code>)** — <code>page</code> is server-clamped to <code>&gt;= 1</code>; <code>page_size</code> is clamped to the allowed set <code>{25, 50, 100}</code> via <code>derive.clamp_page_size</code> (default <code>50</code>) so a bad query param can never break paging. The page-size choice is persisted to <code>localStorage</code> (<code>bdboard-history-page-size</code>) and re-injected by <code>base.html</code> onto bare <code>/api/history</code> fetches.</li>
+<li><strong>Theme</strong> — read from <code>localStorage</code> and applied by the base-layout bootstrap; the toggle's <code>aria-pressed</code> reflects current mode.</li>
+<li><strong>SSE live-refresh</strong> — <code>#history-region</code> carries <code>hx-trigger="load, refresh from:body"</code>. <code>base.html</code> opens an <code>EventSource('/api/events')</code>; on a <code>beads_changed</code> server event it dispatches a bubbling <code>refresh</code> DOM event on <code>&lt;body&gt;</code>, re-fetching the region. Because that refresh hits a <strong>bare</strong> <code>/api/history</code> (no params), <code>base.html</code> reads the active range/custom window + persisted page size from the live DOM and re-injects them onto the request so a live refresh re-renders the <em>same</em> window the user is viewing instead of snapping back to the 30d default (bdboard-li44). See the <a href="../Flows/live-refresh-pipeline.html">live-refresh pipeline</a>.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>The page route holds <strong>no</strong> history data. All of it lives in <code>bd</code>'s dolt store, read on demand by <code>/api/history</code> via <code>store.snapshot_history(closed_after=cutoff)</code> and shaped by the pure <a href="../Concepts/derive-layer.html">derive layer</a> (<code>history_window</code> / <code>throughput</code> / <code>lead_time_stats</code> / <code>created</code> / <code>combined</code>). The view is intentionally stateless beyond the transient range/page query string. The resolved lower bound is pushed down into the snapshot fetch so a narrow range only pulls the beads closed inside its window — <code>range=all</code> resolves to an unbounded fetch by design (see <a href="../Concepts/store-snapshot-cache.html">store snapshot cache</a>).</p></div>
+<h2 id="api-dependencies">API dependencies</h2>
+<table><thead><tr>
+<th>Endpoint</th>
+<th>Used for</th>
+</tr></thead><tbody>
+<tr>
+<td><code>GET /api/history</code></td>
+<td>Renders the entire <code>#history-region</code> (range control, chart, paginated closed list) <strong>and</strong> the masthead <code>#history-stats</code> strip out-of-band, in one round-trip. Fired on page <code>load</code>, on SSE <code>refresh from:body</code>, and on every range / custom / pager / page-size interaction. See <a href="../Endpoints/history-api.html">History API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/bead/{id}</code></td>
+<td>Loads the clicked closed bead's detail into the shared <code>#bead-modal</code>. See <a href="../Endpoints/bead-detail-api.html">Bead detail API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/events</code></td>
+<td>SSE stream wired in <code>base.html</code>; a <code>beads_changed</code> event triggers a <code>refresh</code> of the region. See <a href="../Endpoints/sse-events.html">SSE events</a>.</td>
+</tr>
+</tbody></table>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>The KPI strip mixes two scopes that look alike but are not: <strong>Total</strong> and <strong>Closed (all time)</strong> come from bd's workspace-global <code>status_summary()</code> and do <strong>not</strong> react to the range control, while <strong>Avg lead</strong>, <strong>Closed (range)</strong>, <strong>Median lead</strong>, and <strong>Throughput</strong> are range-scoped derivations. The info-icon popover on each cell spells out the scope precisely so the two are never conflated. If <code>bd status</code> hiccups, <code>bd_summary</code> is <code>None</code> and the two global cells are simply omitted — the range-derived KPIs remain as the primary surface, so the masthead degrades gracefully rather than 500-ing.</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Endpoints/history-api.html">Endpoint: History API (<code>/api/history</code>)</a></li>
+<li><a href="../Endpoints/bead-detail-api.html">Endpoint: Bead detail API (<code>/api/bead/{id}</code>, <code>/audit</code>, <code>/raw</code>)</a></li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (<code>/api/events</code>)</a></li>
+<li><a href="../Features/history-and-trends.html">Feature: History &amp; trends</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a></li>
+<li><a href="board-page.html">View: Board page (<code>/</code>)</a></li>
+<li><a href="memory-page.html">View: Memory page (<code>/memory</code>)</a></li>
+<li><a href="../Concepts/derive-layer.html">Concept: Derive layer (pure view shaping)</a></li>
+<li><a href="../Concepts/store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a></li>
+<li><a href="../Concepts/htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a></li>
+<li><a href="../Concepts/bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

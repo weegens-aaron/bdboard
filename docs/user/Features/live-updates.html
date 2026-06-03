@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Live updates — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="../Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="../Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="../Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="index.html">Index</a>
+<a href="bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="create-from-formulas.html">Create-from-formulas</a>
+<a href="history-and-trends.html">History-and-trends</a>
+<a href="live-updates.html" class="active">Live-updates</a>
+<a href="memory-manager.html">Memory-manager</a>
+<a href="the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="../Guides/index.html">Index</a>
+<a href="../Guides/create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="../Guides/edit-a-bead.html">Edit-a-bead</a>
+<a href="../Guides/explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="../Guides/manage-agent-memories.html">Manage-agent-memories</a>
+<a href="../Guides/take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-live-updates">Feature: Live updates</h1>
+<h2 id="what-it-does">What it does</h2>
+<p>bdboard keeps itself current. When the beads in your project change — because you (or one of your tools) filed, claimed, edited, closed, or poured beads — the board notices and refreshes the affected parts of the page on its own, usually within a second or two. You don't reload, you don't press a refresh button, and you don't poll: the screen simply catches up to reality while you watch. A small <strong>live</strong> indicator at the bottom of the window tells you the push connection is healthy.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>A board that goes stale the moment you stop touching it is worse than no board at all — it quietly lies to you. Beads change constantly: agents and teammates file and close them in the background, and you yourself edit beads and pour new ones from formulas. If the page only updated when you manually reloaded, you'd never be sure whether what's on screen is <em>now</em> or <em>five minutes ago</em>, and you'd develop the bad habit of mashing reload "just in case."</p>
+<p>Live updates exist so the board is <strong>trustworthy at a glance</strong>. Because it refreshes itself whenever the underlying work changes, you can leave it open on a second monitor and treat it as a true, current picture of your project. It also means a change you make in one place shows up everywhere — including in other browser tabs you have open — without any extra steps.</p>
+<h2 id="how-it-works">How it works</h2>
+<h3 id="user-perspective">User perspective</h3>
+<p>You don't do anything to turn this on — it's always working. Open the board and glance at the bottom of the window:</p>
+<ul>
+<li><strong>"connecting…"</strong> — the page has just loaded and is opening its live connection.</li>
+<li><strong>"live · push"</strong> with a steady dot — connected and listening; changes will appear on their own.</li>
+<li><strong>"reconnecting…"</strong> — the connection dropped (a sleep, a network blip, the app briefly restarting) and the page is automatically trying again. It heals itself within a few seconds; you don't need to do anything.</li>
+</ul>
+<p>While the connection is healthy, anything that changes your beads — a teammate or agent closing a bead, you editing a field, you pouring new beads from a formula — makes the relevant part of the screen update in place. On the <strong>Board</strong>, the counts strip and the swim lanes re-draw. On <strong>History</strong>, the charts and stats re-draw for the time window you're currently viewing. On the <strong>Memory</strong> page, the saved-notes list refreshes. The rest of the page — your scroll position, an open bead, your dark-mode and time-window choices — stays put. Only the data panels refresh, so it feels like the numbers and cards quietly correct themselves rather than the whole page flashing.</p>
+<h3 id="system-perspective">System perspective</h3>
+<p>In plain language, and without any file paths or code: bdboard runs a small watcher that keeps an eye on your project's bead data on your own machine. When that data changes on disk, the watcher takes a fresh reading of your beads and compares it to what it last showed. If something genuinely changed, the server sends a short "beads changed" nudge down a long-lived connection that every open page holds. Each page, on receiving the nudge, re-fetches just the panels that display live data and swaps in the new content.</p>
+<p>Two pieces of timing keep this smooth rather than frantic:</p>
+<ul>
+<li>A brief <strong>settle window</strong> (about a quarter of a second) groups the flurry of tiny writes a single change produces into <em>one</em> refresh, instead of a dozen.</li>
+<li>A short <strong>cool-down</strong> after each refresh stops a burst of background activity from triggering refreshes back-to-back at full speed.</li>
+</ul>
+<p>The connection also sends a quiet heartbeat every few seconds so that proxies or network equipment don't hang up on it for being idle. The whole thing is <strong>push, not polling</strong> — your browser isn't pestering the server on a timer; it just waits and is told when there's news, which is why updates feel immediate without wasting effort when nothing is happening. And because this all reads from data already on your machine, nothing is fetched from the internet to keep the board current (see <a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>).</p>
+<h2 id="sequence">Sequence</h2>
+<pre class="mermaid">
+sequenceDiagram
+    actor You
+    participant Page as bdboard page (your browser tab)
+    participant App as bdboard (on your machine)
+    participant Data as Your bead data
+
+    Page-&gt;&gt;App: Open a live connection on page load
+    App--&gt;&gt;Page: "live · push" — connection healthy
+    Note over Data: A bead is filed / edited / closed / poured
+    Data--&gt;&gt;App: The data on disk changes
+    App-&gt;&gt;App: Take a fresh reading; did anything really change?
+    App--&gt;&gt;Page: Nudge: "beads changed"
+    Page-&gt;&gt;App: Re-fetch just the data panels
+    App--&gt;&gt;Page: Updated counts / lanes / history / notes
+    Note over You: The screen catches up on its own — no reload
+</pre>
+<h2 id="where-you-ll-find-it">Where you'll find it</h2>
+<p>Live updates aren't a button — they're a behaviour of the whole app, so you see them everywhere data is shown:</p>
+<ul>
+<li><strong>The status indicator</strong> lives at the <strong>bottom-centre of every page</strong> (in the footer): a small dot plus the words *connecting… / live · push / reconnecting…*. That's your at-a-glance "is the board current?" cue.</li>
+<li><strong>The Board page</strong> — the counts strip across the top and the swim lanes update themselves in place as beads change.</li>
+<li><strong>The History page</strong> — the charts and summary stats re-draw for whichever time window you're viewing.</li>
+<li><strong>The Memory page</strong> — the saved-notes list refreshes as notes change.</li>
+</ul>
+<p>You won't find a settings screen or a toggle for this; it's on by default and needs no configuration.</p>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>- <strong>A change in one tab shows up in all your tabs.</strong> Every open bdboard page   holds its own live connection, so editing a bead or pouring a formula in one   tab updates the board in your other tabs too — they all hear the same nudge. - <strong>After sleep or a network blip, the indicator shows "reconnecting…".</strong> This   is normal and self-healing: the page retries automatically and, the moment it   reconnects, pulls a fresh picture so you're never left looking at stale data   without warning. - <strong>On the History page, a live update re-draws the window you're viewing.</strong> If   you've narrowed to a custom range, an automatic refresh keeps showing your   current selection rather than snapping you back to a default — your view is   preserved while the numbers update underneath it. - <strong>Browsing never triggers a "change."</strong> Simply opening beads, switching   pages, or flipping dark mode doesn't alter your data, so it won't cause the   board to think something changed. Only real edits and pours do.</p></div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<ul>
+<li><strong>The live connection drops</strong> (you closed the laptop, the Wi-Fi hiccuped, or the app briefly restarted): the indicator switches to <em>reconnecting…</em> and the page keeps trying on its own with growing pauses between attempts. When it succeeds, it re-reads your beads so the board is current again. You see a short delay, not an error you have to act on.</li>
+<li><strong>A reading of your beads momentarily fails in the background</strong>: the board keeps showing the last good picture rather than blanking out, and it simply tries again on the next change. A transient hiccup can't wedge live updates permanently — it retries promptly instead of giving up.</li>
+<li><strong>A page falls badly behind</strong> (for example, a tab left buried for a long time): rather than queue up an endless backlog, bdboard may skip ahead to the latest state. You might miss the <em>blow-by-blow</em>, but the next refresh shows the correct, current picture — freshness, not accuracy, is what briefly lapses.</li>
+<li><strong>Live updates can't connect at all</strong> (rare): the page still works as a normal view of your beads. You can reload it by hand at any time to pull the current state, since the board always reads fresh data when it first loads.</li>
+</ul>
+<h2 id="good-to-know">Good to know</h2>
+<p>The behaviour you'd most want to rely on is exercised by the project's automated checks — that a single change produces exactly one refresh (not a storm), that a trailing or isolated change is never silently dropped, and that a momentary reading failure doesn't permanently freeze live syncing. In everyday use that translates to a simple promise: if your beads change, the board will catch up on its own, and the <em>live</em> indicator tells you when that promise is in force.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a> — why keeping the board current never involves the internet.</li>
+<li><a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a> — what's actually moving when the lanes re-draw themselves.</li>
+<li><a href="../Concepts/time-ranges-and-recent-work.html">Time ranges &amp; recent work</a> — how the window you've chosen is preserved across an automatic refresh.</li>
+<li><a href="../Guides/take-your-first-look.html">Take your first look</a> — the orientation tour, including the live, read-only nature of the board.</li>
+<li><a href="../Guides/edit-a-bead.html">Edit a bead</a> — a deliberate change that the rest of the board (and your other tabs) will pick up live.</li>
+<li><a href="../Guides/create-beads-from-a-formula.html">Create beads from a formula</a> — pour new beads and watch them arrive on the board without a reload.</li>
+<li><a href="../Guides/explore-history-and-trends.html">Explore history &amp; trends</a> — the History page that also stays current via live updates.</li>
+<li><a href="index.html">Features</a> — the rest of what bdboard does.</li>
+<li><a href="../Overview.html">Overview</a> — the big picture of the app.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

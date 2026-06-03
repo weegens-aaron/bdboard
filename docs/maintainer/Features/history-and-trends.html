@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: History &amp; trends — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="../Concepts/derive-layer.html">Derive-layer</a>
+<a href="../Concepts/htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="../Concepts/store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="../Concepts/watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="index.html">Index</a>
+<a href="bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="formula-pour.html">Formula-pour</a>
+<a href="history-and-trends.html" class="active">History-and-trends</a>
+<a href="live-auto-refresh.html">Live-auto-refresh</a>
+<a href="memory-management.html">Memory-management</a>
+<a href="swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-history-trends">Feature: History &amp; trends</h1>
+<h2 id="what-it-does">What it does</h2>
+<p>History &amp; trends is bdboard's <strong>retrospective / analytics</strong> capability: a dedicated page (<code>/history</code>) that answers <em>what got done, how fast, and at what rate</em> over a selectable time window. Where the <a href="../Views/board-page.html">board</a> shows what is <em>in flight</em>, this feature surfaces three views of completed work over a 7d / 30d / 90d / All range (default 30d) plus an optional custom from/to date window: (1) headline <strong>KPIs</strong> — bd's workspace-global Total / Closed all-time alongside range-scoped Avg lead, Closed-in-range, Median lead, and Throughput/day; (2) a <strong>"Created vs closed" grouped-bar chart</strong> that pairs the beads-filed and beads-closed counts per day on one continuous timeline so net flow / backlog burn reads at a glance; and (3) a <strong>paginated list of closed beads</strong>, newest-closed first, each card opening the shared bead modal. Every surface is a *pure derivation over one <code>bd</code> snapshot* — no per-page or per-metric subprocess — and every surface reacts live to the same SSE refresh pipeline the rest of the dashboard uses.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>Throughput, lead time, and the closed backlog are exactly the numbers a maintainer needs to reason about velocity and cycle time, but on the CLI those answers are scattered across ad-hoc <code>bd list --status=closed</code> invocations and hand-rolled date math. Surfacing them as a first-class, range-filterable page turns "how are we trending?" into a single glance. Three concrete needs drive the feature:</p>
+<ol>
+<li><strong>Velocity &amp; cycle-time at a glance.</strong> Counting closures and computing lead / cycle times by hand is tedious and error-prone; the page derives them deterministically from the same snapshot the board already holds.</li>
+<li><strong>Net-flow readability.</strong> Closures alone don't tell you whether the backlog is growing or shrinking — you need <em>created vs closed</em> on one timeline. The combined grouped-bar chart makes burn-down/burn-up legible per day.</li>
+<li><strong>Reachable long-tail history without blowing up memory.</strong> The board's closed lane is intentionally count-capped (newest ~50); a retrospective surface must reach arbitrarily far back (<code>bdboard-a194</code>) <em>without</em> slurping the entire closed table on every render. The window's resolved lower bound is therefore pushed down into the <code>bd</code> query as <code>--closed-after</code> (<code>bdboard-gp06</code>), so a narrow range fetches only its beads while <code>All</code> stays a genuine unbounded read.</li>
+</ol>
+<h2 id="how-it-works">How it works</h2>
+<h3 id="user-perspective">User perspective</h3>
+<p>The user opens <code>/history</code> and the page paints instantly with skeleton placeholders, then the real region swaps in a beat later (lazy <code>hx-get</code> to <a href="../Endpoints/history-api.html"><code>/api/history</code></a>). They can:</p>
+<ul>
+<li><strong>Switch the time window</strong> — click a <code>7d</code> / <code>30d</code> / <code>90d</code> / <code>All</code> range badge; the whole region (chart, KPIs, list) re-renders for that window. <code>aria-pressed</code> marks the active range.</li>
+<li><strong>Pick a custom window</strong> — open the <strong>Custom</strong> popover (a real <code>&lt;form role="dialog"&gt;</code> with From/To <code>type="date"</code> inputs); the submitted dates <em>supersede</em> the preset for the chart, KPIs, <em>and</em> list. <strong>Clear</strong> returns to the last preset.</li>
+<li><strong>Page through closed beads</strong> — Newer / Older pager and a per-page selector (25 / 50 / 100, persisted to <code>localStorage</code>).</li>
+<li><strong>Open a closed bead</strong> — click any card to load its detail into the shared <code>#bead-modal</code>.</li>
+<li><strong>See live updates</strong> — a bead closing anywhere (another tab, the CLI, an agent) re-renders the region automatically; the user never reloads.</li>
+</ul>
+<h3 id="system-perspective">System perspective</h3>
+<p>The page route (<code>page_history</code>) is deliberately <em>data-free</em>: it runs the shared <code>_validate_or_warn()</code> workspace guard and renders <code>history.html</code> with only <code>workspace</code>, <code>workspace_path</code>, and <code>active="history"</code>. It <strong>never</strong> calls <code>bd</code>, so first paint is instant. All real work happens in the lazy region fetch (<code>api_history</code>):</p>
+<ol>
+<li><strong>Resolve the window once.</strong> From a single <code>now = datetime.now(UTC)</code>, the handler clamps <code>range</code> (unknown → <code>30d</code>), clamps <code>page</code> (<code>&gt;= 1</code>) and <code>page_size</code> (to <code>{25,50,100}</code>, default 50 via <code>derive.clamp_page_size</code>), and resolves the <code>(cutoff, ceiling)</code> bounds via <code>derive.resolve_history_bounds</code> — the single source of truth that makes a custom from/to window supersede the preset.</li>
+<li><strong>Bounded snapshot read.</strong> It pushes the resolved <code>cutoff</code> down into <code>store.snapshot_history(closed_after=cutoff)</code>, which (cache-aware) shells <code>bd.list_closed_history</code> (<code>bd list --status closed --sort closed --no-pager --limit 0 [--closed-after &lt;iso&gt;]</code>) merged with the cached active beads — uncapped on count but bounded on window.</li>
+<li><strong>Pure derivation over that one snapshot.</strong> The handler computes the paginated closed list (<code>history_window</code>), the combined created+closed series (<code>combined</code> + <code>combined_peak</code>), the standalone <code>created</code> / <code>throughput</code> per-day tallies for the legend counts, and the lead/cycle-time KPIs (<code>lead_time_stats</code>).</li>
+<li><strong>Optional global headline.</strong> It also requests bd's own aggregate via <code>store.bd.status_summary</code> (<code>bd status --json</code>, cached); <code>None</code> on any hiccup simply omits the two global cells.</li>
+<li><strong>One response, two surfaces.</strong> It renders <code>partials/history.html</code> into <code>#history-region</code> while an appended <code>hx-swap-oob</code> fragment (<code>history_stats.html</code>) updates the masthead <code>#history-stats</code> KPI strip — in a single round-trip.</li>
+</ol>
+<h2 id="sequence">Sequence</h2>
+<pre class="mermaid">
+sequenceDiagram
+    actor User
+    participant Page as /history (page_history)
+    participant HX as HTMX (#history-region)
+    participant App as app.py:api_history
+    participant Derive as derive.history
+    participant Store as Store
+    participant BD as bd (list / status)
+
+    User-&gt;&gt;Page: GET /history
+    Page--&gt;&gt;User: shell + skeleton (no bd call)
+    HX-&gt;&gt;App: GET /api/history?range&amp;page&amp;page_size&amp;from_date&amp;to_date
+    App-&gt;&gt;App: now = utcnow(); clamp range/page/page_size
+    App-&gt;&gt;Derive: resolve_history_bounds(...) -&gt; (cutoff, ceiling)
+    App-&gt;&gt;Store: snapshot_history(closed_after=cutoff)
+    Store-&gt;&gt;BD: bd list --status closed --limit 0 [--closed-after cutoff] (cache-aware)
+    BD--&gt;&gt;Store: closed beads (+ cached active)
+    Store--&gt;&gt;App: beads[]
+    App-&gt;&gt;Derive: history_window / combined / throughput / created / lead_time_stats
+    Derive--&gt;&gt;App: window, series, stats (pure, one snapshot)
+    App-&gt;&gt;Store: bd.status_summary()  %% optional headline (None -&gt; omit cells)
+    Store-&gt;&gt;BD: bd status --json (cached)
+    BD--&gt;&gt;Store: summary | None
+    App--&gt;&gt;HX: 200 partials/history.html (+ OOB history_stats.html)
+    Note over User,HX: HTMX swaps #history-region and peels the OOB strip into #history-stats.&lt;br/&gt;A later SSE "beads_changed" event re-fires this same fetch.
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table><thead><tr>
+<th>Concern</th>
+<th>Where</th>
+<th>Notes</th>
+</tr></thead><tbody>
+<tr>
+<td>Page route (shell only)</td>
+<td><code>src/bdboard/app.py:page_history</code> → <code>templates/history.html</code></td>
+<td>Workspace guard + render; holds no data, never calls <code>bd</code>.</td>
+</tr>
+<tr>
+<td>Region handler</td>
+<td><code>src/bdboard/app.py:api_history</code></td>
+<td>Thin route: resolve window, one snapshot, pure derive, render partial + OOB strip.</td>
+</tr>
+<tr>
+<td>Window resolution (single source of truth)</td>
+<td><code>derive.resolve_history_bounds</code> (<code>custom_bounds</code>, <code>_range_to_cutoff</code>, <code>_resolve_bounds</code>)</td>
+<td>Custom from/to supersedes the preset; <code>(cutoff, ceiling)</code> shared by fetch + every slice.</td>
+</tr>
+<tr>
+<td>Range / page-size constants</td>
+<td><code>derive.HISTORY_RANGES</code>, <code>DEFAULT_HISTORY_RANGE</code>, <code>HISTORY_PAGE_SIZES</code>, <code>clamp_page_size</code></td>
+<td><code>7d/30d/90d/all</code>; <code>{25,50,100}</code> default 50.</td>
+</tr>
+<tr>
+<td>Bounded snapshot read</td>
+<td><code>store.snapshot_history(closed_after)</code> → <code>bd.list_closed_history</code></td>
+<td>Count-uncapped, window-bounded; window-aware history cache (<code>_history_covers</code>).</td>
+</tr>
+<tr>
+<td>Paginated closed list</td>
+<td><code>derive.history_window</code></td>
+<td><code>{items, page, page_size, total, has_more}</code>; in-memory slice, no per-page I/O.</td>
+</tr>
+<tr>
+<td>Combined chart series</td>
+<td><code>derive.combined</code> (+ <code>combined_peak</code>)</td>
+<td>created+closed zipped onto one gap-free timeline; shared y-peak.</td>
+</tr>
+<tr>
+<td>Per-day legend tallies</td>
+<td><code>derive.throughput</code>, <code>derive.created</code></td>
+<td><code>partial</code>s of one <code>_daily_count_series</code> pipeline (closed-at / created-at).</td>
+</tr>
+<tr>
+<td>Lead / cycle-time KPIs</td>
+<td><code>derive.lead_time_stats</code></td>
+<td>median/p90 lead (created→closed) + median/p90/avg cycle (started→closed).</td>
+</tr>
+<tr>
+<td>Workspace-global headline</td>
+<td><code>store.bd.status_summary</code> (<code>bd status --json</code>, cached)</td>
+<td>Optional Total / Closed all-time; <code>None</code> ⇒ cells omitted.</td>
+</tr>
+<tr>
+<td>Per-bead status timeline</td>
+<td><code>derive.status_timeline</code> (used by <code>app.py</code> audit view)</td>
+<td>The per-bead trend sibling: collapses <code>bd history &lt;id&gt;</code> snapshots to status transitions + dwell time; reuses the audit fetch (no extra subprocess).</td>
+</tr>
+<tr>
+<td>Region template</td>
+<td><code>partials/history.html</code></td>
+<td>Range toolbar + Custom popover, combined chart, paginated list + pager + size selector.</td>
+</tr>
+<tr>
+<td>OOB KPI strip</td>
+<td><code>partials/history_stats.html</code> (<code>hx-swap-oob="true"</code> → masthead <code>#history-stats</code>)</td>
+<td>Range KPIs + optional "via bd" totals, per-cell info popovers.</td>
+</tr>
+<tr>
+<td>Skeletons (no flash-empty)</td>
+<td><code>partials/history_skeleton.html</code>, <code>partials/counts_skeleton.html</code></td>
+<td>First-paint shimmer for region + stats host.</td>
+</tr>
+<tr>
+<td>Closed card</td>
+<td><code>partials/bead_card.html</code> (<code>meta="history"</code>)</td>
+<td>Opens <code>/api/bead/{id}</code> in <code>#bead-modal</code>.</td>
+</tr>
+<tr>
+<td>Client wiring</td>
+<td><code>templates/base.html</code></td>
+<td>SSE → <code>refresh</code>, page-size persistence, active-window re-injection on bare refresh, Custom-popover JS.</td>
+</tr>
+</tbody></table>
+<h2 id="config">Config</h2>
+<table><thead><tr>
+<th>Name</th>
+<th>Where</th>
+<th>Default</th>
+<th>Effect</th>
+</tr></thead><tbody>
+<tr>
+<td><code>range</code> (query)</td>
+<td><code>api_history</code> / <code>HISTORY_RANGES</code></td>
+<td><code>30d</code> (<code>DEFAULT_HISTORY_RANGE</code>)</td>
+<td>Selects the window (<code>7d</code>/<code>30d</code>/<code>90d</code>/<code>all</code>); unknown/empty degrades to default.</td>
+</tr>
+<tr>
+<td><code>page</code> (query)</td>
+<td><code>api_history</code></td>
+<td><code>1</code></td>
+<td>Closed-list page; clamped <code>&gt;= 1</code>; past-end renders a graceful empty state.</td>
+</tr>
+<tr>
+<td><code>page_size</code> (query)</td>
+<td><code>derive.clamp_page_size</code></td>
+<td><code>50</code> (<code>HISTORY_PAGE_SIZE</code>)</td>
+<td>Per-page size; clamped to <code>HISTORY_PAGE_SIZES = {25,50,100}</code>, else <code>50</code>.</td>
+</tr>
+<tr>
+<td><code>from_date</code> / <code>to_date</code> (query)</td>
+<td><code>derive.custom_bounds</code></td>
+<td><code>None</code></td>
+<td><code>YYYY-MM-DD</code> custom window; inclusive lower / exclusive next-day-ceiling; supersedes <code>range=</code>.</td>
+</tr>
+<tr>
+<td><code>bdboard-history-page-size</code> (localStorage)</td>
+<td><code>base.html</code></td>
+<td>unset → <code>50</code></td>
+<td>Persists the chosen page size across reloads/SSE refreshes; re-injected onto bare <code>/api/history</code> fetches.</td>
+</tr>
+</tbody></table>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>The window is resolved <strong>once</strong> from a single <code>now</code>, and that same <code>(cutoff, ceiling)</code> drives both the server-side <code>--closed-after</code> fetch bound and every in-memory derive slice. This single-resolver discipline is what guarantees the chart, the KPIs, and the closed list all agree on the exact same window with no off-by-one drift (<code>bdboard-gp06</code>). Never re-derive the bound separately per metric.</p></div>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>- <strong>Two KPI scopes that look alike.</strong> <em>Total</em> and <em>Closed (all time)</em> come from   bd's workspace-global <code>status_summary()</code> and do <strong>not</strong> react to the range   control; <em>Avg lead</em>, <em>Closed (range)</em>, <em>Median lead</em>, and <em>Throughput</em> are   range-scoped derivations. Each cell carries an info-icon popover spelling out   the scope so the two are never conflated. - <strong>No static count cap.</strong> History is uncapped on count (<code>--limit 0</code>) precisely   so the long tail stays reachable; a fixed cap would silently truncate to the   newest N closures (<code>bdboard-a194</code>). It is bounded only by the <em>window</em>. - **<code>all</code> and <code>to_date</code>-only windows stay unbounded.** <code>range=all</code> resolves   <code>cutoff=None</code>, a genuine full-table read; a custom window with only a <code>to_date</code>   (no <code>from_date</code>) also resolves <code>cutoff=None</code> — the user explicitly chose no   lower bound. - <strong>Inverted custom dates are swapped, not collapsed.</strong> A <code>from</code> later than <code>to</code>   is reordered so the window stays meaningful instead of yielding an empty set. - **<code>to_date</code> is inclusive of its whole day.<em>* The ceiling is the </em>exclusive*   start-of-next-day, so <code>to_date=2026-05-30</code> includes everything stamped on the   30th. - <strong>Beads with no parseable timestamp are excluded</strong> from the relevant series:   no <code>closed_at</code> ⇒ off the closed list / throughput; no <code>created_at</code> ⇒ off the   created series; no <code>started_at</code> ⇒ off the cycle-time metrics. They can't be   placed on a timeline. - <strong>Negative/zero durations are dropped</strong> from lead/cycle stats (clock skew or   odd data) so a single bad row can't poison the medians. - **Live refresh hits a bare <code>/api/history</code>.** The SSE re-fetch carries no query   params, so <code>base.html</code> reads the active range/custom window + persisted page   size from the live DOM and re-injects them — otherwise a live refresh would   snap back to the 30d default (<code>bdboard-li44</code>).</p></div>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Do <strong>not</strong> add per-param <code>4xx</code> validation to <code>/api/history</code> "to be strict." The contract is graceful degradation: a tampered/stale query string (from a bookmark, an SSE refresh, or a hand-edited URL) must always paint <em>something</em> useful, never a broken HTMX swap target. Every clamp lives in the <a href="../Concepts/derive-layer.html">derive layer</a> precisely so the endpoint stays a thin, total function.</p></div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table><thead><tr>
+<th>What fails</th>
+<th>What the user sees</th>
+<th>How the system degrades</th>
+</tr></thead><tbody>
+<tr>
+<td>Bad <code>range</code> / out-of-range <code>page</code> / invalid <code>page_size</code> / unparseable date</td>
+<td>A correctly-rendered region for the safe default (<code>30d</code> / "Nothing on page N" / size 50 / "no bound")</td>
+<td>Every param degrades in the derive layer; the endpoint <strong>never</strong> error-statuses on input — always <code>200</code> HTML.</td>
+</tr>
+<tr>
+<td><code>bd list</code> snapshot fetch fails</td>
+<td>The previous snapshot keeps rendering (no flash-empty)</td>
+<td><a href="../Concepts/store-snapshot-cache.html"><code>store</code></a> leaves the existing cache in place — better stale than empty.</td>
+</tr>
+<tr>
+<td><code>bd status</code> (<code>status_summary</code>) fails / returns malformed JSON</td>
+<td>The "via bd" Total / Closed all-time cells vanish</td>
+<td><code>status_summary()</code> returns <code>None</code>; the range-derived KPIs remain the primary surface.</td>
+</tr>
+<tr>
+<td>Workspace invalid at page load</td>
+<td><code>error.html</code> with HTTP <code>500</code></td>
+<td><code>page_history</code> runs <code>_validate_or_warn()</code> so a broken workspace fails <em>visibly</em> rather than painting an empty page.</td>
+</tr>
+<tr>
+<td>Empty window (nothing created or closed)</td>
+<td>"No beads created or closed to chart in …" + an empty-list message</td>
+<td>The chart and list render explicit empty states rather than blank space.</td>
+</tr>
+</tbody></table>
+<h2 id="testing">Testing</h2>
+<p>The handler, the bounded fetch, and the pure derivations are each tested in isolation (no real <code>bd</code> subprocess — <code>store.snapshot_history</code> is stubbed):</p>
+<ul>
+<li><code>tests/test_api_history.py</code> — the route end-to-end: KPI strip presence + <code>status_summary=None</code> degradation, chart a11y (<code>role="img"</code>, text <code>aria-label</code>s, hatched created variant, per-day counts), closed-list cards opening the modal, range control (<code>aria-pressed</code>, bad-range→default, <code>all</code> includes old beads, each window re-derives a genuinely different set — <code>bdboard-li44</code>), pagination / page-size clamping (<code>bdboard-a194</code> no hidden 50-cap), custom date-window precedence + popover echo, the <code>--closed-after</code> pushdown (<code>bdboard-gp06</code>), and KPI/throughput/list cross-consistency for every range.</li>
+<li><code>tests/test_derive_history.py</code> — the pure functions: <code>resolve_history_bounds</code> / <code>custom_bounds</code> precedence, window filtering, gap-free day-fill, <code>combined</code> alignment, percentile / lead / cycle math, and <code>status_timeline</code> transitions + dwell.</li>
+<li><code>tests/test_store_history_window.py</code> — the window-aware history cache (<code>_history_covers</code>) and bounded re-fetch.</li>
+<li><code>tests/test_bd_closed_history.py</code> — the count-uncapped <code>--limit 0</code> fetch and the <code>--closed-after</code> flag wiring.</li>
+<li><code>tests/test_bd_status_summary.py</code> — the optional headline summary parse + <code>None</code>-on-hiccup behaviour.</li>
+<li><code>tests/test_page_history.py</code> — the thin page shell (no <code>bd</code> call, workspace-guard <code>500</code>).</li>
+<li><code>tests/test_created_bar_contrast.py</code> — WCAG contrast of the created-vs-closed bars.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Views/history-page.html">View: History page (<code>/history</code>)</a> — the page surface this feature presents: chrome, page structure, components, and user actions.</li>
+<li><a href="../Endpoints/history-api.html">Endpoint: History API (<code>/api/history</code>)</a> — the single read endpoint behind the feature; request/response contract, params, and degradation rules.</li>
+<li><a href="../Endpoints/bead-detail-api.html">Endpoint: Bead detail API (<code>/api/bead/{id}</code>, <code>/audit</code>, <code>/raw</code>)</a> — opened by clicking a closed-bead card; also hosts the per-bead status timeline.</li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (<code>/api/events</code>)</a> — the stream whose <code>beads_changed</code> event re-fetches the history region live.</li>
+<li><a href="live-auto-refresh.html">Feature: Live auto-refresh</a> — the broadcast → re-fetch machinery that keeps this feature's region live.</li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a> — the end-to-end refresh mechanics this feature rides on.</li>
+<li><a href="../Concepts/derive-layer.html">Concept: Derive layer (pure view shaping)</a> — where every bound, clamp, series, and KPI computation lives.</li>
+<li><a href="../Concepts/store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a> — the window-aware history cache and the <code>--closed-after</code> pushdown.</li>
+<li><a href="../Concepts/bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a> — why the data is a <code>bd list</code> / <code>bd status</code> snapshot, not a local DB.</li>
+<li><a href="../Concepts/htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a> — why the page is a thin shell + lazy region fetch with an OOB sibling.</li>
+<li><a href="../Views/board-page.html">View: Board page (<code>/</code>)</a> — the in-flight counterpart whose chrome this page mirrors.</li>
+<li><a href="../Architecture.html">Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

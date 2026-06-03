@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Formula pour — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="../Concepts/derive-layer.html">Derive-layer</a>
+<a href="../Concepts/htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="../Concepts/store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="../Concepts/watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="index.html">Index</a>
+<a href="bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="formula-pour.html" class="active">Formula-pour</a>
+<a href="history-and-trends.html">History-and-trends</a>
+<a href="live-auto-refresh.html">Live-auto-refresh</a>
+<a href="memory-management.html">Memory-management</a>
+<a href="swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-formula-pour">Feature: Formula pour</h1>
+<h2 id="what-it-does">What it does</h2>
+<p>Formula pour lets a user materialize a whole <strong>tree of beads</strong> onto the board from a single reusable <em>formula</em> (an on-disk <code>*.formula.json</code> template) in one click. From the board masthead the user opens a <strong>Pour a Formula</strong> dialog, picks a formula from a dropdown, fills in any variables the formula declares, and hits <strong>Pour onto board</strong>. The server runs one <code>bd mol pour … --json</code> subprocess that cooks the template and creates a molecule-wrapper node plus one bead per step, renames the wrapper so repeat pours stay distinguishable, refreshes the snapshot cache, and broadcasts a <code>beads_changed</code> SSE event so the new beads appear live on every open tab. The user sees an honest acknowledgement of how many <em>visible</em> beads landed. One click → N new beads → every tab updated.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>Some workflows are not a single bead but a recurring <em>shape</em> of work — a code health audit, an incident retro, a discovery-and-fan-out epic — that always decomposes into the same set of steps with the same dependency wiring. Recreating that tree by hand every time is tedious, error-prone, and drifts over time. Formulas capture the shape once as a versioned template; pour instantiates it on demand. Three concrete needs drive the feature:</p>
+<ol>
+<li><strong>Reusable scaffolding, parameterized.</strong> A formula carries <code>variables</code> (e.g. a target repo, a token) so the same template can be poured against many contexts without editing the file. The pour form surfaces those variables and prefills any defaults.</li>
+<li><strong>Atomic, all-or-nothing creation.</strong> A half-poured tree (orphan steps, an empty wrapper epic) is worse than no pour at all. Pour is atomic at the <code>bd</code> layer — a failure rolls back to zero new beads — and bdboard refuses to dress a <em>partial</em> materialization up as a clean success.</li>
+<li><strong>Live, honest feedback.</strong> The poured beads must show up on the board instantly (no manual reload) and the success message must report the count the user will actually <em>see</em>, not bd's raw node count (which includes the hidden wrapper).</li>
+</ol>
+<h2 id="how-it-works">How it works</h2>
+<h3 id="user-perspective">User perspective</h3>
+<p>The user clicks <strong>+ Pour Formula</strong> in the board masthead. A native <code>&lt;dialog&gt;</code> opens (trapping keyboard focus) and loads a <strong>formula picker</strong> — a single <code>&lt;select&gt;</code> dropdown listing every available formula by name and description. Choosing one swaps in that formula's <strong>variable form</strong>: its full description, a collapsed <em>Show all steps</em> disclosure, and one text input per declared variable. Required variables (those with no default) are marked with a <code>*</code> and the browser blocks submission until they're filled; variables with defaults come prefilled. The user clicks <strong>Pour onto board</strong>; the button disables to prevent double-submits. On success the picker resets to its default state and a confirmation persists below it — <code>Poured &lt;formula&gt; — N beads added to the board.</code> — while the new beads fan into the lanes a beat later via live refresh. A <em>partial</em> pour instead shows a warning telling the user to check the formula's top-level <code>pour: true</code> and remove the incomplete epic before retrying.</p>
+<h3 id="system-perspective">System perspective</h3>
+<p>The feature is a <strong>two-read-then-one-write</strong> sequence across three routes:</p>
+<ol>
+<li>**Picker (<code>GET /api/formulas</code>).** Calls <code>bd formula list --json</code> and renders a dropdown of <code>name</code> + <code>description</code>. The list payload also carries each formula's <code>source</code> (absolute path to its <code>*.formula.json</code>), which the next step needs.</li>
+<li>**Variable form (<code>GET /api/formulas/{name}/form</code>).** Looks the formula up in the list to get its <code>source</code>, then **reads the <code>*.formula.json</code> file directly** via <code>read_formula_detail()</code> to get the untruncated description, the variable descriptors, and the step list. This file read is deliberate: <code>bd formula list --json</code> truncates the description, <code>bd formula show --json</code> omits the <code>variables</code> block entirely, and the list payload's <code>vars</code> count is always <code>0</code> — the on-disk template is the only reliable source.</li>
+<li>**Pour (<code>POST /api/formulas/{name}/pour</code>).** CSRF-checked. Re-reads the declared variables and runs a <strong>server-side pre-flight</strong>: every required (no-default) variable must have a value (falling back to its default when the field was left blank), or the pour is rejected before any subprocess runs — a crafted POST can't skip the browser's <code>required</code> attribute. It then runs <code>bd mol pour &lt;name&gt; --var k=v … --json</code>, surfacing bd's stderr verbatim on failure (because <code>--dry-run</code> can't catch every pour-blocking bug). On success it renames the grouping node (<code>new_epic_id</code>) to <code>"&lt;formula&gt; &lt;short-id&gt;"</code> (best-effort — a rename failure does not undo the pour), reconciles the visible count, calls <code>store.refresh()</code> <strong>before</strong> broadcasting <code>beads_changed</code>, and returns the result fragment.</li>
+</ol>
+<p>The molecule wrapper is hidden from the board (Option A), so the reported count is <code>created - 1</code>. A mismatch between <code>len(id_mapping)</code> and <code>created</code> means not every node materialized — that's surfaced as a partial-pour warning, never as a clean win.</p>
+<h2 id="sequence">Sequence</h2>
+<pre class="mermaid">
+sequenceDiagram
+    actor User
+    participant Dialog as Pour dialog (HTMX)
+    participant App as app.py routes
+    participant FS as *.formula.json (on disk)
+    participant Bd as bd CLI (mol pour)
+    participant Store as Store
+    participant Bus as EventBus
+    participant Tabs as All browser tabs
+
+    User-&gt;&gt;Dialog: + Pour Formula
+    Dialog-&gt;&gt;App: GET /api/formulas
+    App-&gt;&gt;Bd: bd formula list --json
+    App--&gt;&gt;Dialog: dropdown of formulas
+    User-&gt;&gt;Dialog: pick a formula
+    Dialog-&gt;&gt;App: GET /api/formulas/{name}/form
+    App-&gt;&gt;FS: read *.formula.json (desc + vars + steps)
+    App--&gt;&gt;Dialog: variable form
+    User-&gt;&gt;Dialog: fill vars + Pour onto board
+    Dialog-&gt;&gt;App: POST /api/formulas/{name}/pour (CSRF)
+    App-&gt;&gt;App: pre-flight required vars
+    App-&gt;&gt;Bd: bd mol pour name --var k=v --json
+    Bd--&gt;&gt;App: {new_epic_id, id_mapping, created}
+    App-&gt;&gt;Bd: bd update new_epic_id --title "name &lt;id&gt;" (best-effort)
+    App-&gt;&gt;Store: store.refresh()  [before broadcast!]
+    App-&gt;&gt;Bus: broadcast("beads_changed")
+    Bus--&gt;&gt;Tabs: SSE -&gt; re-fetch lanes
+    App--&gt;&gt;Dialog: "Poured name — N beads added"
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table><thead><tr>
+<th>Concern</th>
+<th>Where</th>
+<th>Notes</th>
+</tr></thead><tbody>
+<tr>
+<td>Picker route</td>
+<td><code>src/bdboard/app.py:api_formulas</code> (<code>GET /api/formulas</code>)</td>
+<td>Lists formulas; degrades to a friendly inline message on bd failure.</td>
+</tr>
+<tr>
+<td>Variable-form route</td>
+<td><code>app.py:api_formula_form</code> (<code>GET /api/formulas/{name}/form</code>)</td>
+<td>Reads the <code>*.formula.json</code> for full desc + vars + steps; 404 on unknown formula.</td>
+</tr>
+<tr>
+<td>Pour route</td>
+<td><code>app.py:api_formula_pour</code> (<code>POST /api/formulas/{name}/pour</code>)</td>
+<td>CSRF guard, pre-flight, pour, rename, refresh-then-broadcast.</td>
+</tr>
+<tr>
+<td>Visible-count + partial-pour reconciliation</td>
+<td><code>app.py:_pour_counts</code></td>
+<td><code>(visible = created - 1, created, fully_materialized)</code>; hides the wrapper, flags shortfalls.</td>
+</tr>
+<tr>
+<td>Title disambiguator</td>
+<td><code>app.py:_short_pour_id</code></td>
+<td>Reuses bd's existing id suffix; zero new entropy, collision-free.</td>
+</tr>
+<tr>
+<td><code>bd formula list</code> wrapper</td>
+<td><code>src/bdboard/bd.py:BdClient.list_formulas</code></td>
+<td>Returns <code>name</code> / <code>description</code> / <code>source</code>; rejects non-list payloads.</td>
+</tr>
+<tr>
+<td>Template parsing (desc/vars/steps)</td>
+<td><code>bd.py:read_formula_detail</code>, <code>bd.py:read_formula_variables</code>, <code>_load_formula_json</code> / <code>_parse_variables</code> / <code>_parse_steps</code></td>
+<td>The only reliable source for variables + untruncated description.</td>
+</tr>
+<tr>
+<td>Pour subprocess</td>
+<td><code>bd.py:pour_formula</code></td>
+<td><code>bd mol pour … --var k=v --json</code>; serialized on <code>_subprocess_gate</code>; atomic; surfaces stderr; invalidates caches.</td>
+</tr>
+<tr>
+<td>Grouping-node rename</td>
+<td><code>bd.py:rename_bead</code></td>
+<td><code>bd update &lt;id&gt; --title &lt;title&gt;</code>; invalidates caches.</td>
+</tr>
+<tr>
+<td>Picker template</td>
+<td><code>templates/partials/formula_list.html</code></td>
+<td><code>&lt;select&gt;</code> dropdown; populated + empty states.</td>
+</tr>
+<tr>
+<td>Variable-form template</td>
+<td><code>templates/partials/formula_form.html</code></td>
+<td>One input per var; <code>required</code> markers; collapsed steps disclosure; in-flight disable + post-pour reset.</td>
+</tr>
+<tr>
+<td>Result template</td>
+<td><code>templates/partials/formula_pour_result.html</code></td>
+<td>Success vs partial-pour warning; visible count; rename warning.</td>
+</tr>
+<tr>
+<td>Dialog shell + open button</td>
+<td><code>templates/dashboard.html</code> (<code>#formula-dialog</code>, <code>openFormulaDialog()</code>), <code>templates/partials/theme_toggle.html</code></td>
+<td>Native <code>&lt;dialog&gt;</code> with focus trap; <code>#formula-list</code> / <code>#formula-form</code> / <code>#formula-pour-result</code> regions.</td>
+</tr>
+</tbody></table>
+<h2 id="config">Config</h2>
+<table><thead><tr>
+<th>Name</th>
+<th>Where</th>
+<th>Default</th>
+<th>Effect</th>
+</tr></thead><tbody>
+<tr>
+<td><code>FORMULA_LIST_TIMEOUT_S</code></td>
+<td><code>bd.py</code></td>
+<td><code>8.0</code></td>
+<td>Subprocess timeout for <code>bd formula list --json</code> (used by picker + form + pour pre-resolve).</td>
+</tr>
+<tr>
+<td><code>POUR_TIMEOUT_S</code></td>
+<td><code>bd.py</code></td>
+<td><code>30.0</code></td>
+<td>Timeout for <code>bd mol pour</code>; generous because pour cooks inline and materializes a whole tree.</td>
+</tr>
+<tr>
+<td><code>UPDATE_TIMEOUT_S</code></td>
+<td><code>bd.py</code></td>
+<td><code>10.0</code></td>
+<td>Timeout for the best-effort <code>rename_bead</code> of the grouping node.</td>
+</tr>
+<tr>
+<td><code>_CSRF_TOKEN</code></td>
+<td><code>app.py</code></td>
+<td>per-process</td>
+<td>Token required on the pour POST (header <code>X-CSRF-Token</code> or <code>csrf_token</code> form field).</td>
+</tr>
+</tbody></table>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>Variables and the untruncated description MUST be read from the on-disk <code>*.formula.json</code> file (via the <code>source</code> path bd reports), never from <code>bd formula show --json</code> (omits <code>variables</code>) or the <code>formula list --json</code> payload (truncated description, <code>vars</code> count always <code>0</code>). If a future bd release exposes variables through <code>formula show --json</code>, switch to that and drop the file read.</p></div>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p><code>store.refresh()</code> MUST run <strong>before</strong> <code>bus.broadcast("beads_changed")</code> on the pour route. Without it the optimistic broadcast races ahead of the watcher→refresh cycle and clients re-fetch a stale snapshot that omits the freshly poured beads (regression <code>bdboard-dfl</code>).</p></div>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>- <strong>Hidden molecule wrapper (count honesty).</strong> <code>bd</code>'s <code>created</code> counts the   molecule wrapper that bdboard deliberately hides from the board, so reporting   it raw over-counts by one. <code>_pour_counts</code> returns <code>created - 1</code> (floored at 0)   as the visible count, keeping the success message honest. - <strong>Partial materialization.</strong> If <code>len(id_mapping) != created</code>, not every node   landed (a bd-layer vapor-pour, or a formula that lost its top-level   <code>pour: true</code>). bdboard surfaces a partial-pour <strong>warning</strong> and logs the   shortfall rather than claiming a clean success — the failure mode that used to   leave empty wrapper epics accumulating while the UI cried success. - <strong>Required variables.</strong> The browser's <code>required</code> attribute is mirrored by a   server-side pre-flight; a crafted POST that omits a required, no-default   variable is rejected with a 400 before any subprocess runs. Blank fields fall   back to the variable's default when one exists. - <strong>Rename is best-effort.</strong> The pour is atomic and already succeeded by the   time the wrapper rename runs; a rename failure is surfaced as a <em>soft warning</em>   (the tree shows under the bare formula name) and never undoes the pour. - <strong>No-variable formulas.</strong> A missing/empty <code>variables</code> block is a valid   "pour with no inputs" — the form shows "This formula takes no variables" and   pours immediately. - <strong>Pour timeout.</strong> A pour exceeding <code>POUR_TIMEOUT_S</code> is killed but its pipes   are drained/closed (no fd leak) and the user is told the formula may still be   materializing and to refresh in a moment.</p></div>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Do not report <code>bd</code>'s raw <code>created</code> count to the user, and do not mask a <code>id_mapping</code>/<code>created</code> mismatch as success. Both defeat the count-honesty and partial-pour guarantees and let empty wrapper epics pile up invisibly. Always route the result through <code>_pour_counts</code>.</p></div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table><thead><tr>
+<th>What fails</th>
+<th>What the user sees</th>
+<th>How the system degrades</th>
+</tr></thead><tbody>
+<tr>
+<td><code>bd formula list</code> fails (picker)</td>
+<td>"Couldn't load formulas right now. Please try again in a moment."</td>
+<td>Inline <code>200</code> message instead of a 500'd partial swap.</td>
+</tr>
+<tr>
+<td>Unknown formula name (form/pour)</td>
+<td>"No such formula."</td>
+<td><code>404</code> fragment; nothing is poured.</td>
+</tr>
+<tr>
+<td><code>*.formula.json</code> unreadable / bad JSON</td>
+<td>"Couldn't read this formula's details/variables."</td>
+<td><code>RuntimeError</code> logged; friendly fragment; no pour.</td>
+</tr>
+<tr>
+<td>Missing required variable</td>
+<td>"Please fill required variable(s): …"</td>
+<td><code>400</code>; pre-flight blocks before any subprocess runs.</td>
+</tr>
+<tr>
+<td><code>bd mol pour</code> non-zero exit</td>
+<td>"Pour failed: \<bd stderr\>"</td>
+<td><code>500</code>; bd's real stderr surfaced; pour is atomic so zero beads created.</td>
+</tr>
+<tr>
+<td>Pour timeout</td>
+<td>"Pour timed out. The formula may still be materializing — refresh in a moment."</td>
+<td>Subprocess killed, pipes drained; no fd leak.</td>
+</tr>
+<tr>
+<td>Grouping-node rename fails</td>
+<td>Success + "(poured, but couldn't rename the grouping node…)"</td>
+<td>Soft warning; pour kept; tree shows under bare formula name.</td>
+</tr>
+<tr>
+<td>Partial materialization</td>
+<td>"Partial pour … only N beads materialized; some steps did not land."</td>
+<td>Warning fragment + server log; user told to check <code>pour: true</code> and remove the incomplete epic.</td>
+</tr>
+</tbody></table>
+<h2 id="testing">Testing</h2>
+<ul>
+<li><code>tests/test_bd_formulas.py</code> — <code>BdClient</code> unit tests: <code>test_list_formulas_shells_formula_list_and_returns_list</code> / <code>test_list_formulas_rejects_non_list_payload</code>, <code>read_formula_variables</code> parsing defaults/required, missing-file and bad-JSON raises, <code>read_formula_detail</code> returning untruncated description + vars + steps, malformed-steps skipping, and <code>test_pour_formula_builds_var_args_and_returns_json</code> (the <code>mol pour --var k=v … --json</code> argv).</li>
+<li><code>tests/test_formula_pour.py</code> — route-level tests: picker renders a dropdown (not buttons) and its empty/degraded states; <code>api_formula_form</code> renders variables, disables the button in-flight, resets the picker on success only, 404s on unknown, and shows the full description + steps (collapsed by default); and the pour write path — <code>test_pour_requires_csrf</code>, <code>test_pour_blocks_missing_required_var</code>, <code>test_pour_success_renames_and_broadcasts</code> (asserts the optimistic <code>beads_changed</code> broadcast), <code>test_pour_uses_default_when_field_blank</code>, <code>test_pour_surfaces_bd_stderr_on_failure</code>, and <code>test_pour_soft_warns_when_rename_fails</code>.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Flows/formula-pour-fanout.html">Flow: Formula pour fan-out</a> — the end-to-end write/fan-out half: step-by-step, data transformations, and failure handling for the <code>POST … /pour</code>.</li>
+<li><a href="../Endpoints/formulas-api.html">Endpoint: Formulas API (<code>/api/formulas</code>, form, pour)</a> — the request/response contract for all three routes this feature drives.</li>
+<li><a href="live-auto-refresh.html">Feature: Live auto-refresh</a> — the broadcast → re-fetch machinery this feature piggybacks on so poured beads appear live.</li>
+<li><a href="../Concepts/bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a> — why pour shells <code>bd mol pour</code> and why bdboard reads the <code>*.formula.json</code> template directly for variables.</li>
+<li><a href="../Concepts/store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a> — the cache <code>store.refresh()</code> rebuilds before the post-pour broadcast.</li>
+<li><a href="../Concepts/htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a> — how the two-step dialog swaps the picker → form → result partials.</li>
+<li><a href="../Views/board-page.html">View: Board page</a> — the page hosting the <strong>+ Pour Formula</strong> button and the dialog, and whose lanes the poured beads fan into.</li>
+<li><a href="../Flows/field-edit-write-path.html">Flow: Inline field-edit write path</a> — the sibling write flow that shares the CSRF + serialized-mutate + optimistic-broadcast posture.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

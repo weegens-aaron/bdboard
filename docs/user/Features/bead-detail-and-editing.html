@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Bead detail &amp; editing — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="../Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="../Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="../Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="index.html">Index</a>
+<a href="bead-detail-and-editing.html" class="active">Bead-detail-and-editing</a>
+<a href="create-from-formulas.html">Create-from-formulas</a>
+<a href="history-and-trends.html">History-and-trends</a>
+<a href="live-updates.html">Live-updates</a>
+<a href="memory-manager.html">Memory-manager</a>
+<a href="the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="../Guides/index.html">Index</a>
+<a href="../Guides/create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="../Guides/edit-a-bead.html">Edit-a-bead</a>
+<a href="../Guides/explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="../Guides/manage-agent-memories.html">Manage-agent-memories</a>
+<a href="../Guides/take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-bead-detail-editing">Feature: Bead detail &amp; editing</h1>
+<h2 id="what-it-does">What it does</h2>
+<p>Click any bead anywhere in bdboard — a card on the <strong>Board</strong>, a finished bead in the closed lane, or a row in the <strong>History</strong> list — and a detail panel slides open over the page. That panel is the single place where you see <em>everything</em> about one bead: its id, its priority and status badges, its title, and a <strong>Bead details</strong> list that shows every field the bead carries (description, acceptance criteria, dependencies, assignee, dates, labels, and more). Below the details it builds two history views from the bead's own record — a <strong>Lifecycle</strong> timeline of how it moved between states, and an <strong>Audit trail</strong> of every change ever made to it. And while a bead is still <strong>open</strong>, the same panel lets you change its details in place: edit one field at a time with a small <strong>Edit</strong> control, or add to its running notes — all point-and-click, no terminal required.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>A bead card on the board can only show a headline — the id, the priority, a title, maybe an assignee. But the real story of a piece of work lives in its details: <em>why</em> it exists (the description and acceptance criteria), <em>what it depends on</em>, <em>who's on it</em>, and <em>how it got to where it is now</em>. The detail panel exists to give you that full picture on demand without cluttering the board itself: glance at the cards to scan the work, click one to dive in.</p>
+<p>Editing lives here for the same reason. Before this panel, fixing a typo in a title, bumping a priority, or jotting a note meant dropping to the command line — fine mid-task for a power user, clumsy when you just want to correct one thing you're looking right at. Putting editing <em>inside</em> the detail view means you change a field in the exact place you read it, see the result immediately, and never touch a terminal. It's also deliberately <strong>careful</strong>: only open beads can be edited, each field saves on its own (so you can't accidentally clobber a field you didn't touch), notes can only be <em>added to</em> (never overwritten), and a save is refused if someone changed the bead out from under you. The detail panel is where you understand a bead; editing is where you safely tweak it.</p>
+<h2 id="how-it-works">How it works</h2>
+<h3 id="user-perspective">User perspective</h3>
+<p>Click a bead's card and its detail panel opens over whatever page you were on. At the top you'll see, in order: the bead's <strong>id</strong>, a coloured <strong>priority</strong> badge, a <strong>status</strong> badge (open, in progress, closed, and so on), and the bead's <strong>title</strong>. A close button sits in the corner, and a small line beneath notes whether you're looking at <strong>Live details</strong> or a <strong>Cached snapshot</strong>, with a link to view the bead's complete <strong>raw JSON</strong> in a new tab if you ever need the unfiltered data.</p>
+<p>The body of the panel has three parts, top to bottom:</p>
+<ul>
+<li><strong>Lifecycle</strong> — a short timeline of the bead's status changes, each stop showing the state, when it happened, how long the bead sat in that state ("dwell time"), and who moved it. This appears once the history finishes loading.</li>
+<li><strong>Bead details</strong> — a labelled list of every field on the bead. Long prose fields (description, acceptance criteria, notes, design) are rendered with their Markdown formatting; short bits of metadata (status, priority, assignee, dates, counts) sit in a compact two-column layout for fast scanning. <strong>Dependencies</strong> are shown as clickable links — click one to jump straight to that related bead's detail panel.</li>
+<li><strong>Audit trail</strong> — the full change log: every field-by-field change to the bead over time, with when, who, and what changed.</li>
+</ul>
+<p>To <strong>edit a field</strong> (only possible while the bead is <strong>open</strong>), find it in the <strong>Bead details</strong> list and click the small <strong>Edit</strong> control under it (for example, <strong>Edit title</strong> or <strong>Edit priority</strong>). It expands into a little form pre-filled with the current value, plus <strong>Cancel</strong> and <strong>Save</strong> buttons:</p>
+<ul>
+<li>Plain fields like <strong>title</strong>, <strong>assignee</strong>, or an external reference give you a single-line box.</li>
+<li>Longer fields like <strong>description</strong>, <strong>acceptance criteria</strong>, and <strong>design</strong> give you a multi-line box that understands Markdown.</li>
+<li><strong>Priority</strong> and <strong>type</strong> give you a dropdown of allowed choices, so you can't pick something invalid.</li>
+<li><strong>Estimate</strong> gives you a number box.</li>
+</ul>
+<p>Click <strong>Save</strong> and just that one field updates in place — everything else on the panel stays exactly as it was. (Change the priority and the coloured badge at the top updates at the same moment.)</p>
+<p><strong>Notes are special:</strong> instead of an <em>Edit</em> control, the notes field offers <strong>+ Add a note</strong>. Whatever you write is <em>appended</em> below the existing notes — your note is added, never replacing the history above it.</p>
+<p>If the bead isn't open — it's being worked on (in progress) or already closed — the <strong>Edit</strong> controls simply don't appear, because those beads are locked. And because the panel stays current on its own, a change you (or an agent) make to a bead shows up in your other open tabs automatically (see <a href="live-updates.html">Live updates</a>).</p>
+<h3 id="system-perspective">System perspective</h3>
+<p>In plain language: when you open a bead, bdboard reads that bead's full details fresh from your own machine and lays them out as the detail panel. If the live read briefly hiccups, it falls back to the most recent cached copy and shows a small banner saying so, so you still see useful content instead of an error. The history views — Lifecycle and Audit trail — are built from the bead's own recorded change log, fetched once and used to render both: the lifecycle timeline is just the status-change stops pulled out of that same log, and the audit trail is the full list. Repeated no-op rewrites are filtered out of the audit so it stays readable, and the very first entry is always shown as "created".</p>
+<p>When you save an edit, bdboard changes only that one field and then re-reads the bead so the panel shows the real, saved result rather than a guess. Two safety checks run before any write goes through. First, a <strong>status gate</strong>: bdboard re-checks, live, that the bead is still open — if it became in-progress or closed since you opened the panel, the save is refused. Second, for ordinary (replace-style) edits, an <strong>"is this still current?" check</strong>: the panel remembers when the bead was last changed, and if someone else changed it in the meantime, your save is rejected so you can't silently overwrite their work. Adding a note skips that second check, because an append can never clobber anything. After any successful change, a quiet "something changed" nudge goes out so every other open bdboard tab refreshes too. All of this happens against data that lives on your machine — nothing is sent to the internet (see <a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>).</p>
+<h2 id="sequence">Sequence</h2>
+<pre class="mermaid">
+sequenceDiagram
+    actor You
+    participant Card as A bead card
+    participant Panel as Bead detail panel
+    participant App as bdboard (on your machine)
+
+    You-&gt;&gt;Card: Click a bead
+    Card-&gt;&gt;App: Ask for this bead's full details
+    App--&gt;&gt;Panel: Show id, badges, title &amp; every field
+    App--&gt;&gt;Panel: Fill in the Lifecycle timeline &amp; Audit trail
+    Note over Panel: If live data hiccups, a cached copy shows with a notice
+
+    You-&gt;&gt;Panel: Click "Edit priority" (bead is open)
+    Panel--&gt;&gt;You: A small form opens, pre-filled
+    You-&gt;&gt;Panel: Pick a new priority, click Save
+    Panel-&gt;&gt;App: Save just this field
+    App-&gt;&gt;App: Check the bead is still open &amp; unchanged
+    App--&gt;&gt;Panel: That field updates in place (and the badge too)
+    App--&gt;&gt;Panel: Nudge other tabs to refresh
+    Note over You: One field changed — nothing else touched
+</pre>
+<h2 id="where-you-ll-find-it">Where you'll find it</h2>
+<ul>
+<li><strong>The detail panel</strong> opens from <strong>any bead card</strong> — on the <strong>Board</strong> page (active swim lanes and the closed lane) and on the <strong>History</strong> page. There's no separate "open bead" button; the whole card is clickable.</li>
+<li><strong>The header</strong> of the panel holds the bead's id, its priority and status badges, the title, the close button, and the small "Live details / Cached snapshot · raw JSON" line.</li>
+<li><strong>The Lifecycle timeline</strong> and <strong>Bead details</strong> list fill the upper body of the panel; the <strong>Audit trail</strong> sits below them.</li>
+<li><strong>The Edit controls</strong> appear <em>inside the Bead details list</em>, one under each changeable field — but only when the bead is <strong>open</strong>. The notes field shows a <strong>+ Add a note</strong> control in the same spot instead of an Edit control.</li>
+</ul>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>- <strong>Only open beads can be edited.</strong> Once a bead is being worked on   (in progress) or is closed, its fields become read-only and no Edit controls   appear. This is deliberate — it stops an edit from quietly clobbering   in-flight work or rewriting finished history. See   <a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a>. - <strong>Notes can only be added to, never overwritten.</strong> The notes field offers   <em>+ Add a note</em>, not <em>Edit</em>, on purpose: a bead's notes often hold   verification evidence and decision trails that must never be lost. To correct   something, add a follow-up note. - <strong>Concurrent changes are protected.</strong> If someone else (or an agent) changes   the same bead after you opened its panel, your save may be rejected with a   "this bead changed since you opened it" message, so their change isn't lost.   Refresh, reopen the bead, and re-apply your edit against the latest version. - <strong>Some fields are never editable here.</strong> Things like status, parent, the id   itself, story points, timestamps, and the various counts are intentionally   not editable from this panel — they're set by the bead's lifecycle or are   fixed. Only the safe, user-owned fields (title, description, acceptance   criteria, design, priority, assignee, type, external reference, estimate, and   notes) can be changed. - <strong>You might be looking at a cached copy.</strong> If live data is momentarily   unavailable, the panel shows the most recent cached snapshot with a small   notice. The next refresh reconciles it to live data.</p></div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<ul>
+<li><strong>The bead can't be found</strong> (you clicked a card for something that's since been removed): instead of a blank panel, you get a friendly *"We couldn't find that bead. Please refresh the board and try again."* message.</li>
+<li><strong>The history can't load</strong> (the Lifecycle/Audit fetch hiccuped): the panel still shows the bead's details, and the history area shows *"Audit history is temporarily unavailable"* with an invitation to try again in a moment — the rest of the panel keeps working.</li>
+<li><strong>A save fails</strong> (the underlying store hiccuped): the edit form reports that the change <em>couldn't be saved</em> rather than silently doing nothing, and your typed value stays in the box. Wait a beat and retry.</li>
+<li><strong>The bead is locked</strong> when you try to save (it became in-progress or closed after you opened it): the save is refused with a note that the bead can no longer be edited because only open beads are editable. Close the panel, reopen the bead, and confirm it's still open.</li>
+<li><strong>The bead changed since you opened it:</strong> the save is refused with a "please refresh and re-apply your edit" message so you don't overwrite someone else's change. Reload, reopen, and make your change against the current version.</li>
+<li><strong>The page has been open a very long time:</strong> an action can be rejected with a prompt to refresh, because the page's safety token can go stale. Reload the page and repeat your action.</li>
+</ul>
+<h2 id="good-to-know">Good to know</h2>
+<ul>
+<li><strong>The raw JSON link is your escape hatch.</strong> If the tidy layout ever hides a detail you need, the <strong>raw JSON</strong> link in the panel header opens the complete, unfiltered set of fields bd knows about for that bead in a new tab.</li>
+<li><strong>The Lifecycle timeline shows dwell time.</strong> Each stop tells you how long the bead spent in that state — handy for spotting a bead that's been sitting in one lane far too long. See <a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a>.</li>
+<li><strong>The Audit trail hides noise.</strong> Repeated no-op rewrites are filtered out so the change log stays meaningful, and the oldest entry always reads as "created".</li>
+<li><strong>Dependencies are navigable.</strong> Click a dependency or dependent listed in the details to hop straight to that bead's panel — no need to find it on the board first.</li>
+<li><strong>One field at a time, saved on its own.</strong> There's no big "Save everything" button, so you can never accidentally overwrite a field you didn't intend to touch.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Guides/edit-a-bead.html">Edit a bead</a> — the step-by-step how-to for opening a bead, changing a field, and adding a note, with a troubleshooting table.</li>
+<li><a href="../Concepts/what-is-a-bead.html">What is a bead?</a> — what each field in the detail panel means.</li>
+<li><a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a> — the states a bead moves through and why only open beads can be edited.</li>
+<li><a href="history-and-trends.html">History &amp; trends</a> — the bigger picture of how your work has changed over time, beyond a single bead's audit trail.</li>
+<li><a href="live-updates.html">Live updates</a> — why a change to a bead appears in your other tabs without a refresh.</li>
+<li><a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a> — where bead details live and why viewing and editing them never touches the internet.</li>
+<li><a href="../Guides/take-your-first-look.html">Take your first look</a> — getting bdboard open and oriented so you can reach the board and open a bead.</li>
+<li><a href="index.html">Features</a> — the rest of what bdboard does.</li>
+<li><a href="../Overview.html">Overview</a> — the big picture of the app.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

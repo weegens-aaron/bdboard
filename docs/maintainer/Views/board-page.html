@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Board page (`/`) — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="../Concepts/derive-layer.html">Derive-layer</a>
+<a href="../Concepts/htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="../Concepts/store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="../Concepts/watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="index.html">Index</a>
+<a href="board-page.html" class="active">Board-page</a>
+<a href="history-page.html">History-page</a>
+<a href="memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-board-page">View: Board page (<code>/</code>)</h1>
+<h2 id="route">Route</h2>
+<table><thead><tr>
+<th>Path</th>
+<th>Handler</th>
+<th>Template</th>
+</tr></thead><tbody>
+<tr>
+<td><code>/</code></td>
+<td><code>app.py:index</code></td>
+<td><code>templates/dashboard.html</code></td>
+</tr>
+</tbody></table>
+<p>Like the History (<code>/history</code>) and Memory (<code>/memory</code>) routes, the handler is deliberately thin and **never calls <code>bd</code>**. It runs the shared <code>_validate_or_warn()</code> workspace guard — rendering <code>error.html</code> with a <code>500</code> on failure so a broken workspace fails <em>visibly</em> rather than painting an empty board — and, on success, renders <code>dashboard.html</code> with only three context values: <code>workspace</code>, <code>workspace_path</code>, and <code>active="board"</code>. Every byte of actual board data (counts, lanes, closed lane) is fetched lazily by HTMX <code>load</code> triggers <em>after</em> first paint. This is a deliberate correction: <code>index</code> previously awaited <code>store.snapshot()</code> <strong>and</strong> a per-epic <code>bd show</code> hydration pass before returning any HTML, giving the board the worst time-to-first-paint of the three pages. It is now symmetric with the other two pages — cheap route, instant shell, async hydration (design §D4; see <a href="../Concepts/htmx-partials-architecture.html">HTMX + server-rendered partials</a>).</p>
+<h2 id="what-it-does">What it does</h2>
+<p>The Board is the dashboard's <strong>what-is-in-flight</strong> surface and the app's home page. Where <a href="history-page.html">History</a> answers <em>what got done and how fast</em> and <a href="memory-page.html">Memory</a> holds <em>durable knowledge</em>, the Board shows the current state of work as a kanban-style set of swim lanes derived live from <code>bd</code>. It presents, top to bottom:</p>
+<ol>
+<li>A <strong>masthead</strong> carrying the workspace name (brand), a live <strong>counts strip</strong> (one cell per status: open / in_progress / blocked / closed / …), the shared Board / History / Memory nav, the theme toggle, and the <strong>+ Pour Formula</strong> entry point.</li>
+<li>A <strong>board-wide time-window toolbar</strong> (<code>12h</code> / <code>1d</code> / <code>3d</code>, default <code>1d</code>) that scopes the time-sensitive Closed lane client-side.</li>
+<li>A horizontal <strong>epic strip</strong> of the active epics, topologically ordered, each chip showing id / priority / status / assignee.</li>
+<li>The <strong>swim lanes</strong> themselves — <code>Deferred</code>, <code>Blocked</code>, <code>Ready</code>, <code>In Progress</code>, <code>Closed</code> — each a column of clickable bead cards, plus an <strong>Activity</strong> column of recent events.</li>
+</ol>
+<p>Clicking any epic chip, bead card, or activity row opens that bead in the shared modal. Everything stays live: a change under <code>.beads/</code> re-renders the lanes and counts automatically over the SSE pipeline.</p>
+<h2 id="why-it-exists">Why it exists</h2>
+<p>A maintainer's first question every session is <em>"what's actionable right now, and what's stuck?"</em> On the CLI that means stitching together <code>bd ready</code>, <code>bd list --status=blocked</code>, <code>bd list --status=in_progress</code>, and manual epic/dep reasoning. The Board collapses all of that into a single glanceable kanban whose columns map directly to the lifecycle states <code>bd</code> already tracks, with the blocking-dependency math (<code>Ready</code> vs <code>Blocked</code>) done for you in the <a href="../Concepts/derive-layer.html">derive layer</a>. It deliberately shares chrome with the other two pages (same masthead, same filter-badge idiom, same SSE live-refresh) so the three feel like one product, and it reuses the snapshot the rest of the app already holds rather than spawning a <code>bd</code> subprocess per render (design §4; see <a href="../Concepts/bd-cli-source-of-truth.html">bd CLI as runtime source of truth</a>). The split-fetch shape (active lanes first, heavy Closed lane second) exists to keep first paint near-instant on large workspaces (bdboard-0yy).</p>
+<h2 id="user-actions">User actions</h2>
+<ul>
+<li><strong>Open a bead</strong> — click any bead card in a lane (or any epic chip, or any Activity row). Each fires <code>hx-get /api/bead/{id}</code> with <code>hx-target="#bead-modal"</code>, loading the bead detail into the shared modal. See <a href="../Endpoints/bead-detail-api.html">Bead detail API</a>.</li>
+<li><strong>Scope the time window</strong> — click a badge in the board toolbar (<code>12h</code> / <code>1d</code> / <code>3d</code>). This is a <strong>client-side</strong> filter: it shows/hides already-fetched Closed-lane cards by their <code>data-closed-at</code> timestamp and never hits the server. The active badge is tracked with <code>aria-checked</code>, the choice is persisted to <code>sessionStorage</code> (<code>bdboard-time-filter</code>), and the masthead <strong>Closed</strong> count is re-synced to the visible set so header and lane can't drift (bdboard-de4z). The <code>3d</code> ceiling matches the Closed lane's historical limit; longer windows are the <a href="history-page.html">History page</a>'s job.</li>
+<li><strong>Pour a formula</strong> — click <strong>+ Pour Formula</strong> to open the native <code>&lt;dialog&gt;</code>. It loads the formula picker (<code>/api/formulas</code>), swaps in a formula's variable form on selection (<code>/api/formulas/{name}/form</code>), and pours on submit (<code>/api/formulas/{name}/pour</code>). Newly poured beads arrive live via the watcher → <code>Store.refresh</code> → SSE pipeline plus the route's optimistic broadcast. See <a href="../Features/formula-pour.html">Formula pour</a> and <a href="../Endpoints/formulas-api.html">Formulas API</a>.</li>
+<li><strong>See live updates</strong> — any change under <code>.beads/</code> (a close from the CLI, another tab, a pour) re-renders the lanes, closed lane, and counts automatically via the shared SSE <code>refresh</code> pipeline (see <a href="#state">State</a>).</li>
+<li><strong>Switch pages / toggle theme</strong> — the shared masthead nav (<code>partials/nav.html</code>) and theme toggle (<code>partials/theme_toggle.html</code>) are present on every page.</li>
+</ul>
+<h2 id="page-structure">Page structure</h2>
+<pre class="mermaid">
+flowchart TD
+    Page["dashboard.html (extends base.html)"]
+    Page --&gt; Masthead["header.masthead"]
+    Masthead --&gt; TopRow["masthead-row"]
+    TopRow --&gt; Brand["Brand: workspace name"]
+    TopRow --&gt; Counts["#counts (counts_skeleton -&gt; /api/counts)"]
+    Masthead --&gt; NavRow["masthead-nav-row"]
+    NavRow --&gt; Nav["partials/nav.html (Board / History / Memory)"]
+    NavRow --&gt; Theme["partials/theme_toggle.html"]
+    NavRow --&gt; Pour["+ Pour Formula button"]
+    Page --&gt; Main["main.layout-board"]
+    Main --&gt; Toolbar["#board-time-filter (12h / 1d / 3d, client-side)"]
+    Main --&gt; Region["section.lanes-region (hx-get /api/lanes on load, refresh)"]
+    Region --&gt; Skeleton["partials/lanes_skeleton.html (first paint)"]
+    Region -.swapped.-&gt; Lanes["partials/lanes.html"]
+    Lanes --&gt; Epics["epic-lane: epic chips -&gt; #bead-modal"]
+    Lanes --&gt; Active["lanes: Deferred / Blocked / Ready / In Progress"]
+    Active --&gt; Card["partials/bead_card.html -&gt; #bead-modal"]
+    Lanes --&gt; Closed["lane-closed (hx-get /api/lanes/closed on load, refresh)"]
+    Closed -.swapped.-&gt; ClosedBody["partials/closed_lane.html"]
+    Lanes --&gt; Activity["lane-activity: activity rows -&gt; #bead-modal"]
+    Page --&gt; Dialog["#formula-dialog (picker -&gt; form -&gt; pour result)"]
+</pre>
+<h2 id="components-partials">Components / partials</h2>
+<table><thead><tr>
+<th>Partial</th>
+<th>Purpose</th>
+</tr></thead><tbody>
+<tr>
+<td><code>base.html</code></td>
+<td>Layout shell: HTML scaffold, the <code>EventSource('/api/events')</code> SSE wiring, theme bootstrap, and the <strong>board time-filter JS</strong> (<code>applyBoardFilter</code> / <code>wireFilterBadges</code> / <code>syncMastheadClosedCount</code>) that drives the client-side Closed-lane window and keeps the masthead Closed count in lockstep.</td>
+</tr>
+<tr>
+<td><code>dashboard.html</code></td>
+<td>The page body itself: two-row masthead, the board time-filter toolbar, the <code>.lanes-region</code> swap target (seeded with the skeleton), and the <code>+ Pour Formula</code> <code>&lt;dialog&gt;</code> plus its <code>openFormulaDialog()</code> script.</td>
+</tr>
+<tr>
+<td><code>partials/nav.html</code></td>
+<td>Shared primary nav (Board / History / Memory) with <code>aria-current</code> + <code>.is-active</code> on the active page.</td>
+</tr>
+<tr>
+<td><code>partials/theme_toggle.html</code></td>
+<td>Light/dark theme toggle, shared across all pages.</td>
+</tr>
+<tr>
+<td><code>partials/counts_skeleton.html</code></td>
+<td>Shimmer placeholder for the masthead <code>#counts</code> host so the strip is reserved before the first <code>/api/counts</code> swap lands — no layout shift.</td>
+</tr>
+<tr>
+<td><code>partials/counts.html</code></td>
+<td>The status counts <code>&lt;dl&gt;</code> swapped into <code>#counts</code>. Each cell carries <code>data-count-status</code> — the stable hook the board filter JS uses to update the Closed cell (don't key off the visible label text).</td>
+</tr>
+<tr>
+<td><code>partials/lanes_skeleton.html</code></td>
+<td>Decorative (<code>aria-hidden</code>) shimmer mirroring the real lane scaffold (epic strip + five lanes + activity) so <code>.lanes-region</code> never flashes empty before <code>/api/lanes</code> lands.</td>
+</tr>
+<tr>
+<td><code>partials/lanes.html</code></td>
+<td>The <code>/api/lanes</code> swap body: the epic strip, the four active lanes (<code>Deferred</code> / <code>Blocked</code> / <code>Ready</code> / <code>In Progress</code>), the lazy-loading <code>lane-closed</code> placeholder, and the Activity column.</td>
+</tr>
+<tr>
+<td><code>partials/closed_lane.html</code></td>
+<td>The Closed lane's card list + count, swapped into <code>.lane-closed</code> by <code>/api/lanes/closed</code> after the active lanes paint.</td>
+</tr>
+<tr>
+<td><code>partials/bead_card.html</code></td>
+<td>Shared clickable bead tile (single source of truth across active lanes, closed lane, and History). A bare include is the board card; the Closed lane includes it <code>with show_closed_at_attr = true</code> so the time filter has a <code>data-closed-at</code> to act on. Opens <code>/api/bead/{id}</code> in <code>#bead-modal</code>.</td>
+</tr>
+<tr>
+<td><code>partials/bead_card_skeleton.html</code></td>
+<td>Per-card shimmer used by both the lanes skeleton and the Closed-lane placeholder while their fetches are in flight.</td>
+</tr>
+<tr>
+<td><code>partials/formula_form.html</code> · <code>partials/formula_list.html</code> · <code>partials/formula_pour_result.html</code></td>
+<td>The three regions of the <code>+ Pour Formula</code> dialog: picker, variable form, and pour outcome.</td>
+</tr>
+<tr>
+<td><code>partials/bead_modal.html</code></td>
+<td>The shared <code>#bead-modal</code> host that every card / chip / row swaps detail into.</td>
+</tr>
+</tbody></table>
+<h2 id="state">State</h2>
+<ul>
+<li>**Time window (<code>12h</code> / <code>1d</code> / <code>3d</code>)** — purely client-side, default <code>1d</code>, persisted to <code>sessionStorage</code> (<code>bdboard-time-filter</code>). It never appears on the <code>/</code> route or in any request: <code>applyBoardFilter()</code> in <code>base.html</code> shows/hides already-fetched Closed-lane cards by their <code>data-closed-at</code> attribute, updates the lane count badge, and calls <code>syncMastheadClosedCount()</code> to mirror that visible total into the masthead <strong>Closed</strong> cell. Only the Closed lane is timestamped, so the other lanes are window-invariant and keep their server-rendered totals.</li>
+<li><strong>Theme</strong> — read from <code>localStorage</code> and applied by the base-layout anti-FOUC bootstrap; the toggle's <code>aria-pressed</code> reflects current mode.</li>
+<li><strong>SSE live-refresh</strong> — <code>.lanes-region</code>, the inner <code>.lane-closed</code>, and the masthead <code>#counts</code> strip each carry <code>hx-trigger="load, refresh from:body"</code>. <code>base.html</code> opens an <code>EventSource('/api/events')</code>; on a <code>beads_changed</code> server event it dispatches a bubbling <code>refresh</code> DOM event on <code>&lt;body&gt;</code>, re-fetching all three regions. An <code>htmx:afterSettle</code> listener re-runs <code>wireFilterBadges()</code> whenever the lanes region, closed lane, or counts strip re-swaps, so the active time window is re-applied to freshly-rendered cards and the Closed cell never drifts back to the unfiltered server total (bdboard-de4z). See the <a href="../Flows/live-refresh-pipeline.html">live-refresh pipeline</a>.</li>
+<li><strong>Formula dialog</strong> — transient per-open client state. <code>openFormulaDialog()</code> clears the prior variable form + pour result, <code>showModal()</code>s the native <code>&lt;dialog&gt;</code> (which traps focus), and triggers a fresh picker fetch so a newly-added formula shows without a reload.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>The page route holds <strong>no</strong> board data — it renders only the shell. All of it is read on demand from <code>bd</code> by the three HTMX endpoints and shaped by the pure <a href="../Concepts/derive-layer.html">derive layer</a> (<code>epic_lane</code> / <code>lanes</code> / <code>activity</code> / <code>counts</code>). The active lanes and the Closed lane are intentionally fetched from <strong>separate</strong> snapshots — <code>store.snapshot_active()</code> (~5 KB) for the fast first paint and <code>store.snapshot_closed()</code> (up to ~500 KB) lazily after — a ~100× payload reduction on large workspaces (bdboard-0yy). See <a href="../Concepts/store-snapshot-cache.html">store snapshot cache</a>.</p></div>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>Because the initial <code>/api/lanes</code> fetch sees only <em>active</em> issues, the <code>Ready</code> vs <code>Blocked</code> split is computed without closed beads in view: a bead whose only blocker is already closed will conservatively render as <strong>Blocked</strong> on first paint and correct itself to <strong>Ready</strong> on the next SSE <code>refresh</code> (when the full snapshot is available). This is the accepted tradeoff for the ~100× faster first paint, not a bug. The Activity column has the same property — closed-bead events appear after the first refresh.</p></div>
+<h2 id="api-dependencies">API dependencies</h2>
+<table><thead><tr>
+<th>Endpoint</th>
+<th>Used for</th>
+</tr></thead><tbody>
+<tr>
+<td><code>GET /api/counts</code></td>
+<td>Hydrates the masthead <code>#counts</code> status strip. Fired on page <code>load</code> and on SSE <code>refresh from:body</code>. See <a href="../Endpoints/lanes-api.html">Lanes API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/lanes</code></td>
+<td>Renders the epic strip + active lanes (<code>Deferred</code> / <code>Blocked</code> / <code>Ready</code> / <code>In Progress</code>) + Activity from the active-only snapshot. Fired on <code>load</code> and SSE <code>refresh</code>. See <a href="../Endpoints/lanes-api.html">Lanes API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/lanes/closed</code></td>
+<td>Renders the Closed lane separately, from the closed snapshot, after the active lanes paint. Fired on <code>load</code> of the <code>.lane-closed</code> placeholder and SSE <code>refresh</code>. See <a href="../Endpoints/lanes-api.html">Lanes API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/bead/{id}</code></td>
+<td>Loads a clicked bead (card / epic chip / activity row) into the shared <code>#bead-modal</code>. See <a href="../Endpoints/bead-detail-api.html">Bead detail API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/formulas</code>, <code>GET /api/formulas/{name}/form</code>, <code>POST /api/formulas/{name}/pour</code></td>
+<td>Drive the three steps of the <strong>+ Pour Formula</strong> dialog. See <a href="../Endpoints/formulas-api.html">Formulas API</a>.</td>
+</tr>
+<tr>
+<td><code>GET /api/events</code></td>
+<td>SSE stream wired in <code>base.html</code>; a <code>beads_changed</code> event triggers a <code>refresh</code> of the lanes, closed lane, and counts. See <a href="../Endpoints/sse-events.html">SSE events</a>.</td>
+</tr>
+</tbody></table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Endpoints/lanes-api.html">Endpoint: Lanes API (<code>/api/lanes</code>, <code>/api/lanes/closed</code>, <code>/api/counts</code>)</a></li>
+<li><a href="../Endpoints/bead-detail-api.html">Endpoint: Bead detail API (<code>/api/bead/{id}</code>, <code>/audit</code>, <code>/raw</code>)</a></li>
+<li><a href="../Endpoints/formulas-api.html">Endpoint: Formulas API (<code>/api/formulas</code>, form, pour)</a></li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (<code>/api/events</code>)</a></li>
+<li><a href="../Features/swim-lane-board.html">Feature: Swim-lane board</a></li>
+<li><a href="../Features/bead-detail-and-inline-editing.html">Feature: Bead detail &amp; inline editing</a></li>
+<li><a href="../Features/formula-pour.html">Feature: Formula pour</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a></li>
+<li><a href="../Flows/formula-pour-fanout.html">Flow: Formula pour fan-out</a></li>
+<li><a href="history-page.html">View: History page (<code>/history</code>)</a></li>
+<li><a href="memory-page.html">View: Memory page (<code>/memory</code>)</a></li>
+<li><a href="../Concepts/derive-layer.html">Concept: Derive layer (pure view shaping)</a></li>
+<li><a href="../Concepts/store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a></li>
+<li><a href="../Concepts/htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a></li>
+<li><a href="../Concepts/bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

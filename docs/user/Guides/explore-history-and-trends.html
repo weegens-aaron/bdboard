@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to: Explore history &amp; trends — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="../Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="../Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="../Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="../Features/create-from-formulas.html">Create-from-formulas</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-updates.html">Live-updates</a>
+<a href="../Features/memory-manager.html">Memory-manager</a>
+<a href="../Features/the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="index.html">Index</a>
+<a href="create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="edit-a-bead.html">Edit-a-bead</a>
+<a href="explore-history-and-trends.html" class="active">Explore-history-and-trends</a>
+<a href="manage-agent-memories.html">Manage-agent-memories</a>
+<a href="take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="how-to-explore-history-trends">How to: Explore history &amp; trends</h1>
+<h2 id="goal">Goal</h2>
+<p>Look back over finished work and spot the shape of your project over time. By the end of this guide you'll be able to open the <strong>History</strong> page, pick the stretch of time you care about, read the at-a-glance numbers in the header, make sense of the <strong>Created vs closed</strong> chart, page through the list of closed beads, and open any one of them for the full story — all without typing a single command. History is the long-window companion to the <strong>Board</strong>: where the board shows the here-and-now, History is where older, finished work goes to be reviewed.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard is open in your browser. (If it isn't, start it the way you normally do and follow the address it shows you — see <a href="take-your-first-look.html">Take your first look</a>.)</li>
+<li>Some closed work to look at. History only charts and lists beads that have actually been closed, so a brand-new project with nothing finished yet will show friendly "nothing here" messages until work starts wrapping up.</li>
+<li>Nothing else — there's no sign-in, and everything you see is read from your own project data on your own machine. See <a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>History is a <em>read-only</em> lens on finished work. Nothing on this page changes your beads — clicking a closed bead opens it for inspection, picking a time range only re-filters what's shown, and switching pages just moves through the same list. You can explore freely without fear of altering anything.</p></div>
+<h2 id="steps">Steps</h2>
+<p>Here's the path you'll follow — open the page, choose a time range, read the numbers and the chart, then drill into individual closed beads:</p>
+<pre class="mermaid">
+flowchart TD
+    A[Click History in the top bar] --&gt; B[Page loads with the last 30 days]
+    B --&gt; C{Want a different window?}
+    C --&gt;|A preset| D[Click 7d, 30d, 90d, or All]
+    C --&gt;|Exact dates| E[Click Custom, pick From and To, Apply]
+    C --&gt;|Keep 30 days| F[Read the header numbers]
+    D --&gt; F
+    E --&gt; F
+    F --&gt; G[Read the Created vs closed chart]
+    G --&gt; H[Scroll the Closed beads list]
+    H --&gt; I{Want details on one?}
+    I --&gt;|Yes| J[Click a card to open the bead]
+    I --&gt;|More to see| K[Use Older / Newer or Per page]
+</pre>
+<h3 id="open-the-history-page">Open the History page</h3>
+<ol>
+<li>In the top navigation bar, click <strong>History</strong> (it sits between <strong>Board</strong> and <strong>Memory</strong>) — *expected result: the page title changes to "History", and after a brief shimmer the page fills in with a row of summary numbers across the top, a <strong>Created vs closed</strong> chart, and a <strong>Closed beads</strong> list. It opens showing the <strong>last 30 days</strong> by default.*</li>
+</ol>
+<h3 id="choose-a-time-range">Choose a time range</h3>
+<ol>
+<li>Look at the row of range buttons near the top: <strong>7d</strong>, <strong>30d</strong>, <strong>90d</strong>, and <strong>All</strong>. Click the window you want — *expected result: the button you chose becomes highlighted (and the others un-highlight), and the numbers, chart, and list all refresh to cover just that span. <strong>All</strong> drops the time limit and shows everything ever closed.*</li>
+<li>To look at an exact stretch of dates instead, click the <strong>Custom</strong> button at the end of the range buttons — *expected result: a small panel opens beneath it with two date pickers, <strong>From</strong> and <strong>To</strong>, plus <strong>Apply</strong> and <strong>Clear</strong>.*</li>
+<li>Pick a <strong>From</strong> date and a <strong>To</strong> date, then click <strong>Apply</strong> — *expected result: the panel closes, the <strong>Custom</strong> button shows as the active choice, and everything on the page narrows to beads closed within those dates. The <strong>To</strong> date is included in full — a bead closed any time on that day still counts.*</li>
+</ol>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>If you accidentally pick a <strong>From</strong> date that's later than your <strong>To</strong> date, bdboard quietly swaps them so the range still makes sense rather than coming back empty. To return to a preset window, reopen <strong>Custom</strong> and click <strong>Clear</strong>, or just click one of the <strong>7d</strong> / <strong>30d</strong> / <strong>90d</strong> / <strong>All</strong> buttons.</p></div>
+<h3 id="read-the-headline-numbers">Read the headline numbers</h3>
+<ol>
+<li>Scan the strip of figures across the top of the page. From left to right they tell you: <strong>Total</strong> and <strong>Closed</strong> (workspace-wide tallies of every bead and every bead ever closed), then <strong>Avg lead</strong>, <strong>Closed (range)</strong>, **Median lead<strong>, and </strong>Throughput<em>* — </em>expected result: each figure shows a value (or a muted dash when there's nothing to measure). The four range-based figures change whenever you change the time range; the two workspace tallies stay the same because they always count everything.*</li>
+<li>If a label isn't self-explanatory, click the small <strong>i</strong> icon next to it — *expected result: a short tooltip appears explaining exactly what that number measures and whether it follows the time range. For example, <strong>Throughput</strong> is the average number of beads closed per day across the window you've chosen.*</li>
+</ol>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>Two of the headline numbers measure different kinds of "how long did it take". <strong>Median lead</strong> counts from when a bead was <em>first filed</em> to when it closed (the whole wait), while <strong>Avg lead</strong> counts from when work was <em>actually claimed</em> until it closed (the hands-on time). Seeing both side by side tells you how much of a bead's life was spent waiting versus being worked.</p></div>
+<h3 id="read-the-created-vs-closed-chart">Read the Created vs closed chart</h3>
+<ol>
+<li>Look at the <strong>Created vs closed</strong> chart. Each day in your range is a small column holding two bars side by side — one for beads <strong>created</strong> that day and one for beads <strong>closed</strong> that day — and the legend above names which, with the totals for the window — *expected result: taller "closed" bars than "created" bars over a stretch mean you were burning down the backlog; the reverse means work was piling up faster than it was finishing.*</li>
+</ol>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>The two bars are deliberately drawn differently, not just in different colours — the "created" bar carries a diagonal hatch pattern — so you can still tell them apart in greyscale or with colour-blind vision. Hovering or reading with a screen reader gives the exact created and closed counts for each day.</p></div>
+<h3 id="browse-the-closed-beads">Browse the closed beads</h3>
+<ol>
+<li>Scroll down to the <strong>Closed beads</strong> list. It shows the beads closed in your window as cards, <strong>newest-closed first</strong>, with the total count beside the heading — *expected result: a vertical list of cards, each showing a closed bead's key details. If nothing closed in the window, you'll instead see a gentle "Nothing closed …" message suggesting you try a wider range.*</li>
+<li>Click any card to inspect that bead in full — *expected result: a detail view opens over the page showing the bead's information. Closing that view returns you to the History list exactly where you left off. (For working with a bead's contents, see <a href="edit-a-bead.html">Edit a bead</a>.)*</li>
+</ol>
+<h3 id="move-through-the-list">Move through the list</h3>
+<ol>
+<li>If there are more closed beads than fit on one page, use the <strong>Older ›</strong> and <strong>‹ Newer</strong> buttons at the bottom to step through pages; the <strong>Page</strong> indicator between them shows where you are — *expected result: the list swaps to the next or previous page of closed beads while keeping your chosen time range.*</li>
+<li>To see more (or fewer) beads at once, change the <strong>Per page</strong> selector next to the pager — you can pick <strong>25</strong>, <strong>50</strong>, or <strong>100</strong> (it starts at 50) — *expected result: the list reloads from page 1 with that many cards per page. Your choice is remembered, so it sticks the next time you visit History.*</li>
+</ol>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>History updates itself live: if a bead closes while you're looking at the page, it appears without you needing to refresh. There's a trade-off, though — a live update <strong>snaps the view back to the default last-30-days window</strong>. So if you'd set a <strong>Custom</strong> range or a different preset and the page seems to "reset" on its own, a bead just closed in the background; simply re-pick your range to get back to where you were. See <a href="../Features/live-updates.html">Live updates</a>.</p></div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table><thead><tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr></thead><tbody>
+<tr>
+<td>The page is empty or shows "Nothing closed …".</td>
+<td>Either nothing has closed in the window you picked, or your project genuinely has no closed work yet. Click <strong>All</strong> (or a wider preset) to broaden the window; if it's still empty, there's simply nothing finished to show yet.</td>
+</tr>
+<tr>
+<td>A headline number shows a dash (—) instead of a value.</td>
+<td>That measurement has no data for the current range. For example, lead and cycle times need closed beads with the right timestamps; widen the range or wait until more work closes.</td>
+</tr>
+<tr>
+<td>The chart says "No beads created or closed to chart …".</td>
+<td>Nothing happened in that window to plot. Pick a wider range or different dates.</td>
+</tr>
+<tr>
+<td>I picked a custom range but the page jumped back to the last 30 days.</td>
+<td>A bead closed in the background and triggered a live refresh, which returns to the default window. Just reopen <strong>Custom</strong> (or click your preset) to re-apply your range.</td>
+</tr>
+<tr>
+<td>My custom range came back empty even though I know work closed then.</td>
+<td>Double-check the <strong>From</strong>/<strong>To</strong> dates. Remember the <strong>To</strong> day is included, but anything closed outside those dates is filtered out. Click <strong>Clear</strong> and try a preset to confirm the data is there, then narrow down again.</td>
+</tr>
+<tr>
+<td>The <strong>Older ›</strong> button is missing.</td>
+<td>You're already on the last page for this window — there are no older closed beads to show.</td>
+</tr>
+<tr>
+<td>A page shows "Nothing on page N".</td>
+<td>You paged past the end (this can happen after switching ranges). Use the <strong>back to page 1</strong> link in that message, or pick a range again.</td>
+</tr>
+<tr>
+<td>The list or numbers look stale.</td>
+<td>History refreshes on its own when work changes, but you can always reload the page to force a fresh read; your project data lives locally, so it loads quickly.</td>
+</tr>
+</tbody></table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/history-and-trends.html">History &amp; trends</a> — what the History page offers, at a glance.</li>
+<li><a href="../Concepts/time-ranges-and-recent-work.html">Time ranges &amp; recent work</a> — the mental model behind windows, presets, and "recent" versus "all time".</li>
+<li><a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a> — how a bead travels from filed to closed, which is what the lead and cycle numbers measure.</li>
+<li><a href="edit-a-bead.html">Edit a bead</a> — working with a bead once you've opened it from the list.</li>
+<li><a href="../Features/live-updates.html">Live updates</a> — why the page refreshes itself when work changes.</li>
+<li><a href="take-your-first-look.html">Take your first look</a> — getting bdboard open and oriented.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

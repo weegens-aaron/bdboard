@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: Store snapshot cache &amp; change detection — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="index.html">Index</a>
+<a href="bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="derive-layer.html">Derive-layer</a>
+<a href="htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="store-snapshot-cache.html" class="active">Store-snapshot-cache</a>
+<a href="watcher-scheduling.html">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-store-snapshot-cache-change-detection">Concept: Store snapshot cache &amp; change detection</h1>
+<h2 id="what-is-it">What is it</h2>
+<p>The <strong>Store</strong> (<code>src/bdboard/store.py</code>) is bdboard's in-memory cache of the bead list: it holds the last-known-good output of <code>bd list --json</code> so that HTTP routes read from RAM instead of spawning a <code>bd</code> subprocess per request, and it owns the <strong>change-detection</strong> logic that decides — on each watcher tick — whether anything actually changed and a <a href="../Flows/live-refresh-pipeline.html">live-refresh broadcast</a> is warranted.</p>
+<h2 id="why-this-approach">Why this approach</h2>
+<p>bdboard is <em>read-mostly</em>: every board render, every <code>/api/lanes</code>, <code>/api/counts</code>, and bead-modal fallback needs the bead list. Going back to <code>bd list --json</code> on every one of those would be ruinous on two axes:</p>
+<ul>
+<li><strong>Latency.</strong> A <code>bd list</code> round-trip is ~700 ms on a real workspace. Paying that per HTTP request makes the board feel broken.</li>
+<li><strong>Lock contention.</strong> <code>bd</code> writes through dolt's <em>single-writer</em> lock; piling N concurrent read subprocesses against it serializes everything and starves the writer that actually mutates state.</li>
+</ul>
+<p>So the Store keeps the list in memory and only re-fetches when the <a href="watcher-scheduling.html">watcher</a> reports that <code>.beads/</code> changed — turning the common case (read) into a dict lookup and reserving the expensive subprocess for the rare case (write).</p>
+<p>Two further design pressures shaped it into <strong>three</strong> caches rather than one:</p>
+<ul>
+<li><strong>Lazy-load the closed lane (bdboard-0yy).</strong> The active set is ~5 KB; the full closed table can be ~500 KB. First paint fetches active-only and fast; the Closed lane loads in the background. So active and board-closed are <em>separate</em> caches with independent lazy-load.</li>
+<li><strong>History is a different shape (bdboard-p8v, bdboard-a194, bdboard-gp06).</strong> The History page is a long-window retrospective. It must NOT be count-capped (anything older than a static cap would be permanently unreachable — bdboard-a194) but it MUST be <em>window</em>-bounded so a narrow range doesn't slurp the whole closed table into memory on every snapshot (bdboard-gp06). That is a third, window-aware cache.</li>
+</ul>
+<p>Rejected alternatives: a single all-issues cache (couples the fast active path to the slow closed slurp and kills lazy-loading); a fixed-size LRU keyed on query (the bead universe is small and fully refetched on change, so structural caching is simpler and exact); and periodic polling instead of watcher-driven refresh (wastes <code>bd</code> invocations and adds latency — see the anti-patterns in <a href="htmx-partials-architecture.html">HTMX + server-rendered partials</a>).</p>
+<p>For change detection the Store relies on <strong>structural equality</strong> (<code>==</code>): <code>bd list --json</code> returns a deterministically-sorted list of dicts, so <code>prev == new</code> directly answers "did any issue field change?" in O(n) — cheap at expected workspace sizes and exact (no hashing, no diff bookkeeping).</p>
+<h2 id="how-it-works">How it works</h2>
+<p>The Store holds three <code>_Snapshot</code> records (each a <code>beads</code> list plus a pre-built <code>by_id</code> index for O(1) <code>bead(id)</code> lookups), the dolt revision signature it last refreshed at, the lower-bound cutoff its history snapshot was fetched with, and an <code>asyncio.Lock</code> that serializes refreshes so a burst of watcher events collapses into exactly one <code>bd list</code> rather than N parallel ones piling against the dolt lock.</p>
+<p><code>refresh()</code> is the heart of change detection, and it does three things in order: <strong>(1)</strong> take the cheap self-feedback skip when the committed dolt state is byte-identical to last time, <strong>(2)</strong> re-fetch and structurally diff each cache, <strong>(3)</strong> return <code>True</code> <em>only</em> if the bead list actually changed — which is what de-dups the SSE broadcast.</p>
+<p>The self-feedback skip is the subtle part. <code>refresh()</code> itself runs <code>bd list --json</code>, and even a read-only <code>bd list</code> makes dolt re-touch the watched <code>noms/</code> files — so the watcher fires for <em>our own read</em> and calls <code>refresh()</code> again. To break that loop the Store compares <code>Bd.revision_signature()</code> (the dolt manifest root hash — content that flips IFF the database really changed) against the last signature it refreshed at; if it is unchanged (and a populated cache already exists) the content cannot have changed, so the subprocess is skipped and "no change" is reported. An <strong>empty</strong> signature means "no dolt signal" (legacy JSONL-only workspace) and is deliberately treated as "always refresh", never "never refresh".</p>
+<pre><code class="language-python"># The change-detection core of Store.refresh() (src/bdboard/store.py, abridged).
+async with self._refresh_lock:                       # one bd list per burst
+    revision = self.bd.revision_signature()          # dolt manifest root hash
+    already_loaded = self._active_snap is not None and self._closed_snap is not None
+    if revision and already_loaded and revision == self._last_revision:
+        return False                                 # our own read echoed back → skip
+
+    fresh_active = await self.bd.list_active()        # the expensive part
+    fresh_closed = await self.bd.list_closed()
+
+    active_changed = prev_active is None or prev_active != fresh_active   # structural ==
+    closed_changed = prev_closed is None or prev_closed != fresh_closed
+    if not active_changed and not closed_changed:
+        self._last_revision = revision               # record so next event takes skip path
+        return False                                 # dolt-internal / memory-only write
+
+    # ... swap in only the snapshots that changed, drop bead-detail caches ...
+    self.bd.invalidate_caches()
+    self._last_revision = revision
+    return True                                      # gates the SSE broadcast</code></pre>
+<p>The History cache adds a <strong>window-aware</strong> wrinkle: a cached snapshot fetched with a lower (or absent) bound already covers any narrower sub-window, so <code>snapshot_history(closed_after)</code> only re-queries <code>bd</code> when the request reaches further back than what is held (<code>_history_covers</code>). On <code>refresh()</code>, the history cache is re-fetched only if it was already lazy-loaded, and with the <em>same</em> cutoff it currently holds — so a watcher tick never silently widens the window the page is viewing.</p>
+<pre class="mermaid">
+flowchart TD
+    W["watcher fires Store.refresh()"] --&gt; Sig{"revision_signature()&lt;br/&gt;== last &amp;&amp; cache loaded?"}
+    Sig --&gt;|yes (own read echo)| Skip["skip bd list → return False"]
+    Sig --&gt;|no / empty sig| Fetch["bd list_active + list_closed"]
+    Fetch --&gt; Diff{"prev == fresh&lt;br/&gt;(structural ==)?"}
+    Diff --&gt;|equal| Rec["record revision → return False&lt;br/&gt;(no broadcast)"]
+    Diff --&gt;|differs| Swap["swap changed snapshots&lt;br/&gt;invalidate bd detail caches&lt;br/&gt;re-fetch history at same cutoff"]
+    Swap --&gt; True["record revision → return True&lt;br/&gt;(SSE broadcast fires)"]
+
+    R1["/api/lanes"] --&gt; SA["snapshot_active() (lazy, ~5KB)"]
+    R2["/api/lanes/closed"] --&gt; SC["snapshot_closed() (lazy, bg)"]
+    R3["/history"] --&gt; SH["snapshot_history(cutoff) (window-aware)"]
+    R4["bead modal fallback"] --&gt; SB["snapshot() + bead(id) O(1)"]
+</pre>
+<h2 id="where-used">Where used</h2>
+<table><thead><tr>
+<th>Consumer</th>
+<th>How</th>
+</tr></thead><tbody>
+<tr>
+<td><code>app.py:_get_lanes</code> (<code>/api/lanes</code>)</td>
+<td><code>await store.snapshot_active()</code> — fast active-only path for first paint</td>
+</tr>
+<tr>
+<td><code>app.py</code> closed lane (<code>/api/lanes/closed</code>)</td>
+<td><code>await store.snapshot_closed()</code> — background lazy-load of the Closed lane</td>
+</tr>
+<tr>
+<td><code>app.py</code> history page (<code>/history</code>)</td>
+<td><code>await store.snapshot_history(closed_after=cutoff)</code> — window-bounded retrospective</td>
+</tr>
+<tr>
+<td><code>app.py</code> counts / modal fallback</td>
+<td><code>await store.snapshot()</code> then <code>store.bead(id)</code> — full set + O(1) lookup when a live <code>bd show</code> fails</td>
+</tr>
+<tr>
+<td><code>app.py:_watch_beads</code></td>
+<td>wires <code>store.refresh</code> as the <a href="watcher-scheduling.html"><code>RefreshScheduler</code></a>'s <code>refresh</code> callable; its <code>True</code>/<code>False</code> return gates the broadcast</td>
+</tr>
+<tr>
+<td><code>app.py</code> field-edit write path</td>
+<td><code>await store.refresh()</code> <em>before</em> broadcasting so the acting tab's HTMX re-fetch sees post-mutation state</td>
+</tr>
+<tr>
+<td><code>BdClient.revision_signature</code></td>
+<td>supplies the manifest-root-hash fingerprint that powers the self-feedback skip</td>
+</tr>
+<tr>
+<td><code>BdClient.invalidate_caches</code></td>
+<td>called on a real change so stale <code>bd show</code>/<code>bd history</code> detail caches are dropped</td>
+</tr>
+<tr>
+<td><code>derive.lanes</code> / <code>derive.history</code></td>
+<td>pure shaping over whatever the snapshot returns — the cache feeds the <a href="derive-layer.html">derive layer</a>, it does not shape data itself</td>
+</tr>
+</tbody></table>
+<h2 id="conventions">Conventions</h2>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>When touching the Store, preserve these invariants: - **Refresh under <code>_refresh_lock</code>.** Every fetch path (<code>refresh</code>,   <code>_load_active</code>, <code>_load_closed</code>, <code>_load_history</code>) takes the lock and   re-checks its precondition after acquiring it (another coroutine may have   loaded while it waited). This collapses a watcher burst into one <code>bd list</code>   and avoids piling reads against the dolt single-writer lock. - **Diff structurally, return <code>True</code> only on a real change.** The SSE   broadcast de-dups on <code>refresh()</code>'s boolean. A dolt-internal write or a   memory-only <code>bd remember</code> must record the new revision but return <code>False</code>   (no broadcast). - <strong>Record the revision even when nothing changed.</strong> Storing   <code>self._last_revision = revision</code> on a no-op refresh is what lets the <em>next</em>   identical-state event take the cheap skip path. Forgetting it re-opens the   feedback loop. - **Treat an empty <code>revision_signature()</code> as "always refresh".<strong> A legacy   JSONL-only workspace has no dolt manifest; "no signal" must never mean   "never refresh". - </strong>On <code>bd list</code> failure, keep the previous snapshot.** Serving slightly   stale data beats flashing an empty board on a transient <code>bd</code> hiccup —   never null out a populated cache in the error path; log loudly instead. - <strong>Re-fetch History at its current cutoff, only if already loaded.</strong> Don't   pay for a long-window fetch nobody asked for, and never silently widen the   window the page is viewing to unbounded. - **Keep the <code>by_id</code> index in lock-step with <code>beads</code>.** Both are rebuilt   together whenever a snapshot is swapped so <code>bead(id)</code> can stay sync and O(1).</p></div>
+<h2 id="anti-patterns">Anti-patterns</h2>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Mistakes that re-break the cache or live-sync — don't do these: - **Don't fetch <code>bd list</code> per HTTP request.<strong> That's the ~700 ms-per-call,   dolt-lock-contending regression the Store exists to prevent. Read from the   cache; let the watcher refresh it. - </strong>Don't compare manifest mtime/inode for the skip.** A read-only <code>bd list</code>   bumps both; only the manifest <em>content</em> (root hash) distinguishes a real   write from our own read echo. Compare bytes, not metadata. - **Don't advance <code>_last_revision</code> after a <em>failed</em> fetch.<strong> Recording a   revision you never actually synced lets the next real event get swallowed   by the skip path. - </strong>Don't broadcast on every refresh.** Returning <code>True</code> unconditionally   re-renders the board on dolt-internal churn and our own read echoes,   defeating the de-dup and hammering connected browsers. - <strong>Don't collapse the three caches into one.</strong> A single all-issues cache   couples the fast ~5 KB active path to the ~500 KB closed slurp and kills   lazy-loading of the Closed lane (bdboard-0yy). - <strong>Don't count-cap the History cache.</strong> A static "last N closed" cap makes   everything older permanently unreachable (bdboard-a194). Bound by <em>window</em>   (<code>closed_after</code>), not by count. - <strong>Don't widen the History window on a watcher refresh.</strong> Re-fetch with the   cutoff the cache holds; silently promoting it to unbounded slurps the whole   closed table behind the user's back (bdboard-gp06). - <strong>Don't poll on a timer for freshness.</strong> The watcher + signature-gated   refresh + SSE pipeline already delivers sub-second updates; an   <code>hx-trigger="every Ns"</code> would hammer <code>bd</code> for nothing (see the   <a href="htmx-partials-architecture.html">HTMX partials</a> anti-patterns).</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="watcher-scheduling.html">Concept: Watcher debounce/cooldown &amp; self-feedback skip</a></li>
+<li><a href="bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a></li>
+<li><a href="derive-layer.html">Concept: Derive layer (pure view shaping)</a></li>
+<li><a href="htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a></li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a></li>
+<li><a href="../Flows/field-edit-write-path.html">Flow: Inline field-edit write path</a></li>
+<li><a href="../Endpoints/lanes-api.html">Endpoint: Lanes API (/api/lanes, /api/lanes/closed, /api/counts)</a></li>
+<li><a href="../Endpoints/history-api.html">Endpoint: History API (/api/history)</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+<li>Source: <code>src/bdboard/store.py</code>, <code>src/bdboard/bd.py</code>, <code>src/bdboard/app.py</code></li>
+<li>Tests: <code>tests/test_watcher_self_feedback.py</code> (revision-signature skip + change detection), <code>tests/test_store_history_window.py</code> (window-aware History cache)</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

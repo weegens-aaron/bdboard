@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: Your data is local &amp; safe — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="index.html">Index</a>
+<a href="bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="what-is-a-bead.html">What-is-a-bead</a>
+<a href="your-data-is-local-and-safe.html" class="active">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="../Features/create-from-formulas.html">Create-from-formulas</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-updates.html">Live-updates</a>
+<a href="../Features/memory-manager.html">Memory-manager</a>
+<a href="../Features/the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="../Guides/index.html">Index</a>
+<a href="../Guides/create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="../Guides/edit-a-bead.html">Edit-a-bead</a>
+<a href="../Guides/explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="../Guides/manage-agent-memories.html">Manage-agent-memories</a>
+<a href="../Guides/take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-your-data-is-local-safe">Concept: Your data is local &amp; safe</h1>
+<h2 id="what-is-it">What is it</h2>
+<p>bdboard is a window onto bead data that lives <strong>on your own computer</strong>. Everything you see on the Board, History, and Memory pages is read straight from your own project, on your own machine — there is no account, no sign-in, and nothing is sent off to a cloud service or a third party for you to use it.</p>
+<h2 id="why-this-approach">Why this approach</h2>
+<p>Your beads are your work — the record of what you and your tools have done. That record should stay where you put it, under your control, and it should keep working whether or not you're connected to the internet. Building bdboard as a purely local window has three pay-offs:</p>
+<ul>
+<li><strong>Privacy by default.</strong> Because the data never leaves your machine just to be displayed, there's nothing to opt out of and no account to lock down. The things you read on screen don't travel anywhere to get there.</li>
+<li><strong>Trust while you browse.</strong> Looking around can't damage what you're looking at. You can click every bead, flip every page, and change the view as much as you like, confident that <em>browsing</em> never alters your work.</li>
+<li><strong>It works offline.</strong> Since the data is already on your computer, bdboard keeps showing it even with no network connection — there's no remote service it has to phone for permission or content.</li>
+</ul>
+<p>The alternative — a hosted dashboard that uploads your beads to someone else's server — would mean handing over your project's record just to look at it, and going dark whenever the connection (or the service) does. That trade isn't worth it for a tool whose whole job is to <em>show you your own work</em>.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>Think of bdboard like a <strong>pair of reading glasses for a notebook that never leaves your desk</strong>. The notebook (your bead data) sits on your computer. bdboard is the glasses: it helps you <em>read</em> the notebook clearly — laying the pages out as swim lanes, counts, and history — but the notebook itself stays put. Putting glasses on, or taking them off, never rewrites a single page.</p>
+<p>Here's the same idea as the path your information actually takes:</p>
+<pre class="mermaid">
+flowchart LR
+    A[Your bead data on your computer] --&gt; B[bdboard reads it]
+    B --&gt; C[The pages you see in your browser tab]
+    C -. just looking changes nothing .-&gt; A
+    E[Your browser remembers dark mode and time window] --&gt; C
+</pre>
+<p>A plain worked example, start to finish:</p>
+<ol>
+<li>You launch bdboard from inside your project and a browser tab opens at an address that is private to your own computer — only your machine can reach it.</li>
+<li>The Board fills in with your lanes, counts, and activity. All of that was read from the bead data already sitting on your machine. Nothing was fetched from the internet to show it to you.</li>
+<li>You click a bead open, switch to History, flip on dark mode, narrow the time window — and your work is exactly as it was. Browsing is read-only.</li>
+<li>Your appearance and time-window choices are remembered by <em>your browser</em>, on your computer, so they stick for next time without being stored anywhere else.</li>
+</ol>
+<p>There is one deliberate exception to "just looking": when you <em>choose</em> to make a change — editing a bead, or pouring new beads from a formula — bdboard hands that change to the same bead tooling on your machine, which records it in your local data. That edit, too, stays on your computer; it only travels elsewhere if you later take a separate, deliberate step to back up or share your project. bdboard never quietly ships your data off the machine in the background.</p>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>"Local" is about where the data <em>lives and is read from</em>, not a promise that you can never share it. You remain free to back up or hand your project to a teammate — that's always an action <em>you</em> take on purpose, never something bdboard does silently while you browse.</p></div>
+<h2 id="where-it-shows-up">Where it shows up</h2>
+<p>This isn't a button you press — it's a property of the whole app, so it quietly shapes every page:</p>
+<ul>
+<li><strong>The Board</strong> — the lanes, counts, and activity feed are all read from your own machine; opening and re-opening beads never changes them.</li>
+<li><strong>History</strong> — your finished work, drawn from the same local record, with nothing uploaded to chart it.</li>
+<li><strong>Memory</strong> — saved notes shown straight from your project on your computer.</li>
+<li><strong>The address bar</strong> — the tab bdboard opens points at your own machine, not a website out on the internet.</li>
+<li><strong>Dark mode &amp; the time-window buttons</strong> — these stick because <em>your browser</em> remembers them locally.</li>
+</ul>
+<h2 id="good-habits">Good habits</h2>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>- <strong>Browse freely.</strong> Since looking never changes anything, explore the whole   board, open beads, and switch pages without worry — you can't break your data   by reading it. - <strong>Treat backing up as your job.</strong> Because your data stays on your machine, it   is only as safe as your machine. If the work matters, keep your own backup or   sync of your project — bdboard shows your data but doesn't guard it against a   lost laptop. - <strong>Know when you're actually changing something.</strong> Editing a bead or pouring a   formula <em>does</em> alter your data (on your machine). Everything else is just a   view. See <a href="../Guides/edit-a-bead.html">Edit a bead</a> and   <a href="../Guides/create-beads-from-a-formula.html">Create beads from a formula</a> for   the deliberate actions that write.</p></div>
+<h2 id="things-to-avoid">Things to avoid</h2>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>- <strong>Don't assume bdboard is your backup.</strong> It reads your local data; it doesn't   copy it somewhere safe for you. If the only copy is on one machine, one   mishap loses it. Keep your own backup or off-machine copy. - <strong>Don't expect to reach the board from another device by default.</strong> The   address it opens is private to the computer it's running on. It isn't a public   website, so don't count on opening it from your phone or a colleague's laptop   the way you would a hosted dashboard. - <strong>Don't go looking for a login or "sync to cloud" setting.</strong> There isn't one,   and that's the point. If you want your beads on another machine, that's a   deliberate backup-or-share step you take with your project, not something you   flip on inside bdboard.</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Guides/take-your-first-look.html">Take your first look</a> — the orientation tour; explains that there's no account or sign-in and that the board is a live, read-only view.</li>
+<li><a href="what-is-a-bead.html">What is a bead?</a> — the unit of work this local data is made of.</li>
+<li><a href="bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a> — how the beads in your local data move from filed to closed.</li>
+<li><a href="../Guides/edit-a-bead.html">Edit a bead</a> — the deliberate action that changes your local data.</li>
+<li><a href="../Guides/create-beads-from-a-formula.html">Create beads from a formula</a> — the other way you intentionally add to your local data.</li>
+<li><a href="../Features/index.html">Features</a> — includes <em>Live updates</em>, why the board refreshes itself as your local data changes.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

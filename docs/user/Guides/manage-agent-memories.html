@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to: Manage agent memories — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="../Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="../Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="../Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="../Features/create-from-formulas.html">Create-from-formulas</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-updates.html">Live-updates</a>
+<a href="../Features/memory-manager.html">Memory-manager</a>
+<a href="../Features/the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="index.html">Index</a>
+<a href="create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="edit-a-bead.html">Edit-a-bead</a>
+<a href="explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="manage-agent-memories.html" class="active">Manage-agent-memories</a>
+<a href="take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="how-to-manage-agent-memories">How to: Manage agent memories</h1>
+<h2 id="goal">Goal</h2>
+<p>Add, find, update, and remove the long-lived notes your AI agents rely on — the <em>memories</em> that get handed to every agent at the start of a session so they remember your conventions, gotchas, and preferences without being told again. By the end of this guide you'll be able to curate that knowledge entirely from the <strong>Memory</strong> page, with no terminal commands required.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard is open in your browser. (If it isn't, start it the way you normally do and follow the address it shows you — see <a href="take-your-first-look.html">Take your first look</a>.)</li>
+<li>A rough idea of what you want to capture: each memory is a short <strong>Key</strong> (a memorable label) plus a <strong>Body</strong> (the actual note, which may use Markdown).</li>
+<li>Nothing else — there's no sign-in, and your memories live with the rest of your project data on your own machine. See <a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>Memories are <em>shared with your agents</em>, not just notes-to-self. Every memory you keep here is fed to future agent sessions, so phrase them as durable facts ("we deploy on Fridays", "prefer relative links in docs") rather than one-off reminders.</p></div>
+<h2 id="steps">Steps</h2>
+<p>Here's the path you'll follow for the common tasks — opening the page, then adding, finding, editing, or removing a memory:</p>
+<pre class="mermaid">
+flowchart TD
+    A[Open the Memory page] --&gt; B{What do you want to do?}
+    B --&gt;|Add a note| C[Click + New Memory]
+    B --&gt;|Find a note| D[Type in the search box]
+    B --&gt;|Change a note| E[Click the edit pencil on a card]
+    B --&gt;|Remove a note| F[Click the trash icon on a card]
+    C --&gt; G[Fill in Key and Body, Save]
+    E --&gt; G
+    F --&gt; H[Confirm in the warning dialog]
+    G --&gt; I[Card appears or updates in the list]
+    H --&gt; J[Card disappears from the list]
+</pre>
+<h3 id="open-the-memory-page">Open the Memory page</h3>
+<ol>
+<li>In the top navigation bar, click <strong>Memory</strong> (it sits alongside <strong>Board</strong> and <strong>History</strong>) — *expected result: the page title changes to "Memory" and a list of existing memory cards loads. If you have none yet, you'll see a friendly empty message inviting you to add your first one.*</li>
+</ol>
+<h3 id="add-a-new-memory">Add a new memory</h3>
+<ol>
+<li>Click the <strong>+ New Memory</strong> button near the top of the page — *expected result: a dialog box opens titled "New Memory" with two empty fields, <strong>Key</strong> and <strong>Body</strong>.*</li>
+<li>In <strong>Key</strong>, type a short, memorable label (for example, a few words joined by dashes). The dialog reminds you that this is just a short identifier — <em>expected result: your text appears in the Key field.</em></li>
+<li>In <strong>Body</strong>, write the note itself. You can use Markdown for emphasis, lists, and the like — <em>expected result: your text appears in the larger Body box.</em></li>
+<li>Click <strong>Save Memory</strong> — *expected result: the dialog closes and your new memory appears as a card in the list, showing its Key as a heading and the Body rendered below it. The count at the top of the list goes up by one.*</li>
+</ol>
+<h3 id="find-a-memory">Find a memory</h3>
+<ol>
+<li>Click in the <strong>Search memories</strong> box at the top of the list and start typing — *expected result: as you type (after a brief pause), the list narrows to only the memories that match, and the count line updates to read something like "2 matching …".*</li>
+<li>To return to the full list, clear the search box (use its built-in clear control or delete your text) — *expected result: every memory reappears and the count line shows the total again.*</li>
+</ol>
+<h3 id="update-an-existing-memory">Update an existing memory</h3>
+<ol>
+<li>On the card you want to change, click the <strong>edit</strong> (pencil) button — *expected result: the dialog opens titled "Edit Memory", pre-filled with that memory's current Key and Body. The Key is locked for editing, because a memory is identified by its Key.*</li>
+<li>Adjust the <strong>Body</strong> text as needed, then click <strong>Save Memory</strong> — *expected result: the dialog closes and the card updates in place with your new content. The total count stays the same — you've replaced the note, not added one.*</li>
+</ol>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>Saving with a Key that already exists <em>overwrites</em> that memory's body rather than creating a duplicate. That's intentional: it means re-saving the same Key is how you keep a single note current. If you wanted a separate note, give it a different Key.</p></div>
+<h3 id="remove-a-memory">Remove a memory</h3>
+<ol>
+<li>On the card you no longer need, click the <strong>forget</strong> (trash) button — *expected result: a confirmation dialog appears, naming the exact Key and warning that forgetting it permanently removes it and quietly weakens every future agent session that relied on it.*</li>
+<li>If you're sure, click <strong>Yes, Forget It</strong> (otherwise click <strong>Cancel</strong>) — *expected result: the dialog closes, the card disappears from the list, and the count drops by one.*</li>
+</ol>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Forgetting a memory cannot be undone, and the cost is invisible: agents simply stop knowing whatever that note taught them. When in doubt, <strong>edit</strong> the memory to trim or correct it rather than forgetting it outright.</p></div>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>If you have bdboard open in more than one tab or window, changes you make in one appear automatically in the others — there's no need to refresh. So if a memory seems to change "on its own", check whether you (or an agent) updated it elsewhere.</p></div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table><thead><tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr></thead><tbody>
+<tr>
+<td>The <strong>Save Memory</strong> button doesn't seem to do anything.</td>
+<td>Both <strong>Key</strong> and <strong>Body</strong> are required. Make sure neither is blank (whitespace alone doesn't count) and try again.</td>
+</tr>
+<tr>
+<td>You see a message that the memory "couldn't be saved" or "couldn't be deleted".</td>
+<td>This usually means the underlying note store hiccuped. Close the dialog, wait a moment, and retry; if it persists, reload the page and try once more.</td>
+</tr>
+<tr>
+<td>After a long time on the page, an action is rejected and asks you to refresh.</td>
+<td>The page's safety token can go stale on a page that's been open a very long time. Reload the page, then repeat your action.</td>
+</tr>
+<tr>
+<td>The list shows "No memories matching …".</td>
+<td>Your search term doesn't match any Key or Body. Clear the search box to see everything, then refine your term.</td>
+</tr>
+<tr>
+<td>You meant to keep a memory but clicked forget.</td>
+<td>There's no undo. Re-create it with <strong>+ New Memory</strong> using the same Key and the original text. (Tip: copy the Body before confirming a forget if you're unsure.)</td>
+</tr>
+<tr>
+<td>You want to rename a memory's Key.</td>
+<td>You can't rename a Key directly. Create a new memory with the desired Key and the same Body, then forget the old one.</td>
+</tr>
+<tr>
+<td>The list looks empty right after opening the page.</td>
+<td>It loads a placeholder for a split second; give it a moment. If it stays empty and you expected memories, reload the page.</td>
+</tr>
+</tbody></table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/memory-manager.html">Memory manager</a> — what the Memory page offers, at a glance.</li>
+<li><a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a> — where your memories live and why that matters.</li>
+<li><a href="take-your-first-look.html">Take your first look</a> — getting bdboard open and oriented.</li>
+<li><a href="../Features/live-updates.html">Live updates</a> — why changes appear across tabs without refreshing.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

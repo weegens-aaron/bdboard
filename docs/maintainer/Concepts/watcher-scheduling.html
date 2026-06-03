@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: Watcher debounce/cooldown &amp; self-feedback skip — bdboard — Maintainer Docs</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — Maintainer Docs</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<div class="nav-section">Concepts</div>
+<a href="index.html">Index</a>
+<a href="bd-cli-source-of-truth.html">Bd-cli-source-of-truth</a>
+<a href="derive-layer.html">Derive-layer</a>
+<a href="htmx-partials-architecture.html">Htmx-partials-architecture</a>
+<a href="store-snapshot-cache.html">Store-snapshot-cache</a>
+<a href="watcher-scheduling.html" class="active">Watcher-scheduling</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/index.html">Index</a>
+<a href="../Endpoints/bead-detail-api.html">Bead-detail-api</a>
+<a href="../Endpoints/bead-field-edit-api.html">Bead-field-edit-api</a>
+<a href="../Endpoints/formulas-api.html">Formulas-api</a>
+<a href="../Endpoints/history-api.html">History-api</a>
+<a href="../Endpoints/lanes-api.html">Lanes-api</a>
+<a href="../Endpoints/memory-api.html">Memory-api</a>
+<a href="../Endpoints/sse-events.html">Sse-events</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-inline-editing.html">Bead-detail-and-inline-editing</a>
+<a href="../Features/formula-pour.html">Formula-pour</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-auto-refresh.html">Live-auto-refresh</a>
+<a href="../Features/memory-management.html">Memory-management</a>
+<a href="../Features/swim-lane-board.html">Swim-lane-board</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/index.html">Index</a>
+<a href="../Flows/field-edit-write-path.html">Field-edit-write-path</a>
+<a href="../Flows/formula-pour-fanout.html">Formula-pour-fanout</a>
+<a href="../Flows/live-refresh-pipeline.html">Live-refresh-pipeline</a>
+<a href="../Flows/server-startup.html">Server-startup</a>
+<div class="nav-section">Views</div>
+<a href="../Views/index.html">Index</a>
+<a href="../Views/board-page.html">Board-page</a>
+<a href="../Views/history-page.html">History-page</a>
+<a href="../Views/memory-page.html">Memory-page</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-watcher-debounce-cooldown-self-feedback-skip">Concept: Watcher debounce/cooldown &amp; self-feedback skip</h1>
+<h2 id="what-is-it">What is it</h2>
+<p>The <strong>watcher scheduler</strong> is the timing layer that turns the noisy stream of filesystem events emitted while <code>bd</code> writes its dolt database into <em>exactly one</em> <code>Store.refresh()</code> per logical mutation — and that refuses to chase its own tail when a read-only <code>bd list</code> jiggles the very files it is watching. It is two cooperating pieces: a debounce/cooldown coalescer (<code>RefreshScheduler</code>) and a content-hash <strong>self-feedback skip</strong> (<code>Bd.revision_signature</code> + <code>Store.refresh</code>).</p>
+<h2 id="why-this-approach">Why this approach</h2>
+<p>bdboard is a pure <em>observer</em> of dolt-native state: <code>bd</code> writes the dolt store, files mutate under <code>.beads/embeddeddolt/&lt;db&gt;/.dolt/noms/</code>, <code>watchfiles</code> fires, and the Store re-runs <code>bd list --json</code>. That naive loop has three failure modes, each learned the hard way, that the scheduling design exists to defeat:</p>
+<ul>
+<li><strong>Write bursts (debounce).</strong> A single <code>bd update</code> doesn't write one file — it rewrites <code>manifest</code>, <code>journal.idx</code>, a lock, and more inside the dolt <code>noms/</code> dir in quick succession, often spanning 2–3 <code>watchfiles</code> batches. Without a trailing quiet-window, one logical edit would trigger several <code>bd list</code> subprocesses. A <strong>~250 ms debounce</strong> is comfortably longer than the burst yet far below human perception.</li>
+<li><strong>Write storms (cooldown).</strong> A <code>bd</code> mutation can fan out — dolt commit + auto-export + a git-add hook — into sustained FS activity. A **~1 s post- refresh cooldown** stops back-to-back refreshes from chain-firing at full filesystem speed.</li>
+<li><strong>Self-feedback (the subtle one).</strong> <code>Store.refresh()</code> runs <code>bd list --json</code>, and <em>even a read-only</em> <code>bd list</code> makes dolt re-touch <code>journal.idx</code>/<code>manifest</code> inside the watched <code>noms/</code> dir — so the watcher fires for <strong>our own read</strong> ~1.3 s later. Naively, that re-trigger chains refreshes forever; worse, because <code>bd list</code> on a large <code>noms/</code> takes <em>longer</em> than the self-trigger latency, the old code cancelled each in-flight refresh before it finished and the board froze until relaunch (<code>bdboard-ywep</code>).</li>
+</ul>
+<p>Rejected alternatives: a fixed periodic poll (wastes <code>bd</code> CLI invocations and adds latency — see the anti-pattern in <a href="htmx-partials-architecture.html">HTMX + server-rendered partials</a>); a plain debounce with no cooldown (lets storms chain-fire); and cancelling refreshes on every event (the exact bug that wedged live-sync). The chosen design keeps sub-second latency while making "one refresh per real change" an invariant.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>The scheduler runs a three-phase <code>_settle()</code> cycle per notification:</p>
+<ol>
+<li><strong>Debounce sleep</strong> (<code>debounce_s</code>) — collapses a multi-batch write burst.</li>
+<li><strong>Cooldown remainder sleep</strong> — if less than <code>cooldown_s</code> has elapsed since the last <em>successful</em> refresh, wait out only the remainder, then proceed. Critically, an event that lands inside cooldown is <strong>not dropped</strong> (the old <code>bdboard-xbc7</code> bug); it waits and refreshes, so trailing/isolated writes always sync.</li>
+<li><strong>Refresh phase (non-cancellable)</strong> — once <code>bd list</code> starts it runs to completion. A concurrent <code>notify()</code> during this phase does <strong>not</strong> cancel; it flips <code>_dirty</code> so the scheduler reconciles exactly once more afterward.</li>
+</ol>
+<p>Two rules make it robust: the cooldown clock advances <strong>only on a refresh that succeeded</strong> (a transient <code>bd list</code> error retries promptly instead of being swallowed by an "earned" cooldown), and only the cancellable <em>sleep</em> phases may be pre-empted by a newer event.</p>
+<p>The self-feedback skip lives one layer down. <code>revision_signature()</code> reads each dolt <code>manifest</code> (a ~150-byte file whose payload is the current <strong>root hash</strong>); its content is identical across read-only churn and flips <em>only</em> on a real write. <code>Store.refresh()</code> compares it to the last refreshed signature and skips the <code>bd list</code> subprocess entirely when unchanged — severing the refresh→read→event→refresh loop at the source.</p>
+<pre><code class="language-python"># Heart of the scheduler (src/bdboard/watcher.py, abridged).
+async def _settle(self) -&gt; None:
+    try:
+        await asyncio.sleep(self._debounce_s)          # 1. collapse the burst
+        remaining = self._cooldown_s - (self._monotonic() - self._last_refresh_at)
+        if remaining &gt; 0:
+            await asyncio.sleep(remaining)             # 2. wait out cooldown (don't drop!)
+    except asyncio.CancelledError:
+        return                                         # a newer event owns the next refresh
+
+    self._refreshing = True                            # 3. refresh phase: NOT cancellable
+    self._dirty = False
+    try:
+        changed = await self._refresh()                # runs `bd list --json`
+    except Exception:
+        log.exception("watcher: refresh raised; will retry on next change")
+        return                                         # DON'T advance cooldown on failure
+    finally:
+        self._refreshing = False
+
+    self._last_refresh_at = self._monotonic()          # only success advances the clock
+    if changed:
+        await self._broadcast()
+    if self._dirty:                                    # an event overlapped the refresh
+        self._pending = asyncio.create_task(self._settle())</code></pre>
+<pre class="mermaid">
+flowchart TD
+    FS["watchfiles batch"] --&gt; N["scheduler.notify()"]
+    N --&gt;|refreshing?| D{"_refreshing"}
+    D --&gt;|yes| Dirty["set _dirty; return"]
+    D --&gt;|no| Cancel["cancel pending settle; start _settle"]
+    Cancel --&gt; Deb["sleep debounce_s"]
+    Deb --&gt; Cool["wait out cooldown remainder"]
+    Cool --&gt; Ref["refresh(): revision_signature unchanged?"]
+    Ref --&gt;|yes (own read echo)| Skip["skip bd list → return False"]
+    Ref --&gt;|no| List["bd list --json → diff snapshot"]
+    List --&gt;|changed| BC["broadcast beads_changed (SSE)"]
+    List --&gt;|no change| Done["record revision; no broadcast"]
+    Skip --&gt; ReDirty{"_dirty?"}
+    BC --&gt; ReDirty
+    Done --&gt; ReDirty
+    ReDirty --&gt;|yes| Cancel
+    ReDirty --&gt;|no| Idle["idle"]
+</pre>
+<h2 id="where-used">Where used</h2>
+<table><thead><tr>
+<th>Consumer</th>
+<th>How</th>
+</tr></thead><tbody>
+<tr>
+<td><code>app.py:_watch_beads</code></td>
+<td>Constructs <code>RefreshScheduler(refresh=store.refresh, broadcast=…beads_changed, debounce_s=WATCHER_DEBOUNCE_S, cooldown_s=WATCHER_COOLDOWN_S)</code> and calls <code>scheduler.notify()</code> for every <code>awatch</code> batch</td>
+</tr>
+<tr>
+<td><code>app.py</code> constants</td>
+<td><code>WATCHER_DEBOUNCE_S = 0.25</code>, <code>WATCHER_COOLDOWN_S = 1.0</code>, <code>WATCHER_RESCAN_S = 3.0</code> tune the timings</td>
+</tr>
+<tr>
+<td><code>Store.refresh</code></td>
+<td>The <code>refresh</code> callable the scheduler drives; returns <code>True</code> iff the bead list changed (gates the broadcast) and applies the revision-signature skip</td>
+</tr>
+<tr>
+<td><code>Bd.revision_signature</code></td>
+<td>Content fingerprint (manifest root hash) that powers the self-feedback skip</td>
+</tr>
+<tr>
+<td><code>Bd.watch_targets</code> / <code>watch_signature</code></td>
+<td>Define <em>which</em> dirs are watched (non-recursive <code>noms/</code> dirs) and detect inode swaps / new dbs so <code>awatch</code> re-enumerates</td>
+</tr>
+<tr>
+<td><code>EventBus.broadcast</code></td>
+<td>The <code>broadcast</code> callable; pushes <code>beads_changed</code> over SSE to connected browsers</td>
+</tr>
+</tbody></table>
+<h2 id="conventions">Conventions</h2>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>When touching the watcher scheduling layer, preserve these invariants: - **Keep timing logic in <code>RefreshScheduler</code>, not <code>app.py</code>.** It was extracted   precisely so the tricky debounce/cooldown/self-trigger behavior is   unit-testable without FastAPI, <code>watchfiles</code>, or a real <code>bd</code> workspace   (<code>bdboard-xbc7</code>). Inject <code>monotonic</code>, <code>refresh</code>, and <code>broadcast</code> for tests. - <strong>Advance the cooldown clock only after a <em>successful</em> refresh.</strong> A refresh   that raises must leave <code>_last_refresh_at</code> untouched so the next event   retries promptly. This is what stops a transient <code>bd list</code> hiccup from   permanently wedging live-sync. - <strong>Never cancel an in-flight refresh.</strong> Only the cancellable debounce/cooldown   <em>sleep</em> may be pre-empted. While <code>_refreshing</code>, <code>notify()</code> sets <code>_dirty</code> and   the cycle reconciles once afterward — so a real write overlapping a refresh   is never lost, and the slow <code>bd list</code> subprocess can't be killed mid-flight. - <strong>An event inside cooldown waits, it does not drop.</strong> Trailing/isolated   writes (the last event of a burst, or a single <code>bd update</code>) must still   refresh within ~<code>debounce + cooldown</code>. - **Treat an empty <code>revision_signature()</code> as "always refresh."<strong> A legacy   JSONL-only workspace has no dolt manifest; "no signal" must mean "don't   skip," never "never refresh." - </strong><code>refresh()</code> returns <code>True</code> only when the bead list actually changed.** The   SSE broadcast dedups on this; recording the revision without broadcasting is   correct for dolt-internal or memory-only writes.</p></div>
+<h2 id="anti-patterns">Anti-patterns</h2>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>Mistakes that re-break live-sync — don't do these: - <strong>Don't cancel the refresh task on every event.</strong> That was the original   <code>bdboard-ywep</code> defect: <code>bd list</code> itself touches <code>noms/</code>, so the watcher   fired for our own read and killed the refresh before it finished — on a   large <code>noms/</code> it <em>never</em> finished and the board froze until relaunch. - <strong>Don't return early when an event lands inside cooldown.</strong> The old   <code>_settle_task</code> skipped the refresh <em>and</em> scheduled no catch-up, assuming "a   later event will retrigger." The last event of a burst has no later event,   so that change was silently lost (<code>bdboard-xbc7</code> root cause #1). - <strong>Don't advance the cooldown on failure.</strong> Earning a cooldown without   actually syncing lets the next real event get swallowed (root cause #3). - **Don't watch <code>.beads/</code> recursively.** dolt's churning content-addressed   <code>noms/</code> store opens one kqueue fd per dir on macOS and exhausts   <code>RLIMIT_NOFILE</code>; once fds run out, <code>create_subprocess_exec</code> can't open   pipes and <code>bd list</code>/<code>bd show</code> crash with <code>OSError [Errno 24]</code>. Watch the   small fixed set of <code>noms/</code> dirs non-recursively (see <code>watch_targets</code>). - <strong>Don't compare manifest mtime/inode for the skip.</strong> Read-only churn bumps   both; only the manifest <em>content</em> (root hash) reliably distinguishes a real   write from our own read echo. Compare bytes, not metadata. - <strong>Don't add a timer poll for live updates.</strong> The debounce/cooldown +   SSE pipeline already delivers sub-second freshness; an <code>hx-trigger="every Ns"</code>   would hammer the <code>bd</code> CLI for nothing (see the   <a href="htmx-partials-architecture.html">HTMX partials</a> anti-patterns).</p></div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="store-snapshot-cache.html">Concept: Store snapshot cache &amp; change detection</a></li>
+<li><a href="bd-cli-source-of-truth.html">Concept: bd CLI as runtime source of truth</a></li>
+<li><a href="derive-layer.html">Concept: Derive layer (pure view shaping)</a></li>
+<li><a href="htmx-partials-architecture.html">Concept: HTMX + server-rendered partials</a></li>
+<li><a href="../Flows/live-refresh-pipeline.html">Flow: Live-refresh pipeline</a></li>
+<li><a href="../Flows/server-startup.html">Flow: Server startup &amp; workspace resolution</a></li>
+<li><a href="../Endpoints/sse-events.html">Endpoint: SSE events (/api/events)</a></li>
+<li><a href="../Features/live-auto-refresh.html">Feature: Live auto-refresh</a></li>
+<li><a href="../Architecture.html">Architecture</a></li>
+<li>Source: <code>src/bdboard/watcher.py</code>, <code>src/bdboard/bd.py</code>, <code>src/bdboard/store.py</code>, <code>src/bdboard/app.py</code></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

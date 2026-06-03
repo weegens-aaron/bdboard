@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to: Edit a bead — bdboard — User Guide</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">bdboard — User Guide</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../index.html">Index</a>
+<a href="../FAQ.html">FAQ</a>
+<a href="../Overview.html">Overview</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/index.html">Index</a>
+<a href="../Concepts/bead-lifecycle-and-lanes.html">Bead-lifecycle-and-lanes</a>
+<a href="../Concepts/time-ranges-and-recent-work.html">Time-ranges-and-recent-work</a>
+<a href="../Concepts/what-is-a-bead.html">What-is-a-bead</a>
+<a href="../Concepts/your-data-is-local-and-safe.html">Your-data-is-local-and-safe</a>
+<div class="nav-section">Features</div>
+<a href="../Features/index.html">Index</a>
+<a href="../Features/bead-detail-and-editing.html">Bead-detail-and-editing</a>
+<a href="../Features/create-from-formulas.html">Create-from-formulas</a>
+<a href="../Features/history-and-trends.html">History-and-trends</a>
+<a href="../Features/live-updates.html">Live-updates</a>
+<a href="../Features/memory-manager.html">Memory-manager</a>
+<a href="../Features/the-board.html">The-board</a>
+<div class="nav-section">Guides</div>
+<a href="index.html">Index</a>
+<a href="create-beads-from-a-formula.html">Create-beads-from-a-formula</a>
+<a href="edit-a-bead.html" class="active">Edit-a-bead</a>
+<a href="explore-history-and-trends.html">Explore-history-and-trends</a>
+<a href="manage-agent-memories.html">Manage-agent-memories</a>
+<a href="take-your-first-look.html">Take-your-first-look</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="how-to-edit-a-bead">How to: Edit a bead</h1>
+<h2 id="goal">Goal</h2>
+<p>Change the details of an existing bead — its title, description, priority, assignee, type, and more — directly from the board, without touching a terminal. By the end of this guide you'll be able to open any bead, edit one field at a time, add a note to its running history, and understand why some beads can't be edited at all. Editing happens <strong>one field at a time and saves on its own</strong>, so there's no big "Save everything" button to hunt for and no way to accidentally overwrite a field you didn't touch.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard is open in your browser. (If it isn't, start it the way you normally do and follow the address it shows you — see <a href="take-your-first-look.html">Take your first look</a>.)</li>
+<li>The bead you want to change is <strong>open</strong>. Only beads still in the open state can be edited — once a bead has been claimed (it's being worked on) or closed (it's finished history), its fields become read-only. See <a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a> for what each state means.</li>
+<li>Nothing else — there's no sign-in, and every change you make is saved with the rest of your project data on your own machine. See <a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a>.</li>
+</ul>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>Editing is restricted to <strong>open</strong> beads on purpose. A bead that someone (or an agent) is actively working on, or one that's already closed, is locked so your edit can't quietly clobber in-flight work or rewrite completed history. If you don't see any edit controls, that's almost always why — check the bead's status at the top of its panel.</p></div>
+<h2 id="steps">Steps</h2>
+<p>Here's the path you'll follow: open the bead, expand the field you want to change, edit it, and save. Adding a note follows the same shape but uses a separate "Add a note" control.</p>
+<pre class="mermaid">
+flowchart TD
+    A[Find the bead on the board] --&gt; B[Click the bead card]
+    B --&gt; C[Bead panel opens with its details]
+    C --&gt; D{What do you want to do?}
+    D --&gt;|Change a field| E[Click 'Edit' under that field]
+    D --&gt;|Add to the notes| F[Click '+ Add a note']
+    E --&gt; G[Type the new value, click Save]
+    F --&gt; H[Type your note, click Add note]
+    G --&gt; I[That field updates in place]
+    H --&gt; J[Your note appears below the history]
+</pre>
+<h3 id="open-the-bead">Open the bead</h3>
+<ol>
+<li>On the <strong>Board</strong> page, find the card for the bead you want to change and click it — *expected result: a panel slides open over the page showing that bead's id, its priority badge, its status, its title, and a <strong>Bead details</strong> section listing every field. Below that is an <strong>Audit trail</strong> that loads the bead's history.*</li>
+<li>Glance at the <strong>status</strong> shown near the top of the panel — *expected result: if it reads as open, you'll see small <strong>Edit</strong> controls under the changeable fields. If it's being worked on or is closed, those controls won't appear, because the bead is locked.*</li>
+</ol>
+<h3 id="change-a-field">Change a field</h3>
+<ol>
+<li>Find the field you want to change in the <strong>Bead details</strong> list and click the <strong>Edit</strong> control beneath it (for example, <strong>Edit title</strong> or **Edit priority<em>*) — </em>expected result: the control expands into a small form with a labelled box already holding the field's current value, plus <strong>Cancel</strong> and <strong>Save</strong> buttons. Your cursor lands in the box automatically.*</li>
+<li>Update the value. The kind of box you get depends on the field — *expected result:* - *For text fields like the <strong>title</strong>, <strong>assignee</strong>, or an external reference, you'll type into a single-line box.* - *For longer fields like <strong>description</strong>, <strong>acceptance criteria</strong>, or <strong>design</strong>, you'll get a larger multi-line box that understands Markdown.* - *For <strong>priority</strong> and <strong>type</strong>, you'll pick from a dropdown of allowed choices (priorities <strong>P0</strong> through <strong>P4</strong>; types such as bug, feature, task, epic, chore, or decision) — you can't type a value that isn't on the list.* - <em>For an <strong>estimate</strong>, you'll get a number box.</em></li>
+<li>Click <strong>Save</strong> (or click <strong>Cancel</strong> to back out without changing anything) — *expected result: the form collapses and just that one field updates in place with your new value. Everything else on the panel stays exactly as it was. If you changed the priority, the coloured priority badge at the top of the panel updates at the same time.*</li>
+</ol>
+<h3 id="add-a-note">Add a note</h3>
+<ol>
+<li>Scroll to the <strong>notes</strong> field and click <strong>+ Add a note</strong> — *expected result: a small form opens with a <strong>New note</strong> box and a reminder that your note is <em>added below</em> the existing notes, never replacing what's already there.*</li>
+<li>Type your note (Markdown is supported), then click <strong>Add note</strong> — *expected result: the form collapses and your note appears appended beneath the bead's existing note history. The earlier notes are untouched.*</li>
+</ol>
+<div class="callout callout-important"><div class="callout-title">IMPORTANT</div><p>Notes are <strong>append-only</strong> — there's deliberately no way to edit or overwrite the existing note history from here. That history often holds verification evidence and discovery trails that must never be lost, so the only thing you can do is <em>add</em> to it. If you need to correct something, add a follow-up note rather than trying to replace the old one.</p></div>
+<div class="callout callout-warning"><div class="callout-title">WARNING</div><p>If you have bdboard open in more than one tab or window — or an agent is working alongside you — your saved changes appear in the other views automatically, with no need to refresh. So if a bead seems to change "on its own", check whether the same bead was updated elsewhere. See <a href="../Features/live-updates.html">Live updates</a>.</p></div>
+<div class="callout callout-caution"><div class="callout-title">CAUTION</div><p>If someone else (or an agent) changes the same bead after you opened its panel, your save may be rejected to protect their change from being overwritten — you'll be asked to refresh and re-apply your edit. This is a safety net, not an error on your part; just reload, reopen the bead, and make your change again against the latest version.</p></div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table><thead><tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr></thead><tbody>
+<tr>
+<td>There are no <strong>Edit</strong> controls anywhere on the panel.</td>
+<td>The bead isn't open. Beads that are being worked on or are already closed are locked for editing. Check the status shown near the top of the panel.</td>
+</tr>
+<tr>
+<td>You try to save and you're told the bead <strong>can no longer be edited</strong>.</td>
+<td>The bead's status changed to in-progress or closed after you opened it. Close the panel, reopen the bead, and confirm it's still open before editing.</td>
+</tr>
+<tr>
+<td>Saving is rejected with a message that the bead <strong>changed since you opened it</strong>.</td>
+<td>Someone or something edited the same bead in the meantime. Refresh the page, reopen the bead, and re-apply your change against the current version so you don't overwrite their edit.</td>
+</tr>
+<tr>
+<td>The <strong>Add note</strong> button does nothing / says there's <strong>nothing to add</strong>.</td>
+<td>A note can't be empty. Type some text into the New note box (spaces alone don't count) and try again.</td>
+</tr>
+<tr>
+<td>You see a message that the change <strong>couldn't be saved</strong>.</td>
+<td>The underlying store hiccuped. Close the form, wait a moment, and retry; if it persists, reload the page and try once more.</td>
+</tr>
+<tr>
+<td>After leaving the page open for a very long time, a save is refused and asks you to refresh.</td>
+<td>The page's safety token can go stale on a tab that's been open a long time. Reload the page, reopen the bead, and repeat your edit.</td>
+</tr>
+<tr>
+<td>You expected to edit a field (like status, parent, or the id) but there's no Edit control for it.</td>
+<td>Some fields are intentionally not editable here — they're set by the bead's lifecycle or are immutable. Only the safe, user-owned fields (title, description, acceptance criteria, design, priority, assignee, type, external reference, estimate, and notes) can be changed from this panel.</td>
+</tr>
+<tr>
+<td>Your priority change saved but the badge at the top still looks old.</td>
+<td>This normally updates instantly. If it didn't, close and reopen the bead — the panel will reload with the current priority.</td>
+</tr>
+</tbody></table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/bead-detail-and-editing.html">Bead detail &amp; editing</a> — what the bead panel shows and what you can do on it, at a glance.</li>
+<li><a href="../Concepts/what-is-a-bead.html">What is a bead?</a> — the fields you're editing and what they mean.</li>
+<li><a href="../Concepts/bead-lifecycle-and-lanes.html">Bead lifecycle &amp; the lanes</a> — why only open beads can be edited.</li>
+<li><a href="take-your-first-look.html">Take your first look</a> — getting bdboard open and oriented.</li>
+<li><a href="../Features/live-updates.html">Live updates</a> — why your changes appear across tabs without refreshing.</li>
+<li><a href="../Concepts/your-data-is-local-and-safe.html">Your data is local &amp; safe</a> — where your edits are saved and why that matters.</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>
