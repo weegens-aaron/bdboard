@@ -90,3 +90,41 @@ Same approach as `docs-validation`: **no `phase:vapor`**, but **top-level
 `pour:true`** kept as a safety net so a stray `bd mol wisp` still materializes
 the full tree instead of a silently-empty root. Verified: both
 `bd mol pour ... --dry-run` and `bd mol wisp ... --dry-run` report 6 issues.
+
+## flowdoc-generate
+
+Generate feature/flow documentation for a repo **from scratch**, FlowDoc-style
+— document what the code *does* (features, flows, endpoints, views, concepts),
+not a file inventory. Replaces the old `flowdoc` / `flowdoc-user` agent-loop.
+
+Unlike the fixed-shape formulas above, this one **fans out at runtime**: it
+spawns a 3-step skeleton (epic → `discover` → `finalize`), and the `discover`
+step surveys the repo, scaffolds the docs tree, then creates **one doc bead per
+manifest item** (count is repo-dependent). `finalize` is gated on every
+spawned doc via `waits_for: children-of(discover)`, so it only becomes ready
+once the whole fan-out is closed.
+
+**Audience variable.** This is the first formula here to declare a variable:
+
+| `--var audience=` | Docs dir | Voice |
+|---|---|---|
+| `maintainer` (default) | `__docs/` | developer-facing: file paths, mermaid, API/View tables |
+| `user` | `_docs/` | end-user-facing: no code, no source paths, task/outcome oriented |
+
+**Run it (recommended — persistent / pour):**
+
+```bash
+bd mol pour flowdoc-generate                      # maintainer (default)
+bd mol pour flowdoc-generate --var audience=user  # end-user edition
+```
+
+Use `--dry-run` first to preview the 4 skeleton issues (proto + epic +
+`discover` + `finalize`) — the per-item doc beads are created when `discover`
+actually runs, so they don't appear in the dry run. Poured from within whatever
+repo needs docs, so the repo is implicit.
+
+### Note on phase / the vapor↔pour gotcha
+
+Same approach as the others: **no `phase:vapor`**, **top-level `pour:true`**
+kept as a safety net so a stray `bd mol wisp` still materializes the full
+skeleton instead of a silently-empty root.

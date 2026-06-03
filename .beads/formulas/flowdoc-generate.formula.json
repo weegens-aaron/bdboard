@@ -1,0 +1,60 @@
+{
+  "formula": "flowdoc-generate",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "description": "Generate feature/flow documentation for a repo from scratch, FlowDoc-style (document what the code DOES, not a file inventory). Spawns: root epic -> a single discover spawner -> one doc bead per manifest item (created at runtime) -> a finalize bead gated on all the discovered docs. Replaces the flowdoc / flowdoc-user agent-loop. Pour with --var audience=maintainer (default) or --var audience=user. Run via 'bd mol pour flowdoc-generate --var audience=...'.\n",
+  "variables": {
+    "audience": {
+      "default": "maintainer",
+      "description": "maintainer = developer docs in __docs/ (implementation detail, file refs); user = end-user docs in _docs/ (no code/paths, task-oriented voice)."
+    }
+  },
+  "steps": [
+    {
+      "id": "root",
+      "type": "epic",
+      "priority": 1,
+      "title": "FlowDoc: generate {{audience}} documentation",
+      "labels": [
+        "flowdoc",
+        "docs",
+        "generate"
+      ],
+      "description": "Umbrella for a from-scratch FlowDoc documentation pass ({{audience}} edition).\n\nAUDIENCE MAP (read this first, every child obeys it):\n  - audience = maintainer -> write to __docs/ ; voice = for developers;\n    include implementation detail, file paths, mermaid, API/View tables.\n  - audience = user       -> write to _docs/  ; voice = for end users;\n    NO source paths, NO code, NO internal URLs; task/outcome oriented.\n\nThis epic has exactly two authored children: 'discover' (runs first and spawns\none bead per documentation item) and 'finalize' (runs last, gated on every\nspawned doc). Do not work this epic directly — work its leaves.\n"
+    },
+    {
+      "id": "discover",
+      "type": "task",
+      "priority": 1,
+      "parent": "root",
+      "title": "FlowDoc {{audience}}: discover & scaffold, then spawn one bead per doc",
+      "skills": [
+        "flowdoc"
+      ],
+      "labels": [
+        "flowdoc",
+        "docs",
+        "discover"
+      ],
+      "description": "DISCOVERY + FAN-OUT (one bead). Your bead id is the value shown as\n\"Complete beads issue <id>\" at the top of this goal — call it $SELF below.\n\nAUDIENCE = {{audience}}.  DOCS_DIR = __docs/ if maintainer, _docs/ if user.\n\n== Part A: survey & scaffold (do all of this, then spawn, then stop) ==\n1. list_files(\".\", recursive=True); read dependency manifests, configs, entry\n   points. Identify tech stack, features, flows, API endpoints, views/pages,\n   cross-cutting concepts.\n2. Write DOCS_DIR/Architecture.md (maintainer) or DOCS_DIR/Overview.md (user):\n   exec summary, tech stack table, system mermaid diagram, feature table, key\n   flows, external deps. (user edition: plain-language, no file paths.)\n3. Write DOCS_DIR/_FlowDocGuide.md — the authoring contract every doc bead\n   follows. It MUST contain, verbatim, these section templates so a generic\n   agent produces output identical in shape to the FlowDoc agents:\n     * Feature: What it does / Why it exists / How it works (User + System\n       perspective) / mermaid sequence / Implementation Map table / Config /\n       Edge Cases (> [!WARNING]) / Error Scenarios / Testing / Related.\n     * Flow: What happens / Trigger / Outcome / mermaid flowchart / Step-by-step\n       (What/Where/Failure mode) / Data Transformations / Failure Handling /\n       Debugging / Related.\n     * Endpoint: METHOD+path overview table / Request (headers,params,body,\n       validation) / Response (success+errors) / Implementation Map / mermaid /\n       curl example / Related.   (maintainer only)\n     * View: route overview / what it does / user actions / page-structure\n       mermaid / components / state / API deps / Related.   (maintainer only)\n     * Concept: What is it / Why this approach / How it works + example /\n       Where used / Conventions (> [!IMPORTANT]) / Anti-patterns (> [!CAUTION]).\n     * User Guide (user edition): goal / prerequisites / numbered steps with\n       expected result / troubleshooting / related — NO code, NO file paths.\n   Rules to encode in the guide: features-not-files; flows-not-functions;\n   why-over-what; link every reference; mermaid for flows; callouts for\n   gotchas; READ-ONLY source; output only under DOCS_DIR.\n4. Write DOCS_DIR/_Manifest.md: progress counters + every item to document,\n   grouped (Features / Flows / Endpoints / Views / Concepts), each as\n   \"- [ ] NNN | <Type>: <Name> -> [Name](<Section>/<Name>)\".\n5. Write the index.md files: DOCS_DIR/index.md plus one per section dir.\n\n== Part B: fan out — ONE bead per manifest item (the deadlock-safe contract) ==\nFor EACH unchecked item in _Manifest.md, create exactly one child bead:\n  bd create --type=task --priority=2 --parent=$SELF \\\n    --title='FlowDoc {{audience}}: <Type>: <Name>' \\\n    --description='Write DOCS_DIR/<Section>/<Name>.md following the <Type>\n       template in DOCS_DIR/_FlowDocGuide.md for audience={{audience}}.\n       Read the relevant source fresh, fill every template section, link\n       related docs, then tick this item -> [x] in _Manifest.md and bump the\n       counters. Acceptance: file exists, all template sections filled (no\n       placeholders), links valid, manifest updated.'\nWIRING RULES — violating these creates deadlocks, so obey exactly:\n  - Parent EVERY spawned bead to $SELF (so the finalize fan-out gate counts it).\n  - Do NOT add any dependency from a doc bead to the finalize bead.\n  - Do NOT add blocks edges between doc beads — they are independent/parallel.\n  - Do NOT create your own finalize/rollup bead; one already exists and waits.\n  - Spawn AT LEAST ONE child (a tiny repo still gets >=1 doc).\n  - Do NOT close any bead — the LLM judges close. (bead-chain blocks bd close.)\n\nStop after scaffolding + spawning. Summarize what you wrote and how many doc\nbeads you spawned so the judges can verify.\n"
+    },
+    {
+      "id": "finalize",
+      "type": "task",
+      "priority": 3,
+      "parent": "root",
+      "title": "FlowDoc {{audience}}: finalize docs (troubleshooting, indexes, links)",
+      "waits_for": "children-of(discover)",
+      "skills": [
+        "flowdoc"
+      ],
+      "labels": [
+        "flowdoc",
+        "docs",
+        "finalize"
+      ],
+      "description": "FINALIZE the {{audience}} documentation set. You only become ready once\n'discover' and EVERY doc bead it spawned are closed (fan-out gate).\n\nDOCS_DIR = __docs/ if maintainer, _docs/ if user.\n1. Confirm every item in DOCS_DIR/_Manifest.md is checked [x]; fix counters.\n2. Write/refresh DOCS_DIR/Troubleshooting.md (maintainer) or DOCS_DIR/FAQ.md\n   (user) from gotchas surfaced while documenting.\n3. Verify all intra-doc links resolve and every section index lists its docs.\n4. (user edition only) Grep the docs for developer leakage — source paths,\n   shell/install commands, localhost/staging URLs, class/function names — and\n   replace with user-facing equivalents.\nREAD-ONLY source. Output only under DOCS_DIR. Do NOT close any bead yourself.\n"
+    }
+  ]
+}
