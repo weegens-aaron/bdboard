@@ -8,10 +8,10 @@
 ## Progress
 
 - **Total items:** 15
-- **Done:** 4
-- **Remaining:** 11
+- **Done:** 5
+- **Remaining:** 10
 
-By section: Features 0/6 | Concepts 0/4 | Guides 4/5
+By section: Features 0/6 | Concepts 0/4 | Guides 5/5
 
 > [!IMPORTANT]
 > **Section choice for the user edition.** Per the FlowDoc contract, **Endpoint**
@@ -43,7 +43,7 @@ By section: Features 0/6 | Concepts 0/4 | Guides 4/5
 
 ## Guides
 
-- [ ] 011 | User Guide: Take your first look -> [take-your-first-look](Guides/take-your-first-look.md)
+- [x] 011 | User Guide: Take your first look -> [take-your-first-look](Guides/take-your-first-look.md)
 - [x] 012 | User Guide: Edit a bead -> [edit-a-bead](Guides/edit-a-bead.md)
 - [x] 013 | User Guide: Create beads from a formula -> [create-beads-from-a-formula](Guides/create-beads-from-a-formula.md)
 - [x] 014 | User Guide: Explore history & trends -> [explore-history-and-trends](Guides/explore-history-and-trends.md)
