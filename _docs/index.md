@@ -18,5 +18,10 @@ Start here:
 - [Concepts](Concepts/index.md) — the ideas behind how bdboard behaves.
 - [Guides](Guides/index.md) — step-by-step how-tos for everyday tasks.
 
+## Stuck?
+
+- [FAQ](FAQ.md) — quick answers to the behaviours that most often surprise
+  people (and why they work that way).
+
 > Looking for the full list of topics and how complete the docs are? See the
 > [Manifest](_Manifest.md).
