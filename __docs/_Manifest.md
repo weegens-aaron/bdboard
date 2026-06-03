@@ -1,0 +1,53 @@
+# FlowDoc Manifest (maintainer)
+
+> Single source of truth for what gets documented. Each item below has exactly
+> one doc bead (parented to the discovery bead `bdboard-mol-gh2`). When a doc is
+> written, tick its box `- [ ]` -> `- [x]` and bump the progress counters.
+
+## Progress
+
+- **Total items:** 25
+- **Done:** 0
+- **Remaining:** 25
+
+By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 0/5
+
+## Features
+
+- [ ] 001 | Feature: Swim-lane board -> [swim-lane-board](Features/swim-lane-board.md)
+- [ ] 002 | Feature: Bead detail & inline editing -> [bead-detail-and-inline-editing](Features/bead-detail-and-inline-editing.md)
+- [ ] 003 | Feature: History & trends -> [history-and-trends](Features/history-and-trends.md)
+- [ ] 004 | Feature: Memory management -> [memory-management](Features/memory-management.md)
+- [ ] 005 | Feature: Formula pour -> [formula-pour](Features/formula-pour.md)
+- [ ] 006 | Feature: Live auto-refresh -> [live-auto-refresh](Features/live-auto-refresh.md)
+
+## Flows
+
+- [ ] 007 | Flow: Server startup & workspace resolution -> [server-startup](Flows/server-startup.md)
+- [ ] 008 | Flow: Live-refresh pipeline -> [live-refresh-pipeline](Flows/live-refresh-pipeline.md)
+- [ ] 009 | Flow: Inline field-edit write path -> [field-edit-write-path](Flows/field-edit-write-path.md)
+- [ ] 010 | Flow: Formula pour fan-out -> [formula-pour-fanout](Flows/formula-pour-fanout.md)
+
+## Endpoints
+
+- [ ] 011 | Endpoint: SSE events (/api/events) -> [sse-events](Endpoints/sse-events.md)
+- [ ] 012 | Endpoint: Lanes API (/api/lanes, /api/lanes/closed, /api/counts) -> [lanes-api](Endpoints/lanes-api.md)
+- [ ] 013 | Endpoint: History API (/api/history) -> [history-api](Endpoints/history-api.md)
+- [ ] 014 | Endpoint: Memory API (/api/memory GET/POST/DELETE) -> [memory-api](Endpoints/memory-api.md)
+- [ ] 015 | Endpoint: Formulas API (/api/formulas, form, pour) -> [formulas-api](Endpoints/formulas-api.md)
+- [ ] 016 | Endpoint: Bead detail API (/api/bead/{id}, /audit, /raw) -> [bead-detail-api](Endpoints/bead-detail-api.md)
+- [ ] 017 | Endpoint: Bead field-edit API (POST /api/bead/{id}/field) -> [bead-field-edit-api](Endpoints/bead-field-edit-api.md)
+
+## Views
+
+- [ ] 018 | View: Board page (/) -> [board-page](Views/board-page.md)
+- [ ] 019 | View: History page (/history) -> [history-page](Views/history-page.md)
+- [ ] 020 | View: Memory page (/memory) -> [memory-page](Views/memory-page.md)
+
+## Concepts
+
+- [ ] 021 | Concept: bd CLI as runtime source of truth -> [bd-cli-source-of-truth](Concepts/bd-cli-source-of-truth.md)
+- [ ] 022 | Concept: Store snapshot cache & change detection -> [store-snapshot-cache](Concepts/store-snapshot-cache.md)
+- [ ] 023 | Concept: Derive layer (pure view shaping) -> [derive-layer](Concepts/derive-layer.md)
+- [ ] 024 | Concept: Watcher debounce/cooldown & self-feedback skip -> [watcher-scheduling](Concepts/watcher-scheduling.md)
+- [ ] 025 | Concept: HTMX + server-rendered partials -> [htmx-partials-architecture](Concepts/htmx-partials-architecture.md)
