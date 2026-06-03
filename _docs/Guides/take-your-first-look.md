@@ -20,8 +20,9 @@ the orientation tour before any of the task-focused guides.
   tab for you. If a tab doesn't open on its own, open the address it shows you.
 - A web browser. There's nothing to install in the browser, no account, and no
   sign-in — everything you see is read straight from your own project on your
-  own machine. See
-  [Your data is local & safe](../Concepts/your-data-is-local-and-safe.md).
+  own machine. See the
+  [Concepts](../Concepts/index.md) section — *Your data is local & safe* — for
+  where what you see actually comes from.
 
 > [!IMPORTANT]
 > The Board is a *live, read-only* view of your work. Just looking around —
@@ -106,8 +107,8 @@ flowchart TD
    waiting on something else, **Ready** is fair game to pick up, and **In
    Progress** holds the item being worked on right now. An empty lane shows a
    gentle "(empty)" marker so you can tell it loaded but has nothing in it.* For
-   the full story of how a bead moves between these lanes, see
-   [Bead lifecycle & the lanes](../Concepts/bead-lifecycle-and-lanes.md).
+   the full story of how a bead moves between these lanes, see the
+   [Concepts](../Concepts/index.md) section — *Bead lifecycle & the lanes*.
 
 9. Find the **Closed** lane — *expected result: it briefly shows shimmering
    placeholder cards, then fills with recently closed beads. It loads a moment
@@ -127,8 +128,8 @@ flowchart TD
     bead's id and, where set, a priority badge, its title, and a line of extra
     detail such as who it's assigned to, its type, and a marker if it has
     dependencies. That's the at-a-glance summary; the full detail is one click
-    away.* For what a bead actually *is*, see
-    [What is a bead?](../Concepts/what-is-a-bead.md).
+    away.* For what a bead actually *is*, see the
+    [Concepts](../Concepts/index.md) section — *What is a bead?*.
 
 ### Try the few things you can click
 
@@ -160,8 +161,8 @@ flowchart TD
 > The board updates itself live — when work changes, the lanes, counts, and
 > activity feed refresh on their own within a moment, with no need to reload.
 > That's why a card may appear, move, or vanish while you're looking: someone (or
-> something) just changed a bead. See
-> [Live updates](../Features/live-updates.md).
+> something) just changed a bead. See the [Features](../Features/index.md)
+> section — *Live updates*.
 
 ## Troubleshooting
 
@@ -178,16 +179,13 @@ flowchart TD
 
 ## Related
 
-- [The board (swim lanes & activity)](../Features/the-board.md) — a fuller tour
-  of everything the Board page shows.
-- [What is a bead?](../Concepts/what-is-a-bead.md) — the basic unit you see on
-  every card.
-- [Bead lifecycle & the lanes](../Concepts/bead-lifecycle-and-lanes.md) — how a
-  bead travels from filed to closed, which is what the lanes represent.
-- [Live updates](../Features/live-updates.md) — why the board refreshes itself
-  when work changes.
-- [Your data is local & safe](../Concepts/your-data-is-local-and-safe.md) — where
-  what you see actually comes from.
+- [Features](../Features/index.md) — includes *The board (swim lanes & activity)*,
+  a fuller tour of everything the Board page shows, and *Live updates*, why the
+  board refreshes itself when work changes.
+- [Concepts](../Concepts/index.md) — includes *What is a bead?* (the basic unit
+  you see on every card), *Bead lifecycle & the lanes* (how a bead travels from
+  filed to closed, which is what the lanes represent), and *Your data is local &
+  safe* (where what you see actually comes from).
 - [Edit a bead](edit-a-bead.md) — opening a bead and changing its contents.
 - [Explore history & trends](explore-history-and-trends.md) — reviewing finished
   work over time.
