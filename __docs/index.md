@@ -7,6 +7,7 @@ flows, endpoints, views, concepts), not a file inventory.
 Start here:
 
 - [Architecture](Architecture.md) — the big picture, tech stack, diagrams.
+- [Troubleshooting](Troubleshooting.md) — symptom → cause → fix index of gotchas.
 - [FlowDoc Authoring Guide](_FlowDocGuide.md) — the contract every doc follows.
 - [Manifest](_Manifest.md) — progress tracker + index of every documented item.
 
