@@ -7,10 +7,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 14
-- **Remaining:** 11
+- **Done:** 15
+- **Remaining:** 10
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 6/7 | Views 3/3 | Concepts 5/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -30,7 +30,7 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 6/7 | Views 3/3 | Concepts 5/5
 
 ## Endpoints
 
-- [ ] 011 | Endpoint: SSE events (/api/events) -> [sse-events](Endpoints/sse-events.md)
+- [x] 011 | Endpoint: SSE events (/api/events) -> [sse-events](Endpoints/sse-events.md)
 - [x] 012 | Endpoint: Lanes API (/api/lanes, /api/lanes/closed, /api/counts) -> [lanes-api](Endpoints/lanes-api.md)
 - [x] 013 | Endpoint: History API (/api/history) -> [history-api](Endpoints/history-api.md)
 - [x] 014 | Endpoint: Memory API (/api/memory GET/POST/DELETE) -> [memory-api](Endpoints/memory-api.md)
