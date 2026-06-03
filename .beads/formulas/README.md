@@ -114,14 +114,23 @@ once the whole fan-out is closed.
 **Run it (recommended — persistent / pour):**
 
 ```bash
-bd mol pour flowdoc-generate                      # maintainer (default)
-bd mol pour flowdoc-generate --var audience=user  # end-user edition
+bd mol pour flowdoc-generate --var audience=maintainer  # developer docs in __docs/
+bd mol pour flowdoc-generate --var audience=user        # end-user docs in _docs/
 ```
 
-Use `--dry-run` first to preview the 4 skeleton issues (proto + epic +
-`discover` + `finalize`) — the per-item doc beads are created when `discover`
-actually runs, so they don't appear in the dry run. Poured from within whatever
-repo needs docs, so the repo is implicit.
+> [!IMPORTANT]
+> **`--var audience=` is mandatory on bd 1.0.4.** The variable carries a
+> declared `default` of `maintainer`, but bd 1.0.4's `mol pour` requires an
+> explicit value for every `{{var}}` referenced in the template and does **not**
+> apply the formula's default — running `bd mol pour flowdoc-generate` with no
+> `--var` errors with *"missing required variables: audience"*. Always pass
+> `--var audience=maintainer` (or `=user`). The `default` is kept in the schema
+> as forward-looking intent for when bd honors it. (Verified bdboard-mol-iuv.)
+
+Use `--dry-run` (with the `--var`) to preview the 4 skeleton issues (proto +
+epic + `discover` + `finalize`) — the per-item doc beads are created when
+`discover` actually runs, so they don't appear in the dry run. Poured from
+within whatever repo needs docs, so the repo is implicit.
 
 ### Note on phase / the vapor↔pour gotcha
 
