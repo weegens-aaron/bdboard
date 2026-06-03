@@ -8,10 +8,10 @@
 ## Progress
 
 - **Total items:** 15
-- **Done:** 7
-- **Remaining:** 8
+- **Done:** 8
+- **Remaining:** 7
 
-By section: Features 0/6 | Concepts 2/4 | Guides 5/5
+By section: Features 0/6 | Concepts 3/4 | Guides 5/5
 
 > [!IMPORTANT]
 > **Section choice for the user edition.** Per the FlowDoc contract, **Endpoint**
@@ -37,7 +37,7 @@ By section: Features 0/6 | Concepts 2/4 | Guides 5/5
 ## Concepts
 
 - [ ] 007 | Concept: What is a bead? -> [what-is-a-bead](Concepts/what-is-a-bead.md)
-- [ ] 008 | Concept: Bead lifecycle & the lanes -> [bead-lifecycle-and-lanes](Concepts/bead-lifecycle-and-lanes.md)
+- [x] 008 | Concept: Bead lifecycle & the lanes -> [bead-lifecycle-and-lanes](Concepts/bead-lifecycle-and-lanes.md)
 - [x] 009 | Concept: Time ranges & recent work -> [time-ranges-and-recent-work](Concepts/time-ranges-and-recent-work.md)
 - [x] 010 | Concept: Your data is local & safe -> [your-data-is-local-and-safe](Concepts/your-data-is-local-and-safe.md)
 
