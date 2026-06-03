@@ -1,0 +1,43 @@
+{
+  "formula": "flowdoc-html",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "description": "Build the static HTML documentation site(s) from the FlowDoc markdown using the \nmd-to-html skill. Converts __docs/ -> docs/maintainer/ and/or _docs/ -> \ndocs/user/. Standalone capability (the old DocsToHTML / HTMLSiteBuild flow); \npour it after a generate or maintain pass. Run via 'bd mol pour flowdoc-html \n--var target=both|maintainer|user'.\n",
+  "variables": {
+    "target": {
+      "default": "both",
+      "description": "both = build maintainer (__docs/->docs/maintainer/) and user (_docs/->docs/user/); maintainer or user = build just one."
+    }
+  },
+  "steps": [
+    {
+      "id": "root",
+      "type": "epic",
+      "priority": 2,
+      "title": "FlowDoc: build HTML site ({{target}})",
+      "labels": [
+        "flowdoc",
+        "docs",
+        "html"
+      ],
+      "description": "Umbrella for building the static HTML doc site(s) from FlowDoc markdown.\ntarget = {{target}}. One authored child does the build.\n"
+    },
+    {
+      "id": "build",
+      "type": "task",
+      "priority": 2,
+      "parent": "root",
+      "title": "FlowDoc: convert markdown docs to the static HTML site ({{target}})",
+      "skills": [
+        "md-to-html"
+      ],
+      "labels": [
+        "flowdoc",
+        "docs",
+        "html"
+      ],
+      "description": "BUILD the HTML site(s) from FlowDoc markdown using the md-to-html skill\n(skills/md-to-html/). target = {{target}}.\n\n1. Read skills/md-to-html/SKILL.md for the exact build commands and options.\n2. If target is 'maintainer' or 'both': convert __docs/ -> docs/maintainer/\n   (carry over mermaid rendering, callouts, the section index pages, style.css).\n3. If target is 'user' or 'both': convert _docs/ -> docs/user/ the same way.\n4. Build/refresh the top-level docs/index.html landing page linking the site(s).\n5. Verify: every markdown source has a matching .html output, internal links\n   resolve in HTML, and no _Manifest/_UpdateQueue/_AuditLog working files leak\n   into the published site.\n\nREAD-ONLY source code. Output only under docs/. Do NOT close any bead yourself —\nthe LLM judges close it.\n"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "formula": "flowdoc-maintain",
+  "version": 1,
+  "type": "workflow",
+  "pour": true,
+  "description": "Audit existing FlowDoc documentation for drift and apply fixes, one item per \nloop/judge cycle. Spawns: root epic -> a single audit spawner (detect drift, \nscore by impact, write _UpdateQueue.md) -> one bead per queue item created at \nruntime (UPDATE / NEW / REMOVE / VERIFY / LEAKAGE) -> a finalize bead gated on \nall of them that archives the queue into _AuditLog.md. Replaces the \nflowdoc-maintainer / flowdoc-user-maintainer agent-loop. Requires the matching \nDOCS_DIR/_Manifest.md already exists (run flowdoc-generate first). Run via \n'bd mol pour flowdoc-maintain --var audience=maintainer|user'.\n",
+  "variables": {
+    "audience": {
+      "default": "maintainer",
+      "description": "maintainer = audit __docs/ (engineer impact scoring); user = audit _docs/ (end-user impact scoring + developer-leakage scan)."
+    }
+  },
+  "steps": [
+    {
+      "id": "root",
+      "type": "epic",
+      "priority": 1,
+      "title": "FlowDoc: maintain {{audience}} documentation",
+      "labels": [
+        "flowdoc",
+        "docs",
+        "maintain"
+      ],
+      "description": "Umbrella for a FlowDoc maintenance pass ({{audience}} edition).\n\nAUDIENCE MAP:\n  - maintainer -> audit __docs/ ; score by engineer/maintainer impact.\n  - user       -> audit _docs/  ; score by end-user impact; also strip any\n    developer content that leaked into user docs.\n\nTwo authored children: 'audit' (detect drift + spawn one fix bead per finding)\nand 'finalize' (archive the queue once every fix is closed). Work the leaves,\nnot the epic. Precondition: DOCS_DIR/_Manifest.md must already exist.\n"
+    },
+    {
+      "id": "audit",
+      "type": "task",
+      "priority": 1,
+      "parent": "root",
+      "title": "FlowDoc {{audience}}: audit for drift, then spawn one fix bead per finding",
+      "skills": [
+        "flowdoc"
+      ],
+      "labels": [
+        "flowdoc",
+        "docs",
+        "audit"
+      ],
+      "description": "AUDIT + FAN-OUT (one bead). Your bead id is shown as \"Complete beads issue\n<id>\" at the top of this goal — call it $SELF.\n\nAUDIENCE = {{audience}}.  DOCS_DIR = __docs/ if maintainer, _docs/ if user.\nPRECONDITION: if DOCS_DIR/_Manifest.md does not exist, stop and report that\nflowdoc-generate must be poured first — do NOT spawn anything.\n\n== Part A: detect drift (one pass) ==\n1. Survey current code: list_files(\".\", recursive=True); read dependency\n   manifests for version changes; note new / renamed / deleted files.\n2. Load doc state: read DOCS_DIR/_Manifest.md and each doc's Implementation\n   Map (maintainer) / documented steps (user).\n3. Run detection strategies:\n   - Implementation Map check: do the files a doc cites still exist and match?\n   - Dependency drift: current manifest vs Architecture.md tech-stack table.\n   - Entry-point check: undocumented routes/commands/exports, and documented\n     entry points that no longer exist.\n   - Config drift: documented config keys vs actual config/.env.\n   - (user edition ONLY) Developer-leakage scan of existing docs: source paths\n     (src/, *.ts, *.py), shell/install commands (npm/git/make), internal URLs\n     (localhost/127.0.0.1/staging/.dev).\n4. Score each finding by impact and bucket it:\n   - maintainer: entry/public-API change +10, core flow +8, new dep +5,\n     config +5, helper +2, cosmetic 0.\n   - user: documented step broken +10, UI moved +8, new required step +8,\n     feature removed-but-documented +7, new capability undocumented +5,\n     flag/option changed +5, config +4, leakage +4, error-text +2, wording +1.\n   Tiers: >=8 critical, 4-7 medium, 1-3 low, 0 verify-only.\n5. Write DOCS_DIR/_UpdateQueue.md: audit summary, findings-by-category table,\n   counters, and the queue ordered by score, each line tagged with an action:\n   \"- [ ] U001 | UPDATE | [Name](Section/Name) | <what drifted>\".\n   Append a dated entry to DOCS_DIR/_AuditLog.md.\n\n== Part B: fan out — ONE bead per queue item (deadlock-safe contract) ==\nFor EACH queue item create exactly one child bead:\n  bd create --type=task --priority=<1 if critical, 2 if medium, 3 if low> --parent=$SELF --title='FlowDoc {{audience}} <ACTION>: <Name>' --description='<ACTION> the doc for audience={{audience}}.\n       UPDATE = re-read source, fix the drifted sections, add a > [!NOTE]\n         Last Updated stamp. NEW = create the doc from the matching template in\n         DOCS_DIR/_FlowDocGuide.md and add it to _Manifest.md. REMOVE = delete\n         the doc, drop it from _Manifest.md and any index, fix inbound links.\n         VERIFY = re-read source, confirm accurate, mark verified (no rewrite).\n         LEAKAGE = replace developer content with user-facing equivalents.\n       Then tick this item -> [x] in _UpdateQueue.md and bump counters.\n       Acceptance: action applied, queue + manifest updated, links valid.'\nWIRING RULES — obey exactly to stay deadlock-free:\n  - Parent EVERY spawned bead to $SELF (so the finalize fan-out gate counts it).\n  - No dependency from any fix bead to the finalize bead.\n  - No blocks edges between fix beads — they are independent.\n  - Do NOT create your own finalize/rollup bead; one already exists and waits.\n  - Spawn AT LEAST ONE child. If there is genuinely no drift, spawn a single\n    VERIFY bead (\"confirm docs current, no drift found\") so the gate resolves.\n  - Do NOT close any bead — the LLM judges close. (bead-chain blocks bd close.)\n\nStop after writing the queue + spawning. Summarize findings and how many fix\nbeads you spawned.\n"
+    },
+    {
+      "id": "finalize",
+      "type": "task",
+      "priority": 3,
+      "parent": "root",
+      "title": "FlowDoc {{audience}}: finalize maintenance (archive queue to audit log)",
+      "waits_for": "children-of(audit)",
+      "skills": [
+        "flowdoc"
+      ],
+      "labels": [
+        "flowdoc",
+        "docs",
+        "finalize"
+      ],
+      "description": "FINALIZE the {{audience}} maintenance pass. You become ready only once 'audit'\nand EVERY fix bead it spawned are closed (fan-out gate).\n\nDOCS_DIR = __docs/ if maintainer, _docs/ if user.\n1. Confirm every item in DOCS_DIR/_UpdateQueue.md is checked [x]; fix counters.\n2. Append a completion summary (updates made / new / removed / verified) to\n   DOCS_DIR/_AuditLog.md, then delete DOCS_DIR/_UpdateQueue.md.\n3. Verify _Manifest.md, all index files, and intra-doc links are consistent\n   after the additions/removals.\nREAD-ONLY source. Output only under DOCS_DIR. Do NOT close any bead yourself.\n"
+    }
+  ]
+}

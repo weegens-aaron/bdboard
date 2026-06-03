@@ -137,3 +137,68 @@ within whatever repo needs docs, so the repo is implicit.
 Same approach as the others: **no `phase:vapor`**, **top-level `pour:true`**
 kept as a safety net so a stray `bd mol wisp` still materializes the full
 skeleton instead of a silently-empty root.
+
+## flowdoc-maintain
+
+Audit an **existing** FlowDoc doc set for drift and apply fixes, one item per
+loop/judge cycle. Replaces the old `flowdoc-maintainer` /
+`flowdoc-user-maintainer` agent-loop. **Precondition:** the matching
+`DOCS_DIR/_Manifest.md` must already exist — run `flowdoc-generate` first.
+
+Like `flowdoc-generate`, it **fans out at runtime**: a 3-step skeleton (epic →
+`audit` → `finalize`); `audit` detects drift, scores each finding by impact,
+writes `_UpdateQueue.md`, then spawns **one fix bead per queue item**
+(UPDATE / NEW / REMOVE / VERIFY / LEAKAGE). `finalize` is gated via
+`waits_for: children-of(audit)` and archives the queue into `_AuditLog.md`.
+
+| `--var audience=` | Docs dir | Scoring lens |
+|---|---|---|
+| `maintainer` (default) | `__docs/` | engineer/maintainer impact |
+| `user` | `_docs/` | end-user impact + developer-leakage scan |
+
+**Run it (recommended — persistent / pour):**
+
+```bash
+bd mol pour flowdoc-maintain --var audience=maintainer
+bd mol pour flowdoc-maintain --var audience=user
+```
+
+> [!IMPORTANT]
+> Same bd 1.0.4 gotcha as `flowdoc-generate`: **`--var audience=` is
+> mandatory** — bd ignores the variables-block default. Use `--dry-run` (with
+> the `--var`) to preview the 4-issue skeleton; the per-finding fix beads are
+> created when `audit` runs, so they don't appear in the dry run.
+
+Same phase approach as the others: **no `phase:vapor`**, **top-level
+`pour:true`** kept as a safety net.
+
+## flowdoc-html
+
+Build the static HTML documentation site(s) from the FlowDoc markdown using the
+`md-to-html` skill — a standalone capability (replaces the old `DocsToHTML` /
+`HTMLSiteBuild` flow). Pour it **after** a generate or maintain pass. It spawns
+a 2-step skeleton (epic → `build`); the `build` child converts `__docs/` →
+`docs/maintainer/` and/or `_docs/` → `docs/user/` and refreshes the top-level
+`docs/index.html` landing page.
+
+| `--var target=` | Builds |
+|---|---|
+| `both` (default) | maintainer (`__docs/`→`docs/maintainer/`) **and** user (`_docs/`→`docs/user/`) |
+| `maintainer` | maintainer site only |
+| `user` | user site only |
+
+**Run it (recommended — persistent / pour):**
+
+```bash
+bd mol pour flowdoc-html --var target=both
+bd mol pour flowdoc-html --var target=maintainer
+bd mol pour flowdoc-html --var target=user
+```
+
+> [!IMPORTANT]
+> Same bd 1.0.4 gotcha: **`--var target=` is mandatory** — bd ignores the
+> variables-block default. Use `--dry-run` (with the `--var`) to preview the
+> 3-issue skeleton (proto + epic + `build`).
+
+Same phase approach as the others: **no `phase:vapor`**, **top-level
+`pour:true`** kept as a safety net.
