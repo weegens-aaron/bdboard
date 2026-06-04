@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorial: Triage and pick up work</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="tutorial-triage-and-pick-up-work">Tutorial: Triage and pick up work</h1>
+<h2 id="what-youll-achieve">What You'll Achieve</h2>
+<p>You'll work a realistic triage flow: scan the board, decide what's most worth
+doing, confirm it's truly ready, open it, and claim it by updating a field — then
+watch it move lanes live.</p>
+<h2 id="before-you-begin">Before You Begin</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+<li>A first session under your belt helps: <a href="FirstSession.html">Your first bdboard session</a>.</li>
+</ul>
+<h2 id="the-scenario">The Scenario</h2>
+<p>It's the start of your day. Several items are in flight and you need to pick the
+right next thing, confirm nothing is secretly blocking it, and start it.</p>
+<h2 id="step-1-take-in-the-whole-board">Step 1: Take in the whole board</h2>
+<p>Read top to bottom: the <strong>Epics</strong> strip, then <strong>Deferred</strong>, <strong>Blocked</strong>,
+<strong>Ready</strong>, <strong>In Progress</strong>, <strong>Closed</strong>, and the <strong>Activity</strong> feed.</p>
+<p><strong>What you'll see:</strong> the shape of the work at a glance — what's parked, what's
+stuck, what's available, what's moving, and what just finished.</p>
+<h2 id="step-2-rule-out-what-you-cant-start">Step 2: Rule out what you can't start</h2>
+<p>Glance at <strong>Blocked</strong>. Everything there is waiting on something else, so it's not
+a candidate yet.</p>
+<p><strong>What you'll see:</strong> the blocked items, each waiting on another. To understand
+why, see <a href="../Concepts/BlockedVsReady.html">Blocked vs ready work</a>.</p>
+<h2 id="step-3-pick-the-best-ready-item">Step 3: Pick the best ready item</h2>
+<p>Look at the top of the <strong>Ready</strong> lane. Because lanes sort highest-priority and
+newest first, the strongest candidate is already at the top.</p>
+<p><strong>What you'll see:</strong> a clear &quot;do this next&quot; candidate without hunting. For how
+the ordering works, see
+<a href="../Concepts/LanesExplained.html">Lanes and how cards are sorted</a>.</p>
+<h2 id="step-4-confirm-the-details">Step 4: Confirm the details</h2>
+<p>Click the card to open it. Read the description and skim the lifecycle and
+dependencies to confirm it's genuinely ready and you understand the goal.</p>
+<p><strong>What you'll see:</strong> the full detail panel. If a dependency you didn't expect
+shows up, follow it to check its status — see
+<a href="../Guides/InspectingABead.html">Inspect a bead in detail</a>.</p>
+<h2 id="step-5-claim-it">Step 5: Claim it</h2>
+<p>With the item still open, edit the field your team uses to take ownership — for
+example set the <strong>assignee</strong> to you, or move the <strong>status</strong> to in progress — then
+<strong>Save</strong>.</p>
+<p><strong>What you'll see:</strong> the field updates in place. If your save is rejected,
+someone just changed the item; reopen it and redo the edit. Full details:
+<a href="../Guides/EditingABead.html">Edit a bead's fields</a>.</p>
+<h2 id="step-6-watch-it-move">Step 6: Watch it move</h2>
+<p>Close the panel.</p>
+<p><strong>What you'll see:</strong> the item leaves <strong>Ready</strong> and appears in <strong>In Progress</strong>,
+and the top-bar counts update — all without a reload, thanks to
+<a href="../Concepts/LiveUpdates.html">live updates</a>.</p>
+<h2 id="final-result">Final Result</h2>
+<p>You triaged the board, chose the best available work, confirmed it was ready,
+and claimed it — and saw it move lanes live.</p>
+<h2 id="what-you-learned">What You Learned</h2>
+<ul>
+<li>How to read the board to triage quickly.</li>
+<li>How to rule out blocked work and pick the top ready item.</li>
+<li>How to confirm details before committing.</li>
+<li>How to claim work and watch the board reflect it instantly.</li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Go deeper on the board: <a href="../Guides/ViewingYourWork.html">View your work on the board</a>.</li>
+<li>Spin up a batch of related work: <a href="../Guides/PouringAFormula.html">Pour a formula</a>.</li>
+<li>Review throughput over time: <a href="../Guides/ReviewingHistory.html">Review history and trends</a>.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

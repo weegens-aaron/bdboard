@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blocked vs ready work</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="blocked-vs-ready-work">Blocked vs ready work</h1>
+<h2 id="what-is-it">What Is It</h2>
+<p><strong>Ready</strong> work is anything you can start right now — nothing is standing in its
+way. <strong>Blocked</strong> work is the opposite: it can't start yet because it's waiting on
+another item to finish first. bdboard separates the two into different lanes so
+you never pick up something that's secretly stuck.</p>
+<h2 id="why-it-matters">Why It Matters</h2>
+<p>The most frustrating way to lose time is to start something, only to discover
+halfway in that it was waiting on a piece that isn't done. By splitting Ready from
+Blocked, the board answers the only question that matters when you're choosing
+work — &quot;can I actually do this now?&quot; — before you click anything.</p>
+<h2 id="how-it-works">How It Works</h2>
+<p>Items can depend on each other. &quot;Paint the wall&quot; depends on &quot;plaster the wall&quot;;
+you can't paint until the plaster is up. bdboard understands these links and uses
+them to decide a lane:</p>
+<ul>
+<li>If an item has unfinished work it depends on, it goes to <strong>Blocked</strong>. It's
+waiting, by definition.</li>
+<li>If an item has nothing unfinished standing in its way, it goes to <strong>Ready</strong>.
+Go for it.</li>
+<li>As soon as the thing it was waiting on finishes, the blocked item becomes ready
+on its own and moves to the Ready lane — you don't have to move it.</li>
+</ul>
+<p>When you open a blocked item, its detail panel lists what it depends on, so you
+can see exactly what needs to finish first — and click straight through to that
+item. See <a href="../Guides/InspectingABead.html">Inspect a bead in detail</a>.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>An item can be perfectly valid and important and still be Blocked — being
+blocked isn't a problem with the item, just a statement that something else
+comes first.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li>Concept: <a href="LanesExplained.html">Lanes and how cards are sorted</a></li>
+<li>Concept: <a href="LiveUpdates.html">Live updates</a></li>
+<li>Guide: <a href="../Guides/InspectingABead.html">Inspect a bead in detail</a></li>
+<li>Guide: <a href="../Guides/ViewingYourWork.html">View your work on the board</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorial: Your first bdboard session</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="tutorial-your-first-bdboard-session">Tutorial: Your first bdboard session</h1>
+<h2 id="what-youll-achieve">What You'll Achieve</h2>
+<p>By the end of this walkthrough you'll have bdboard running against a project, a
+live board open in your browser, and you'll have read the lanes, opened an item,
+made a small edit, and watched the board update itself — a complete first
+session, start to finish.</p>
+<h2 id="before-you-begin">Before You Begin</h2>
+<ul>
+<li>bdboard installed — see <a href="../Getting-Started/Installation.html">Installation</a>.</li>
+<li>A project folder your team tracks work in.</li>
+<li>A few minutes and a modern browser.</li>
+</ul>
+<h2 id="the-scenario">The Scenario</h2>
+<p>You've just been handed a project and asked to &quot;take a look at where things
+stand.&quot; You'll open it in bdboard, get oriented, and make one small update.</p>
+<h2 id="step-1-start-bdboard">Step 1: Start bdboard</h2>
+<p>Open a terminal inside the project folder and launch bdboard, exactly as in the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</p>
+<p><strong>What you'll see:</strong> a browser tab opens with the project's board, and the
+terminal prints the address it's serving. If no tab opens, open that address
+yourself.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>If something else is already using the usual address, bdboard quietly picks
+the next free one and prints it — nothing for you to do.</p>
+</div>
+<h2 id="step-2-get-the-lay-of-the-land">Step 2: Get the lay of the land</h2>
+<p>Look across the board. Along the top is the <strong>Epics</strong> strip. Below it are the
+lanes: <strong>Deferred</strong>, <strong>Blocked</strong>, <strong>Ready</strong>, <strong>In Progress</strong>, and <strong>Closed</strong>,
+plus an <strong>Activity</strong> feed of recent changes. The top bar shows running counts and
+links to the other screens.</p>
+<p><strong>What you'll see:</strong> every in-flight item as a card, sorted into exactly one
+lane, highest-priority and newest first.</p>
+<h2 id="step-3-find-something-you-could-start">Step 3: Find something you could start</h2>
+<p>Look at the <strong>Ready</strong> lane. Everything there is genuinely available to pick up
+right now.</p>
+<p><strong>What you'll see:</strong> the top card in Ready is the highest-priority, freshest
+thing you could start. If a card you expected is in <strong>Blocked</strong> instead, it's
+waiting on something — see <a href="../Concepts/BlockedVsReady.html">Blocked vs ready work</a>.</p>
+<h2 id="step-4-open-an-item">Step 4: Open an item</h2>
+<p>Click any card.</p>
+<p><strong>What you'll see:</strong> a detail panel opens with the full description, a lifecycle
+timeline, every field, and an audit trail. Read it, then keep the panel open for
+the next step. For the full tour see
+<a href="../Guides/InspectingABead.html">Inspect a bead in detail</a>.</p>
+<h2 id="step-5-make-one-small-edit">Step 5: Make one small edit</h2>
+<p>If the item is open, find an editable field — say its priority — and click
+<strong>Edit</strong>. Change the value and click <strong>Save</strong>.</p>
+<p><strong>What you'll see:</strong> the field updates in place, and behind the panel the card
+and the top-bar counts change to match. If your save is rejected, someone edited
+the item while you had it open — reopen it and try again. Full details:
+<a href="../Guides/EditingABead.html">Edit a bead's fields</a>.</p>
+<h2 id="step-6-watch-it-stay-current">Step 6: Watch it stay current</h2>
+<p>Close the panel and leave the board open for a moment.</p>
+<p><strong>What you'll see:</strong> as work changes — yours or a teammate's — cards move, appear,
+and disappear with no reload. That's the board's
+<a href="../Concepts/LiveUpdates.html">live updates</a> at work.</p>
+<h2 id="final-result">Final Result</h2>
+<p>You have a live board open, you understand the lanes, you've inspected an item,
+made an edit, and seen the board refresh itself — a full first session.</p>
+<h2 id="what-you-learned">What You Learned</h2>
+<ul>
+<li>How to start bdboard against a project.</li>
+<li>How to read the lanes and find ready work.</li>
+<li>How to open and edit an item.</li>
+<li>That the board keeps itself current automatically.</li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Put it into practice: <a href="TriageWalkthrough.html">Triage and pick up work</a>.</li>
+<li>Learn the board in depth: <a href="../Guides/ViewingYourWork.html">View your work on the board</a>.</li>
+<li>Look back over time: <a href="../Guides/ReviewingHistory.html">Review history and trends</a>.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

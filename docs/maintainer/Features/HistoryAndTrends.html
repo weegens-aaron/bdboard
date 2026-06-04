@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>History &amp; Trends</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="history--trends">History &amp; Trends</h1>
+<h2 id="what-it-does">What It Does</h2>
+<p>Gives you a long-window retrospective surface at <code>/history</code>: a range/custom-date
+control, a combined <strong>created-vs-closed per-day</strong> bar chart, a server-paginated
+list of <strong>closed</strong> beads (newest-closed first), and a range-scoped KPI strip
+(throughput, lead/cycle time) in the masthead — all derived from one snapshot
+and repainted live whenever the workspace changes.</p>
+<h2 id="why-it-exists">Why It Exists</h2>
+<p>The board (<code>/</code>) is a <em>recent-activity</em> surface: its lane filter caps at
+12h/1d/3d and its Closed lane is fetched within a small date window, so anything
+that closed a week ago is invisible there (<code>Bd.list_closed</code>, bdboard-p8v). That
+deliberate short-window scope leaves three retrospective questions unanswered:
+<em>what got finished over the last month/quarter?</em>, <em>are we closing faster than we
+file (net flow / backlog burn)?</em>, and <em>how long do beads actually take from
+filing to done, and from claim to done?</em>. History &amp; Trends answers all three
+without bloating the board's hot path. It is the explicit complement to the
+board: <strong>count-uncapped but window-bounded</strong> (<code>Bd.list_closed_history</code>,
+bdboard-a194 / bdboard-gp06), so older closures stay reachable via the filters
+while memory pressure is controlled by the resolved lower bound rather than a
+static fetch cap. It reuses the same <code>bd</code>-as-source-of-truth, snapshot-cache,
+pure-derive, HTMX-partial, and SSE live-refresh machinery as the rest of the app
+so the whole retrospective is one read-only swap region with zero new
+infrastructure.</p>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ul>
+<li>Open <strong>/history</strong> (linked from the masthead nav on every page). The page
+paints a range-bar + chart + six-row shimmer skeleton instantly, then hydrates
+the region via an HTMX <code>load</code> fetch to <code>GET /api/history</code> — a &quot;Created vs
+closed&quot; grouped-bar chart, then <code>Closed beads &lt;total&gt;</code> over a paginated list
+of cards, then a Prev/Next pager and per-page selector. The masthead shows a
+range-scoped KPI strip that arrives <strong>out-of-band</strong> in the same response.</li>
+<li><strong>Pick a preset range</strong> — click <code>7d</code> / <code>30d</code> / <code>90d</code> / <code>All</code> (default <code>30d</code>);
+the badge fires <code>hx-get=&quot;/api/history?range=&lt;r&gt;&amp;page=1&amp;page_size=&lt;size&gt;&quot;</code>,
+re-swapping the whole region and (OOB) the masthead KPIs. The active badge
+reads <code>aria-pressed=&quot;true&quot;</code>.</li>
+<li><strong>Pick a custom date range</strong> — click <code>Custom</code> to open the popover, fill From
+and/or To, click <strong>Apply</strong>; the <code>&lt;form&gt;</code> submits <code>from_date</code>/<code>to_date</code>, which
+supersede <code>range=</code> for the list, chart, and KPIs. <strong>Clear</strong> returns to the
+active preset; selecting any preset also dismisses the popover.</li>
+<li><strong>Page through closed beads</strong> — <code>‹ Newer</code> / <code>Older ›</code> re-fetch the adjacent
+page within the current window (preserving <code>page_size</code> and any custom dates).</li>
+<li><strong>Change rows per page</strong> — the per-page <code>&lt;select&gt;</code> (25/50/100) resets to page
+1 and persists the choice to <code>localStorage</code> (<code>bdboard-history-page-size</code>) so
+it survives reloads/navigation.</li>
+<li><strong>Open a closed bead</strong> — click a card; <code>hx-get=&quot;/api/bead/{id}&quot;</code> opens the
+shared bead modal (the same one the board uses).</li>
+<li>All of it stays live: the watcher turns any <code>.beads/</code> change into an SSE
+<code>beads_changed → refresh from:body</code> re-fetch for the <em>same</em> window
+(<code>base.html</code> re-injects the active window into the bare fetch), so a bead
+closing while you watch appears without a manual reload.</li>
+</ul>
+<h3 id="system-perspective">System Perspective</h3>
+<p>The page route <code>page_history</code> (<code>src/bdboard/app.py</code>) renders a cheap shell and
+never blocks on a <code>bd</code> subprocess — all <code>bd</code>-backed reads and every derivation
+happen on <code>GET /api/history</code>. <code>api_history</code> resolves the active window <strong>once</strong>
+from a single <code>now</code> via <code>derive.resolve_history_bounds</code> (custom <code>from</code>/<code>to</code>
+supersede the preset <code>range</code>), then pushes that lower <code>cutoff</code> <em>down</em> to the bd
+query through <code>store.snapshot_history(closed_after=cutoff)</code> — a narrow range
+fetches only the beads closed inside it instead of slurping the whole closed
+table (bdboard-gp06). On the cache-warm path the window-aware history cache
+(<code>Store._history_covers</code>) serves a covering super-window from memory with <strong>no</strong>
+bd call at all. From that one in-memory snapshot the handler derives every
+view — the paginated closed list (<code>history_window</code>), the combined created+closed
+per-day series (<code>combined</code>) plus its <code>created</code>/<code>throughput</code> arms, and the
+lead/cycle-time KPIs (<code>lead_time_stats</code>) — purely, with zero extra I/O per page.
+It also fetches the optional workspace-global headline
+<code>store.bd.status_summary()</code> (<code>None</code> on any hiccup → cells simply omitted). The
+whole response is a single <strong>HTML fragment</strong>: <code>partials/history.html</code> swaps into
+<code>#history-region</code>, and the embedded <code>partials/history_stats.html</code> <code>&lt;dl&gt;</code> rides
+along with <code>hx-swap-oob=&quot;true&quot;</code> so HTMX peels it off into the masthead's
+<code>#history-stats</code> host — one fetch, two surfaces, kept in sync on every range
+click and SSE refresh.</p>
+<pre class="mermaid">sequenceDiagram
+    participant U as User (browser)
+    participant H as HTMX (history.html / base.html)
+    participant PR as page_history (app.py)
+    participant R as api_history (app.py)
+    participant D as derive.history
+    participant S as Store (store.py)
+    participant BD as BdClient (bd.py)
+    participant Proc as bd subprocess
+    participant T as history.html + history_stats.html
+
+    U-&gt;&gt;PR: GET /history
+    PR--&gt;&gt;H: 200 history.html shell + skeletons (never blocks on bd)
+    H-&gt;&gt;R: GET /api/history (hx-trigger=&quot;load&quot;; base.html injects active window + page_size)
+    R-&gt;&gt;R: range_key clamp; page=max(1,page); size=clamp_page_size(page_size)
+    R-&gt;&gt;D: resolve_history_bounds(range, from, to, now) -&gt; (cutoff, ceiling)
+    R-&gt;&gt;S: snapshot_history(closed_after=cutoff)
+    alt history cache covers window
+        S--&gt;&gt;R: active + cached history (no bd call)
+    else cache miss / wider window
+        S-&gt;&gt;BD: list_closed_history(closed_after=cutoff)
+        BD-&gt;&gt;Proc: bd list --status closed --sort closed --no-pager --limit 0 [--closed-after &lt;iso&gt;] (gated)
+        alt bd read fails
+            Proc--&gt;&gt;BD: error
+            BD--&gt;&gt;S: raise -&gt; caught, history cache stays empty
+            S--&gt;&gt;R: active + [] (degraded)
+        else ok
+            Proc--&gt;&gt;BD: [closed beads JSON]
+            BD--&gt;&gt;S: closed list -&gt; cache + record cutoff
+            S--&gt;&gt;R: active + history
+        end
+    end
+    R-&gt;&gt;D: history_window / combined / throughput / created / lead_time_stats (pure)
+    R-&gt;&gt;S: bd.status_summary() (bd status --json, TTL-cached; None on hiccup)
+    S--&gt;&gt;R: summary | None
+    R-&gt;&gt;T: render partials/history.html (+ OOB partials/history_stats.html)
+    T--&gt;&gt;H: 200 fragment (region body + hx-swap-oob stats &lt;dl&gt;)
+    H-&gt;&gt;U: innerHTML swap #history-region; OOB swap #history-stats
+
+    Note over U,T: Live refresh — watcher detects .beads/ change
+    H-&gt;&gt;R: SSE beads_changed -&gt; refresh from:body (bare; base.html re-injects window)
+    R--&gt;&gt;H: 200 fresh region + OOB stats for the same window
+</pre>
+<h2 id="key-data-shapes">Key Data Shapes</h2>
+<p>History is query-param in and HTML-fragment out (never JSON on the wire), but
+several internal shapes carry the feature. Real field names below.</p>
+<p>The <strong>window</strong> slice <code>derive.history_window</code> returns (paginated closed list):</p>
+<pre><code class="language-json">{
+  &quot;items&quot;: [
+    { &quot;id&quot;: &quot;bdboard-mol-bfs.3&quot;, &quot;title&quot;: &quot;FlowDoc: History &amp; trends&quot;, &quot;status&quot;: &quot;closed&quot;, &quot;closed_at&quot;: &quot;2026-05-30T17:04:00Z&quot;, &quot;created_at&quot;: &quot;2026-05-28T09:00:00Z&quot;, &quot;started_at&quot;: &quot;2026-05-29T10:00:00Z&quot;, &quot;priority&quot;: 2 }
+  ],
+  &quot;page&quot;: 1,
+  &quot;page_size&quot;: 50,
+  &quot;total&quot;: 137,
+  &quot;has_more&quot;: true
+}
+</code></pre>
+<p>The <strong>combined</strong> per-day series <code>derive.combined</code> returns (one gap-free
+timeline; both arms zero-filled across the span):</p>
+<pre><code class="language-json">[
+  { &quot;day&quot;: &quot;2026-05-03&quot;, &quot;created&quot;: 4, &quot;closed&quot;: 2 },
+  { &quot;day&quot;: &quot;2026-05-04&quot;, &quot;created&quot;: 0, &quot;closed&quot;: 1 }
+]
+</code></pre>
+<p>The <strong>throughput</strong> / <strong>created</strong> per-day series (each a partial of the same
+<code>_daily_count_series</code> pipeline — closed-at vs created-at):</p>
+<pre><code class="language-json">[
+  { &quot;day&quot;: &quot;2026-05-03&quot;, &quot;count&quot;: 2 },
+  { &quot;day&quot;: &quot;2026-05-04&quot;, &quot;count&quot;: 1 }
+]
+</code></pre>
+<p>The <strong>lead_time_stats</strong> KPI block <code>derive.lead_time_stats</code> returns (hour-valued
+floats rounded to 1 dp, or <code>null</code> when a metric has no data):</p>
+<pre><code class="language-json">{
+  &quot;n&quot;: 137,
+  &quot;median_lead_h&quot;: 41.5,
+  &quot;p90_lead_h&quot;: 188.0,
+  &quot;median_cycle_h&quot;: 6.2,
+  &quot;p90_cycle_h&quot;: 33.1,
+  &quot;avg_cycle_h&quot;: 12.4
+}
+</code></pre>
+<p>The optional workspace-global headline <code>store.bd.status_summary()</code> (the
+<code>summary</code> sub-object of <code>bd status --json</code>; <code>null</code> on any bd hiccup):</p>
+<pre><code class="language-json">{
+  &quot;total_issues&quot;: 412,
+  &quot;closed_issues&quot;: 318,
+  &quot;in_progress_issues&quot;: 11,
+  &quot;average_lead_time_hours&quot;: 53.7
+}
+</code></pre>
+<p>The full template context <code>api_history</code> hands <code>partials/history.html</code> (real
+keys):</p>
+<pre><code class="language-json">{
+  &quot;range_key&quot;: &quot;30d&quot;,
+  &quot;active_range&quot;: &quot;30d&quot;,
+  &quot;is_custom&quot;: false,
+  &quot;from_date&quot;: &quot;&quot;,
+  &quot;to_date&quot;: &quot;&quot;,
+  &quot;ranges&quot;: [&quot;7d&quot;, &quot;30d&quot;, &quot;90d&quot;, &quot;all&quot;],
+  &quot;page_size&quot;: 50,
+  &quot;page_sizes&quot;: [25, 50, 100],
+  &quot;window&quot;: { &quot;items&quot;: [], &quot;page&quot;: 1, &quot;page_size&quot;: 50, &quot;total&quot;: 137, &quot;has_more&quot;: true },
+  &quot;created_total&quot;: 142,
+  &quot;combined_series&quot;: [{ &quot;day&quot;: &quot;2026-05-03&quot;, &quot;created&quot;: 4, &quot;closed&quot;: 2 }],
+  &quot;combined_peak&quot;: 9,
+  &quot;stats&quot;: { &quot;n&quot;: 137, &quot;median_lead_h&quot;: 41.5, &quot;p90_lead_h&quot;: 188.0, &quot;median_cycle_h&quot;: 6.2, &quot;p90_cycle_h&quot;: 33.1, &quot;avg_cycle_h&quot;: 12.4 },
+  &quot;avg_per_day&quot;: 4.6,
+  &quot;bd_summary&quot;: { &quot;total_issues&quot;: 412, &quot;closed_issues&quot;: 318, &quot;in_progress_issues&quot;: 11, &quot;average_lead_time_hours&quot;: 53.7 }
+}
+</code></pre>
+<h2 id="api-surface">API Surface</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Purpose</th>
+<th>→ Endpoint doc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/history</code></td>
+<td>Full-page shell (<code>history.html</code>); paints skeletons, then hydrates <code>#history-region</code> via an HTMX <code>load</code> fetch. Never blocks on <code>bd</code>; surfaces a workspace error as <code>error.html</code> (<code>500</code>).</td>
+<td><em>(page route; see <a href="../Views/HistoryPage.html">History page</a>)</em></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/history</code></td>
+<td>The read-only swap region: resolves the window (<code>range</code>/<code>page</code>/<code>page_size</code>/<code>from_date</code>/<code>to_date</code>), pushes the lower bound to <code>bd list --closed-after</code>, derives the paginated closed list + combined/throughput/created series + lead-time KPIs from one snapshot, and renders <code>partials/history.html</code> plus the OOB <code>partials/history_stats.html</code>.</td>
+<td><a href="../Endpoints/HistoryApi.html">HistoryApi</a></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/bead/{id}</code></td>
+<td>Opens the shared bead modal when a closed card is clicked.</td>
+<td><a href="../Endpoints/BeadDetailApi.html">BeadDetailApi</a></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/events</code></td>
+<td>Long-lived SSE stream; a <code>beads_changed</code> event fires <code>refresh from:body</code>, re-fetching <code>#history-region</code> live (close-as-you-watch).</td>
+<td><a href="../Endpoints/SseEvents.html">SseEvents</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>File path</th>
+<th>Symbol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Page shell route (renders shell, surfaces workspace-validation error as <code>500</code>)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>page_history</code></td>
+</tr>
+<tr>
+<td>Region API handler (resolve window once, fetch snapshot, derive all views, render region + OOB stats)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_history</code></td>
+</tr>
+<tr>
+<td>Range presets + default + page-size set/default</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>HISTORY_RANGES</code> / <code>DEFAULT_HISTORY_RANGE</code> / <code>HISTORY_PAGE_SIZES</code> / <code>HISTORY_PAGE_SIZE</code></td>
+</tr>
+<tr>
+<td>Page-size coercion to the allowed set (single source of truth)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>clamp_page_size</code></td>
+</tr>
+<tr>
+<td>Window-bounds resolver (custom <code>from</code>/<code>to</code> supersede preset <code>range</code>) — shared by route + every derive</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>resolve_history_bounds</code> / <code>_resolve_bounds</code> / <code>custom_bounds</code> / <code>_range_to_cutoff</code> / <code>_parse_date</code></td>
+</tr>
+<tr>
+<td>Paginated closed-list slice (<code>{items, page, page_size, total, has_more}</code>)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>history_window</code> / <code>_closed_in_window</code></td>
+</tr>
+<tr>
+<td>Closed-per-day series (combined chart <code>closed</code> arm + <code>avg_per_day</code> denom)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>throughput</code> / <code>_daily_count_series</code> / <code>_bucket_by_day</code> / <code>_fill_daily_series</code></td>
+</tr>
+<tr>
+<td>Created-per-day series (<code>created_total</code> + combined chart <code>created</code> arm)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>created</code> / <code>_created_in_window</code></td>
+</tr>
+<tr>
+<td>Combined created+closed per-day timeline (one gap-free series)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>combined</code> / <code>_iter_day_span</code></td>
+</tr>
+<tr>
+<td>Lead/cycle-time KPI block (<code>{n, median_lead_h, p90_lead_h, median_cycle_h, p90_cycle_h, avg_cycle_h}</code>)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>lead_time_stats</code> / <code>_percentile</code></td>
+</tr>
+<tr>
+<td>Snapshot provider (active + window-bounded closed; window-aware cache)</td>
+<td><code>src/bdboard/store.py</code></td>
+<td><code>Store.snapshot_history</code> / <code>_history_covers</code> / <code>_load_history</code> / <code>_history_cutoff</code></td>
+</tr>
+<tr>
+<td>Count-uncapped, <code>--closed-after</code>-bounded closed fetch</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.list_closed_history</code> / <code>LIST_TIMEOUT_S</code></td>
+</tr>
+<tr>
+<td>Optional workspace-global headline (<code>bd status --json</code> → <code>summary</code>, TTL-cached)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.status_summary</code> / <code>STATUS_TIMEOUT_S</code></td>
+</tr>
+<tr>
+<td>Single-writer serialization for every bd subprocess (dolt is single-writer)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient._subprocess_gate</code></td>
+</tr>
+<tr>
+<td>Region template (toolbar, combined chart, paginated list, pager, page-size select)</td>
+<td><code>src/bdboard/templates/partials/history.html</code></td>
+<td><code>.history-region-inner</code> / <code>.history-ranges</code> / <code>.history-throughput</code> / <code>.history-pager</code></td>
+</tr>
+<tr>
+<td>OOB masthead KPI strip (global totals + range KPIs, <code>hx-swap-oob</code>)</td>
+<td><code>src/bdboard/templates/partials/history_stats.html</code></td>
+<td><code>dl#history-stats</code> / <code>stat_info</code> macro</td>
+</tr>
+<tr>
+<td>Page shell + masthead host + <code>load</code>/<code>refresh from:body</code> triggers + skeleton</td>
+<td><code>src/bdboard/templates/history.html</code></td>
+<td><code>#history-region</code> / <code>#history-stats</code></td>
+</tr>
+<tr>
+<td>Bare-fetch window + page-size re-injection (so SSE/load keep the active window)</td>
+<td><code>src/bdboard/templates/base.html</code></td>
+<td><code>htmx:configRequest</code> injectors (<code>activePresetRange</code> / <code>activeCustom</code> / <code>storedSize</code>)</td>
+</tr>
+<tr>
+<td>Closed-list card markup (<code>meta=&quot;history&quot;</code>; click opens the shared modal)</td>
+<td><code>src/bdboard/templates/partials/bead_card.html</code></td>
+<td><code>bead_card</code></td>
+</tr>
+<tr>
+<td>Regression tests</td>
+<td><code>tests/</code></td>
+<td><code>test_api_history.py</code>, <code>test_derive_history.py</code>, <code>test_store_history_window.py</code>, <code>test_bd_closed_history.py</code>, <code>test_bd_status_summary.py</code>, <code>test_page_history.py</code>, <code>test_created_bar_contrast.py</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DEFAULT_HISTORY_RANGE</code> (<code>src/bdboard/derive/history.py</code>)</td>
+<td><code>&quot;30d&quot;</code></td>
+<td>The window used when <code>range</code> is missing/invalid (a bad <code>?range=</code> degrades to this, never errors).</td>
+</tr>
+<tr>
+<td><code>HISTORY_RANGES</code> (<code>src/bdboard/derive/history.py</code>)</td>
+<td><code>{7d, 30d, 90d, all}</code></td>
+<td>The valid preset keys → <code>timedelta</code> cutoffs; <code>all</code> maps to <code>None</code> (unbounded full-table read).</td>
+</tr>
+<tr>
+<td><code>HISTORY_PAGE_SIZES</code> (<code>src/bdboard/derive/history.py</code>)</td>
+<td><code>(25, 50, 100)</code></td>
+<td>The allowed rows-per-page set the <code>&lt;select&gt;</code> offers and <code>clamp_page_size</code> validates against.</td>
+</tr>
+<tr>
+<td><code>HISTORY_PAGE_SIZE</code> (<code>src/bdboard/derive/history.py</code>)</td>
+<td><code>50</code></td>
+<td>Default/fallback page size on a missing/invalid/tampered <code>page_size</code>.</td>
+</tr>
+<tr>
+<td><code>LIST_TIMEOUT_S</code> (<code>src/bdboard/bd.py</code>)</td>
+<td><code>15.0</code> s</td>
+<td>Per-<code>bd list</code> subprocess timeout for the closed-history fetch (generous: large workspaces). On timeout the fetch raises; <code>store</code> swallows it and the region degrades to empty.</td>
+</tr>
+<tr>
+<td><code>STATUS_TIMEOUT_S</code> (<code>src/bdboard/bd.py</code>)</td>
+<td><code>8.0</code> s</td>
+<td><code>bd status --json</code> timeout for the optional headline. On timeout <code>status_summary</code> returns <code>None</code> and the global Total/Closed cells are omitted.</td>
+</tr>
+<tr>
+<td><code>BDBOARD_WORKSPACE</code> (env)</td>
+<td><code>$PWD</code> / cwd</td>
+<td>Workspace whose <code>.beads/</code> the history reads target.</td>
+</tr>
+<tr>
+<td><code>BDBOARD_BD_BIN</code> (env)</td>
+<td><code>bd</code></td>
+<td>The <code>bd</code> binary the history subprocesses invoke; must resolve.</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>The ranges, page-size set/default, and the two timeouts are <strong>module-level
+constants</strong>, not environment variables — change them in source (and re-run the
+history tests). Only the <code>BDBOARD_*</code> keys are runtime-configurable.</p>
+</div>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>&quot;Avg lead&quot; in the masthead is <em>not</em> bd's lead time.</strong> The headline
+<code>stats.avg_cycle_h</code> is the <strong>mean claim→close cycle time</strong> (<code>started_at → closed_at</code>), while <code>stats.median_lead_h</code> IS created→close lead time, and
+<code>bd_summary.average_lead_time_hours</code> is bd's <em>workspace-global</em> created→close
+figure. Three different spans by design — don't conflate them.</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>Custom <code>from_date</code>/<code>to_date</code> supersede <code>range=</code> entirely.</strong> The moment
+either parses, <code>derive._resolve_bounds</code> ignores the preset for the closed
+list, every series, AND the KPIs. The <code>to_date</code> day is <strong>fully included</strong> via
+an exclusive start-of-next-day ceiling (<code>custom_bounds</code>), and an inverted
+<code>from &gt; to</code> is silently swapped so the window never collapses to empty.</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>History is count-uncapped but window-bounded.</strong> Unlike the board's
+date-capped <code>list_closed</code>, the history fetch runs <code>--limit 0</code> (bdboard-a194)
+so older closures stay reachable; memory pressure is instead controlled by the
+resolved <code>--closed-after</code> lower bound (bdboard-gp06). Only <code>range=all</code>
+(<code>cutoff=None</code>) is a genuine full-table read — expect it to be the heaviest
+query on a large workspace.</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>Beads with no parseable timestamp silently drop off the timeline.</strong> A closed
+bead with no <code>closed_at</code> is excluded from the closed list and throughput;
+cycle metrics skip beads lacking <code>started_at</code>; negative/zero durations (clock
+skew) are dropped from lead/cycle stats. Counts can therefore be lower than a
+naïve &quot;all closed&quot; tally — that's intentional, not data loss.</p>
+</div>
+<div class="callout callout-caution"><p class="callout-title">Caution</p>
+<p><strong>A bd-read failure degrades to an <em>empty</em> region, not an error.</strong> A transient
+<code>bd list</code> timeout on a cache-cold load momentarily blanks the closed
+list/chart (<code>store</code> logs <code>bd list_closed_history failed; history cache stays empty</code>). The next successful SSE <code>refresh from:body</code> repaints it — don't
+mistake a degraded blank for &quot;nothing closed&quot;. Check the logs.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Behavior</th>
+<th>User sees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>?range=</code> unknown/empty</td>
+<td>Degrades to <code>DEFAULT_HISTORY_RANGE</code> in <code>api_history</code> and again in <code>derive._range_to_cutoff</code></td>
+<td><code>200</code> — the 30d window renders; no error</td>
+</tr>
+<tr>
+<td><code>?page_size=</code> out-of-set but integer (e.g. <code>42</code>)</td>
+<td><code>derive.clamp_page_size</code> returns <code>50</code></td>
+<td><code>200</code> — 50-row pages; no error</td>
+</tr>
+<tr>
+<td><code>?page=</code> / <code>?page_size=</code> non-integer</td>
+<td>FastAPI <code>int</code> coercion rejects before <code>api_history</code> runs</td>
+<td><code>422</code> — <code>RequestValidationError</code> JSON <code>{&quot;detail&quot;: [...]}</code></td>
+</tr>
+<tr>
+<td><code>?page=0</code> or negative</td>
+<td>Clamped to <code>max(1, page)</code></td>
+<td><code>200</code> — page 1</td>
+</tr>
+<tr>
+<td><code>from_date</code>/<code>to_date</code> unparseable</td>
+<td><code>derive._parse_date</code> returns <code>None</code> (treated as &quot;no bound&quot;); if neither parses, falls back to the preset <code>range</code></td>
+<td><code>200</code> — preset window renders</td>
+</tr>
+<tr>
+<td><code>from_date &gt; to_date</code></td>
+<td>Swapped in <code>derive.custom_bounds</code></td>
+<td><code>200</code> — window stays meaningful</td>
+</tr>
+<tr>
+<td><code>bd list_closed_history</code> fails (timeout / non-zero / bad JSON)</td>
+<td><code>Store._load_history</code> logs and leaves the history cache empty; route derives over <code>[]</code></td>
+<td><code>200</code> (degraded) — <code>Nothing closed in the last &lt;window&gt;…</code> + <code>No beads created or closed to chart…</code></td>
+</tr>
+<tr>
+<td><code>bd status</code> fails</td>
+<td><code>status_summary()</code> returns <code>None</code></td>
+<td><code>200</code> — masthead global <code>Total</code>/<code>Closed</code> cells omitted; range KPIs remain</td>
+</tr>
+<tr>
+<td>Page past the end (<code>page &gt; 1</code>, no items)</td>
+<td><code>history_window</code> returns empty <code>items</code>, <code>has_more=False</code></td>
+<td><code>200</code> — <code>Nothing on page &lt;n&gt; — back to page 1</code> link-button</td>
+</tr>
+<tr>
+<td><code>GET /history</code> and <code>_validate_or_warn()</code> fails (broken workspace)</td>
+<td>Page route returns <code>error.html</code></td>
+<td><code>500</code> — workspace error page</td>
+</tr>
+<tr>
+<td>Unexpected exception escaping <code>api_history</code></td>
+<td>FastAPI default handler</td>
+<td><code>500</code> — <code>Internal Server Error</code> (normal bd failures are caught upstream and never reach here)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="testing">Testing</h2>
+<ul>
+<li><strong>Route behavior</strong> — <code>tests/test_api_history.py</code> (the big one) covers
+<code>GET /api/history</code> end to end against a stubbed snapshot: range selection,
+pagination, page-size clamping, custom-window precedence, the OOB stats swap,
+and the bd-failure <strong>degrade</strong> path (empty region, not <code>500</code>).</li>
+<li><strong>Pure derivations</strong> — <code>tests/test_derive_history.py</code> exhaustively covers
+<code>history_window</code> (pagination/sort/out-of-range pages), <code>throughput</code>/<code>created</code>
+(gap-fill, day bucketing), <code>combined</code> (merged timeline), <code>lead_time_stats</code>
+(lead vs cycle, percentiles, skew dropping), <code>resolve_history_bounds</code> /
+<code>custom_bounds</code> (precedence, inversion, exclusive ceiling), and
+<code>clamp_page_size</code>.</li>
+<li><strong>Window cache</strong> — <code>tests/test_store_history_window.py</code> covers
+<code>snapshot_history</code> / <code>_history_covers</code>: a wider cache serves a narrower
+sub-window with no bd call; an unbounded request re-queries a bounded cache.</li>
+<li><strong>Fetch bound</strong> — <code>tests/test_bd_closed_history.py</code> asserts the
+<code>--closed-after</code> push-down and the <code>--limit 0</code> count-uncapped shape.</li>
+<li><strong>Headline</strong> — <code>tests/test_bd_status_summary.py</code> covers the optional
+<code>status_summary</code> (summary extraction + <code>None</code> on hiccup).</li>
+<li><strong>Shell</strong> — <code>tests/test_page_history.py</code> covers the cheap shell render and the
+workspace-error <code>500</code>.</li>
+<li><strong>Accessibility</strong> — <code>tests/test_created_bar_contrast.py</code> keeps the created
+bars' colour + hatch within WCAG AA so the chart isn't colour-only.</li>
+<li><strong>Manual check</strong> — start the server, open <code>/history</code>; confirm the skeleton →
+region swap, click each range + Custom, page through, change rows-per-page
+(persists across reload), and open a closed card (modal). From a terminal:<pre><code class="language-bash">curl -i &#x27;http://127.0.0.1:8765/api/history&#x27;
+curl -i &#x27;http://127.0.0.1:8765/api/history?range=90d&amp;page=2&amp;page_size=25&#x27;
+curl -i &#x27;http://127.0.0.1:8765/api/history?from_date=2026-05-01&amp;to_date=2026-05-31&#x27;
+</code></pre>
+Expect <code>200</code> + the <code>partials/history.html</code> fragment (with the embedded
+<code>hx-swap-oob</code> stats <code>&lt;dl&gt;</code>); a bad <code>range=</code> renders the 30d default; a
+non-integer <code>page</code>/<code>page_size</code> yields <code>422</code>.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Views/HistoryPage.html">History page (<code>/history</code>)</a> — the full-page view
+(range control, Custom popover, pager, page-size selector, skeletons) this
+feature is the behavior-first overview of.</li>
+<li><a href="../Endpoints/HistoryApi.html">History API (<code>/api/history</code>)</a> — the HTTP contract
+for the single read-only swap region (request params, response shapes,
+validation, error table) this feature drives.</li>
+<li><a href="../Endpoints/BeadDetailApi.html">Bead detail API (<code>/api/bead/{id}</code>)</a> — the
+endpoint behind the shared modal each closed card opens.</li>
+<li><a href="../Endpoints/SseEvents.html">SSE events (<code>/api/events</code>)</a> — the live-refresh
+stream that re-fetches the region on <code>.beads/</code> changes.</li>
+<li><a href="../Endpoints/LanesApi.html">Lanes API (<code>/api/lanes</code>, <code>/api/lanes/closed</code>, <code>/api/counts</code>)</a>
+— the board's read-only hydration endpoints; their date-capped <code>list_closed</code>
+is the short-window complement to this feature's uncapped,
+<code>--closed-after</code>-bounded <code>list_closed_history</code> (the board/History closed-record
+split, bdboard-p8v / bdboard-a194).</li>
+<li><a href="../Views/BoardPage.html">Board page (<code>/</code>)</a> — the short-window recent-activity
+surface this feature is the long-window complement to (its 12h/1d/3d lane
+filter and date-capped Closed lane).</li>
+<li><a href="LiveAutoRefresh.html">Live auto-refresh (Feature)</a> — the SSE <code>beads_changed → refresh from:body</code> mechanism that repaints this region on every workspace
+change.</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why
+the closed record and <code>bd status</code> totals bottom out in <code>bd list</code>/<code>bd status</code>
+subprocesses serialized by <code>_subprocess_gate</code>.</li>
+<li><a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a> —
+the window-aware history cache (<code>_history_covers</code>/<code>_history_cutoff</code>),
+<code>--closed-after</code> push-down (bdboard-gp06), and count-uncapped fetch
+(bdboard-a194) this feature relies on.</li>
+<li><a href="../Concepts/DeriveLayer.html">Derive layer (pure view shaping)</a> — the pure
+<code>derive.history</code> functions (<code>history_window</code>, <code>throughput</code>, <code>created</code>,
+<code>combined</code>, <code>lead_time_stats</code>, <code>resolve_history_bounds</code>) that shape this
+feature with zero I/O.</li>
+<li><a href="../Concepts/HtmxPartialsArchitecture.html">HTMX + server-rendered partials</a> —
+the <code>hx-get</code> + <code>innerHTML</code> swap idiom and the <code>hx-swap-oob</code> masthead-stats
+pattern this feature embodies (one fetch, two surfaces).</li>
+<li><a href="index.html">Features index</a> · <a href="../Architecture.html#key-flows">Architecture</a> ·
+<a href="../index.html">Manifest</a> — the feature catalog and system view this sits in.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

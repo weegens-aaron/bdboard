@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server Startup &amp; Workspace Resolution</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="server-startup--workspace-resolution">Server Startup &amp; Workspace Resolution</h1>
+<h2 id="what-happens">What Happens</h2>
+<p>Running <code>bdboard</code> (the Typer entry point) bootstraps the whole process in one
+straight line: it figures out <strong>which directory is the bd workspace</strong>, exports
+that decision into the environment so the FastAPI app can pick it up at import,
+finds a <strong>free TCP port</strong> (auto-incrementing past any busy one), spawns a
+background thread that will open a browser tab the instant the socket starts
+accepting, and then hands control to <code>uvicorn.run(...)</code>. As uvicorn imports
+<code>bdboard.app</code>, the module-level singletons (<code>BdClient</code>, <code>Store</code>, <code>EventBus</code>) are
+constructed from the env the CLI just set, and the FastAPI <strong>lifespan</strong> handler
+launches the <code>.beads/</code> watcher task. The board is live before the user's browser
+finishes its first paint — no config file, no manual port juggling, no <code>cd</code>
+ceremony beyond standing in a bd workspace.</p>
+<h2 id="trigger">Trigger</h2>
+<ul>
+<li><strong>The <code>bdboard</code> console script</strong> — <code>pyproject.toml</code>'s
+<code>[project.scripts] bdboard = &quot;bdboard.cli:main&quot;</code> → <code>typer.run(_run)</code>. This is
+the only first-class entry point.</li>
+<li><strong><code>python -m bdboard</code></strong> — <code>src/bdboard/__main__.py</code> imports and calls the same
+<code>cli.main</code>, so the module form is identical to the console script.</li>
+<li><strong><code>uvicorn bdboard.app:app --reload</code> (dev)</strong> — bypasses the CLI entirely. The
+app module is imported directly, so workspace/bd-binary come from whatever
+<code>BDBOARD_WORKSPACE</code> / <code>BDBOARD_BD_BIN</code> are already in the environment (or the
+<code>_safe_cwd()</code> fallback). The lifespan watcher still boots; the CLI's port-pick
+and browser-open are simply not involved.</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<ul>
+<li><code>BDBOARD_WORKSPACE</code> and <code>BDBOARD_BD_BIN</code> (and optionally <code>BDBOARD_ACTOR</code>) are
+set in the process environment <strong>before</strong> <code>bdboard.app</code> is imported.</li>
+<li>A bound, listening uvicorn server on the first free port at/after the
+requested one (default <code>127.0.0.1:7332</code>), or a clean <code>SystemExit(1)</code> with a
+one-line message if no port is free (or <code>--strict-port</code> and the port is taken).</li>
+<li>The <code>.beads/</code> watcher task (<code>bdboard.watcher</code>) is running, having logged its
+resolved non-recursive target set; the live-refresh pipeline is armed.</li>
+<li>A browser tab opened on the live URL (unless <code>--no-browser</code>), fired only once
+the socket accepts a connection — never on a fixed sleep.</li>
+<li>A <strong>deferred, visible</strong> workspace-validation verdict: import never crashes on a
+bad workspace; instead the first full-page route (<code>/</code>, <code>/history</code>, <code>/memory</code>)
+renders <code>error.html</code> with HTTP 500 if <code>bd.validate()</code> fails.</li>
+</ul>
+<pre class="mermaid">flowchart TD
+    START[&quot;bdboard (console script)\ncli.py:main → typer.run(_run)&quot;]
+    START --&gt; RESOLVE[&quot;_resolve_workspace(--dir)\ncli.py:_resolve_workspace&quot;]
+    RESOLVE --&gt; R1{&quot;--dir passed?&quot;}
+    R1 -- yes --&gt; WS[&quot;ws = explicit.resolve()&quot;]
+    R1 -- no --&gt; R2{&quot;Path.cwd() ok?&quot;}
+    R2 -- yes --&gt; WS2[&quot;ws = cwd().resolve()&quot;]
+    R2 -- &quot;PermissionError/OSError\n(macOS TCC)&quot; --&gt; R3{&quot;$PWD set?&quot;}
+    R3 -- yes --&gt; WS3[&quot;ws = Path($PWD).resolve()&quot;]
+    R3 -- no --&gt; FAIL1[&quot;echo TCC hint (stderr)\nraise SystemExit(1)&quot;]
+    WS --&gt; ENV
+    WS2 --&gt; ENV
+    WS3 --&gt; ENV
+    ENV[&quot;os.environ[&#x27;BDBOARD_WORKSPACE&#x27;] = ws\nos.environ[&#x27;BDBOARD_BD_BIN&#x27;] = bd_bin&quot;]
+    ENV --&gt; PORT[&quot;_pick_port(host, requested, strict)\ncli.py:_pick_port&quot;]
+    PORT --&gt; P1{&quot;_port_is_free?\n(bind probe, SO_REUSEADDR off)&quot;}
+    P1 -- &quot;first free in range&quot; --&gt; GOTPORT[&quot;port chosen&quot;]
+    P1 -- &quot;none free / strict &amp; busy&quot; --&gt; FAIL2[&quot;echo friendly error (stderr)\nraise SystemExit(1)&quot;]
+    GOTPORT --&gt; BMOVE{&quot;port != requested?&quot;}
+    BMOVE -- yes --&gt; ECHO[&quot;echo &#x27;port busy — using N instead&#x27;&quot;]
+    BMOVE -- no --&gt; THREAD
+    ECHO --&gt; THREAD
+    THREAD{&quot;--no-browser?&quot;}
+    THREAD -- no --&gt; OPEN[&quot;daemon thread:\n_open_when_ready(host, port)\npolls socket, then webbrowser.open&quot;]
+    THREAD -- yes --&gt; UVICORN
+    OPEN --&gt; UVICORN
+    UVICORN[&quot;uvicorn.run(&#x27;bdboard.app:app&#x27;, host, port)&quot;]
+    UVICORN --&gt; IMPORT[&quot;import bdboard.app\nmodule-level singletons built&quot;]
+    IMPORT --&gt; SINGLETONS[&quot;_WORKSPACE = env or _safe_cwd()\n_BD_BIN, _ACTOR\nbd = BdClient(...)\nstore = Store(bd)\nbus = EventBus()&quot;]
+    SINGLETONS --&gt; LIFESPAN[&quot;FastAPI lifespan enter\napp.py:lifespan&quot;]
+    LIFESPAN --&gt; WTASK[&quot;asyncio.create_task(_watch_beads())\nlog &#x27;watcher started for &lt;beads_dir&gt;&#x27;&quot;]
+    WTASK --&gt; TARGETS[&quot;bd.watch_targets()\nper-db noms/ + .beads/&quot;]
+    TARGETS --&gt; AWATCH[&quot;awatch(*targets, recursive=False)\n+ _rescan_targets poller&quot;]
+    AWATCH --&gt; SERVE[&quot;server accepts connections&quot;]
+    SERVE -. &quot;socket live&quot; .-&gt; OPEN
+    SERVE --&gt; REQ[&quot;first GET /  →  _validate_or_warn()&quot;]
+    REQ --&gt; V{&quot;bd.validate() ok?&quot;}
+    V -- yes --&gt; BOARD[&quot;render dashboard.html (skeleton)\nthen HTMX hydrates lanes/counts&quot;]
+    V -- no --&gt; ERR[&quot;render error.html, status 500&quot;]
+</pre>
+<h2 id="step-by-step">Step-by-Step</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>What</th>
+<th>Where (file:symbol)</th>
+<th>Failure mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>bdboard</code> (or <code>python -m bdboard</code>) invokes <code>typer.run(_run)</code>, parsing <code>--addr</code>, <code>--no-browser</code>, <code>--bd</code>, <code>--dir</code>, <code>--strict-port</code></td>
+<td><code>src/bdboard/cli.py:main</code> → <code>src/bdboard/cli.py:_run</code> (and <code>src/bdboard/__main__.py</code>)</td>
+<td>Bad option value → Typer prints usage and exits non-zero before any side effects</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Resolve the workspace dir by preference order: <code>--dir</code> → <code>Path.cwd()</code> → <code>$PWD</code> → friendly error</td>
+<td><code>src/bdboard/cli.py:_resolve_workspace</code></td>
+<td>All three sources fail (sandboxed cwd <strong>and</strong> no <code>$PWD</code>) → echo the macOS-TCC hint to stderr and <code>raise SystemExit(1)</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Export the decision into the environment so the app picks it up at import: <code>BDBOARD_WORKSPACE</code>, <code>BDBOARD_BD_BIN</code></td>
+<td><code>src/bdboard/cli.py:_run</code> (<code>os.environ[...] = ...</code>)</td>
+<td>None — pure env write</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Split <code>--addr</code> into <code>host</code> + <code>port</code> (default <code>127.0.0.1:7332</code>) and pick the first bindable port at/after it</td>
+<td><code>src/bdboard/cli.py:_run</code> → <code>src/bdboard/cli.py:_pick_port</code> → <code>src/bdboard/cli.py:_port_is_free</code></td>
+<td>No free port in <code>start..start+PORT_SEARCH_RANGE</code> (20), or <code>--strict-port</code> and the port is taken → friendly stderr message + <code>SystemExit(1)</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>If the chosen port differs from the requested one, tell the user it auto-moved</td>
+<td><code>src/bdboard/cli.py:_run</code> (<code>typer.echo(&quot;port ... busy — using ... instead&quot;)</code>)</td>
+<td>None — informational</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Unless <code>--no-browser</code>, spawn a <strong>daemon</strong> thread that polls the socket for up to 10s and opens a browser tab once it accepts</td>
+<td><code>src/bdboard/cli.py:_open_when_ready</code> (via <code>threading.Thread(..., daemon=True)</code>)</td>
+<td>Socket never comes up within 10s → <code>webbrowser.open</code> still fires at the deadline (harmless dead tab); daemon thread dies with the process</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Hand off to <code>uvicorn.run(&quot;bdboard.app:app&quot;, host, port, log_level=&quot;info&quot;)</code> — this imports the app module</td>
+<td><code>src/bdboard/cli.py:_run</code> (<code>uvicorn.run(...)</code>)</td>
+<td>Import-time exception in <code>bdboard.app</code> aborts startup with a traceback</td>
+</tr>
+<tr>
+<td>8</td>
+<td>At import, module singletons are built from env: <code>_WORKSPACE</code> (env <strong>or</strong> <code>_safe_cwd()</code>), <code>_BD_BIN</code>, <code>_ACTOR</code>, then <code>bd = BdClient(...)</code>, <code>store = Store(bd)</code>, <code>bus = EventBus()</code></td>
+<td><code>src/bdboard/app.py</code> (module top-level) + <code>src/bdboard/app.py:_safe_cwd</code> + <code>src/bdboard/bd.py:BdClient.__init__</code></td>
+<td><code>_safe_cwd()</code> survives TCC by falling back to <code>$PWD</code> then <code>/</code>; deliberately uses <code>or</code> short-circuit so <code>getcwd()</code> only runs when env is unset</td>
+</tr>
+<tr>
+<td>9</td>
+<td>FastAPI enters the <code>lifespan</code> context, creating the watcher task and logging <code>watcher started for &lt;beads_dir&gt;</code></td>
+<td><code>src/bdboard/app.py:lifespan</code> (<code>asyncio.create_task(_watch_beads(), name=&quot;bdboard.watcher&quot;)</code>)</td>
+<td>Task crash is caught + restarted by the watch loop (step 11); cancel-on-shutdown swallows <code>CancelledError</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td>The watcher resolves its <strong>non-recursive</strong> target set (each <code>.beads/embeddeddolt/&lt;db&gt;/.dolt/noms/</code> plus <code>.beads/</code> itself) and logs the count</td>
+<td><code>src/bdboard/app.py:_watch_beads</code> → <code>src/bdboard/bd.py:BdClient.watch_targets</code></td>
+<td>Empty target list (no <code>.beads/</code> yet) → sleep 2s and retry; never crashes</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Open <code>awatch(*targets, recursive=False, stop_event=...)</code> and start the <code>_rescan_targets</code> poller to catch noms/ inode swaps or new dbs</td>
+<td><code>src/bdboard/app.py:_watch_beads</code> + <code>src/bdboard/app.py:_rescan_targets</code> + <code>src/bdboard/bd.py:BdClient.watch_signature</code></td>
+<td><code>FileNotFoundError</code> → retry after 2s; any other exception → <code>log.exception(&quot;watcher crashed; restarting in 2s&quot;)</code></td>
+</tr>
+<tr>
+<td>12</td>
+<td>uvicorn binds the socket and begins accepting; the <code>_open_when_ready</code> poll succeeds and the browser tab opens</td>
+<td><code>src/bdboard/cli.py:_open_when_ready</code> (<code>socket.create_connection</code>)</td>
+<td>If the server dies before binding, the poll times out at 10s (step 6)</td>
+</tr>
+<tr>
+<td>13</td>
+<td>First full-page request runs <code>_validate_or_warn()</code> → <code>bd.validate()</code>: requires a <code>.beads/</code> dir <strong>and</strong> <code>bd</code> on PATH (no <code>issues.jsonl</code> requirement)</td>
+<td><code>src/bdboard/app.py:index</code> / <code>page_history</code> / <code>page_memory</code> → <code>src/bdboard/app.py:_validate_or_warn</code> → <code>src/bdboard/bd.py:BdClient.validate</code></td>
+<td>Missing <code>.beads/</code> or <code>bd</code> binary → render <code>error.html</code> with <code>status_code=500</code> (visible failure, not a blank board)</td>
+</tr>
+<tr>
+<td>14</td>
+<td>On a valid workspace, <code>/</code> renders <code>dashboard.html</code> (a cheap skeleton shell) immediately; HTMX <code>load</code> fetches hydrate counts + lanes</td>
+<td><code>src/bdboard/app.py:index</code> (<code>TEMPLATES.TemplateResponse(&quot;dashboard.html&quot;, ...)</code>)</td>
+<td>A later partial fetch failure is an HTMX error swap; the shell still paints</td>
+</tr>
+<tr>
+<td>15</td>
+<td>On shutdown (Ctrl-C / SIGTERM), the lifespan <code>finally</code> cancels and awaits the watcher task, logging <code>watcher stopped</code></td>
+<td><code>src/bdboard/app.py:lifespan</code> (<code>watcher_task.cancel()</code> → <code>await watcher_task</code>)</td>
+<td><code>CancelledError</code> is expected and swallowed; clean exit</td>
+</tr>
+</tbody>
+</table>
+<h2 id="data-transformations">Data Transformations</h2>
+<p>Input → output at each hop:</p>
+<ol>
+<li>
+<p><strong>CLI argv → option values.</strong> Typer parses <code>bdboard --addr 127.0.0.1:7400 --dir /repo --bd /usr/local/bin/bd --strict-port</code> into the typed parameters
+of <code>_run</code> (<code>addr: str</code>, <code>workspace: Path | None</code>, <code>bd_bin: str</code>,
+<code>strict_port: bool</code>, <code>no_browser: bool</code>). Absent options take the declared
+defaults (<code>&quot;127.0.0.1:7332&quot;</code>, <code>None</code>, <code>&quot;bd&quot;</code>, <code>False</code>, <code>False</code>).</p>
+</li>
+<li>
+<p><strong>(<code>--dir</code>, cwd, <code>$PWD</code>) → resolved workspace <code>Path</code>.</strong> <code>_resolve_workspace</code>
+collapses three candidate sources into one <strong>absolute, symlink-resolved</strong>
+<code>Path</code> (<code>.resolve()</code>). Example: <code>--dir ./myrepo</code> from <code>/home/a</code> →
+<code>/home/a/myrepo</code>; no <code>--dir</code> in <code>/home/a/proj</code> → <code>/home/a/proj</code>.</p>
+</li>
+<li>
+<p><strong>workspace <code>Path</code> → environment strings.</strong> The resolved path is stringified
+into <code>BDBOARD_WORKSPACE</code> and the binary name/path into <code>BDBOARD_BD_BIN</code>:</p>
+<pre><code class="language-text">BDBOARD_WORKSPACE=/home/a/myrepo
+BDBOARD_BD_BIN=bd
+</code></pre>
+<p>These are the <strong>only</strong> channel between the CLI process state and the app
+module (which is imported, not called) — deliberately so the dev
+<code>uvicorn ... --reload</code> path works with the same contract.</p>
+</li>
+<li>
+<p><strong><code>--addr</code> string → (host, port) → bound port int.</strong> <code>addr.partition(&quot;:&quot;)</code>
+yields <code>(&quot;127.0.0.1&quot;, &quot;:&quot;, &quot;7332&quot;)</code>; <code>int(port_s or &quot;7332&quot;)</code> gives the
+requested int. <code>_pick_port</code> probes <code>range(start, start + 1 or +20)</code> via a real
+<code>bind()</code> and returns the first success — e.g. requested <code>7332</code> busy → returns
+<code>7333</code>.</p>
+</li>
+<li>
+<p><strong>env → app singletons.</strong> At <code>bdboard.app</code> import,
+<code>_WORKSPACE = Path(os.environ.get(&quot;BDBOARD_WORKSPACE&quot;) or _safe_cwd())</code>,
+<code>_BD_BIN = os.environ.get(&quot;BDBOARD_BD_BIN&quot;, &quot;bd&quot;)</code>,
+<code>_ACTOR = os.environ.get(&quot;BDBOARD_ACTOR&quot;) or None</code>. These flow into
+<code>BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE)</code> whose <code>__init__</code> re-<code>.resolve()</code>s
+the workspace and stamps every <code>bd</code> subprocess with <code>cwd=str(self.workspace)</code>
+(see <code>bd.py:_run_json</code>).</p>
+</li>
+<li>
+<p><strong>workspace <code>Path</code> → watch target list.</strong> <code>watch_targets()</code> walks
+<code>.beads/embeddeddolt/*/.dolt/noms</code> and appends <code>.beads/</code> itself, producing a
+small ordered <code>list[Path]</code> such as:</p>
+<pre><code class="language-text">[.beads/embeddeddolt/bdboard/.dolt/noms,
+ .beads/embeddeddolt/beads/.dolt/noms,
+ .beads]
+</code></pre>
+</li>
+<li>
+<p><strong>target list → identity signature.</strong> <code>watch_signature()</code> maps each target to
+a <code>(path, st_dev, st_ino)</code> tuple, frozen into a set the <code>_rescan_targets</code>
+poller diffs against its baseline to detect a new db or a noms/ inode swap.</p>
+</li>
+<li>
+<p><strong>validation verdict → HTTP response.</strong> <code>_validate_or_warn()</code> returns either
+<code>None</code> (→ render the real page) or an error string (→ <code>error.html</code> +
+<code>status_code=500</code>). The string is the human message from
+<code>RuntimeError</code>, e.g. <code>&quot;workspace is missing a .beads/ directory — cd into a bd workspace first, or pass --dir&quot;</code>.</p>
+</li>
+</ol>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Sync CLI prelude, async server core.</strong> Steps 1–7 (workspace resolve, port
+pick, thread spawn) are plain synchronous Python and complete in
+microseconds-to-milliseconds — the only measurable cost is the bind probes.
+Everything after <code>uvicorn.run</code> is <code>asyncio</code>-cooperative on the single uvicorn
+event loop (the watcher task, the rescan poller, every route coroutine).</li>
+<li><strong>Port probing is O(ports tried), bounded.</strong> <code>_pick_port</code> does at most
+<code>PORT_SEARCH_RANGE = 20</code> <code>bind()</code>/close cycles (one each, <code>strict</code> caps it at
+1). Each probe is a cheap kernel call; the bound is deliberate so a wedged
+environment fails fast instead of scanning the ephemeral range forever.</li>
+<li><strong>Browser open never blocks startup.</strong> <code>_open_when_ready</code> runs on a <strong>daemon</strong>
+thread and polls with a 0.2s connect timeout + 0.1s sleep up to a 10s
+deadline, so a slow import or first paint can't stall the server — and the
+thread can't keep the process alive on exit.</li>
+<li><strong>Non-blocking first paint.</strong> <code>/</code> renders <code>dashboard.html</code> (a skeleton shell)
+<strong>without</strong> awaiting <code>store.snapshot()</code> or any <code>bd</code> subprocess; the counts
+strip and swim lanes hydrate via subsequent HTMX <code>load</code> fetches. This was a
+deliberate fix for the worst-TTFP-of-three-pages problem where <code>/</code> blocked on
+bd before painting a pixel.</li>
+<li><strong>Watcher boot is cheap.</strong> <code>watch_targets()</code> is a handful of <code>is_dir()</code> checks
+(no subprocess); <code>watch_signature()</code> is one <code>stat()</code> per target. The
+non-recursive watch opens only a tiny, fixed number of fds — the whole point of
+the design, since recursive watching of dolt's churning <code>noms/</code> store exhausted
+<code>RLIMIT_NOFILE</code> (bdboard-3sf).</li>
+<li><strong>Validation is lazy, not at boot.</strong> <code>bd.validate()</code> (which calls
+<code>shutil.which</code>) runs on the first full-page request, not at import — so import
+stays crash-free in tests and the cost is paid once, off the hot path.</li>
+</ul>
+<h2 id="failure-handling">Failure Handling</h2>
+<ul>
+<li><strong>Sandboxed cwd degrades, never tracebacks.</strong> macOS TCC blocks <code>getcwd()</code> for
+unsigned binaries in iCloud/Documents/Desktop. <code>_resolve_workspace</code> catches
+<code>PermissionError</code>/<code>OSError</code>, falls back to <code>$PWD</code>, and only then prints a
+one-line hint and <code>SystemExit(1)</code>. The app's <code>_safe_cwd()</code> mirrors this at
+import time (cwd → <code>$PWD</code> → <code>/</code>) so the module import never crashes even when
+the CLI is bypassed.</li>
+<li><strong>Busy port self-heals (or fails loud).</strong> Without <code>--strict-port</code>, a taken
+port auto-increments through 20 candidates and tells the user it moved. With
+<code>--strict-port</code>, or if all 20 are taken, the user gets a friendly stderr line
+(plus an <code>lsof</code> hint in the range-exhausted case) and a clean <code>SystemExit(1)</code> —
+never a raw uvicorn <code>OSError</code> traceback.</li>
+<li><strong><code>SO_REUSEADDR</code> is OFF during probing.</strong> <code>_port_is_free</code> binds without
+<code>SO_REUSEADDR</code> so a <code>TIME_WAIT</code> socket reads as busy — we want a port we can
+<em>actually serve from</em>, not one that's merely almost free.</li>
+<li><strong>Watcher crash auto-restarts.</strong> Any unhandled exception inside the watch loop
+is logged (<code>watcher crashed; restarting in 2s</code>) and the loop sleeps 2s and
+re-enters <code>awatch</code> with freshly resolved targets. A missing <code>.beads/</code>
+(<code>FileNotFoundError</code> / empty targets) is the same 2s retry, so launching before
+the workspace exists isn't fatal.</li>
+<li><strong>Target-set drift self-heals without a restart.</strong> <code>_rescan_targets</code> trips
+<code>awatch</code>'s <code>stop_event</code> on a <code>noms/</code> inode swap (dolt rename-over → dead kqueue
+inode on macOS) or a new db, forcing a clean target re-enumeration on the next
+loop iteration (bdboard-xbc7 root cause #2).</li>
+<li><strong>Bad workspace fails visibly, not silently.</strong> Validation is deferred to the
+first full-page route and surfaces <code>error.html</code> with HTTP 500 rather than
+rendering an empty board — <code>bd.validate()</code> requires only a <code>.beads/</code> dir + a
+<code>bd</code> binary on PATH (the deprecated <code>issues.jsonl</code> is intentionally <em>not</em>
+required).</li>
+<li><strong>Clean shutdown drains the watcher.</strong> The lifespan <code>finally</code> cancels and
+awaits the watcher task and logs <code>watcher stopped</code>, so Ctrl-C / SIGTERM exits
+without leaking the background task or its subprocesses.</li>
+</ul>
+<h2 id="key-log-messages">Key Log Messages</h2>
+<table>
+<thead>
+<tr>
+<th>Log line</th>
+<th>Where</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>port &lt;N&gt; busy — using &lt;M&gt; instead (another bdboard running?)</code></td>
+<td><code>src/bdboard/cli.py:_run</code> (<code>typer.echo</code>, stdout)</td>
+<td>The requested port was taken; bdboard auto-incremented to the next free one. Informational — often just another bdboard instance.</td>
+</tr>
+<tr>
+<td><code>port &lt;N&gt; is already in use (use without --strict-port ...)</code></td>
+<td><code>src/bdboard/cli.py:_pick_port</code> (stderr)</td>
+<td><code>--strict-port</code> was set and the exact port is taken; bdboard exits 1 rather than moving. Drop the flag to auto-pick.</td>
+</tr>
+<tr>
+<td><code>no free port in range &lt;a&gt;..&lt;b&gt;. Close another local server or pick a different --addr port.</code></td>
+<td><code>src/bdboard/cli.py:_pick_port</code> (stderr)</td>
+<td>All 20 candidate ports were busy; exits 1. The follow-up line suggests <code>lsof -iTCP -sTCP:LISTEN</code>.</td>
+</tr>
+<tr>
+<td><code>bdboard: can't determine the current directory (macOS sandboxing ...)</code></td>
+<td><code>src/bdboard/cli.py:_resolve_workspace</code> (stderr)</td>
+<td>cwd <strong>and</strong> <code>$PWD</code> both failed (sandboxed path); pass <code>--dir</code> explicitly. Exits 1.</td>
+</tr>
+<tr>
+<td><code>Uvicorn running on http://&lt;host&gt;:&lt;port&gt; (Press CTRL+C to quit)</code></td>
+<td>uvicorn (<code>log_level=&quot;info&quot;</code>)</td>
+<td>The server bound the socket and is accepting connections; the browser-open thread will fire any moment.</td>
+</tr>
+<tr>
+<td><code>watcher started for &lt;beads_dir&gt;</code></td>
+<td><code>src/bdboard/app.py:lifespan</code></td>
+<td>The lifespan launched the watcher task at boot; arg is <code>bd.beads_dir</code>.</td>
+</tr>
+<tr>
+<td><code>watcher observing %d target(s) (non-recursive): %s</code></td>
+<td><code>src/bdboard/app.py:_watch_beads</code></td>
+<td>The resolved target set for this <code>awatch</code> session (per-db <code>noms/</code> dirs + <code>.beads/</code>). A handful is expected; a huge count means the non-recursive guard regressed.</td>
+</tr>
+<tr>
+<td><code>watcher targets changed; re-enumerating</code></td>
+<td><code>src/bdboard/app.py:_watch_beads</code></td>
+<td><code>_rescan_targets</code> tripped <code>stop_event</code> (noms/ inode swap or new db); the loop re-enters <code>awatch</code> with fresh targets. Healthy, not an error.</td>
+</tr>
+<tr>
+<td><code>watcher crashed; restarting in 2s</code></td>
+<td><code>src/bdboard/app.py:_watch_beads</code></td>
+<td>An unhandled exception in the watch loop; it sleeps 2s and restarts. Investigate the stack trace.</td>
+</tr>
+<tr>
+<td><code>watcher stopped</code></td>
+<td><code>src/bdboard/app.py:lifespan</code></td>
+<td>Clean shutdown — the watcher task was cancelled and awaited.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-issues">Common Issues</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bdboard: can't determine the current directory</code> then exit</td>
+<td>Launched from an iCloud / Documents / Desktop folder where macOS TCC blocks <code>getcwd()</code> <strong>and</strong> <code>$PWD</code> is unset</td>
+<td>Pass <code>--dir /path/to/workspace</code> explicitly, or launch from a non-sandboxed path (e.g. <code>~/code/...</code>).</td>
+</tr>
+<tr>
+<td>Browser opens on a different port than you typed</td>
+<td>Requested port was busy and <code>--strict-port</code> was not set, so <code>_pick_port</code> auto-incremented</td>
+<td>Expected — read the <code>port N busy — using M instead</code> line. Use <code>--strict-port</code> to fail instead, or pick a free <code>--addr</code> port.</td>
+</tr>
+<tr>
+<td><code>no free port in range ...</code> and exit 1</td>
+<td>20 consecutive ports from the start port are all bound</td>
+<td>Free a local server (<code>lsof -iTCP -sTCP:LISTEN</code>), or start from a different <code>--addr</code> port with more headroom.</td>
+</tr>
+<tr>
+<td>Server starts but every data view shows an error / the page is a 500 <code>error.html</code></td>
+<td><code>bd.validate()</code> failed: no <code>.beads/</code> in the resolved workspace, or <code>bd</code> not on PATH</td>
+<td><code>cd</code> into a real bd workspace (or <code>--dir</code> it); install <code>bd</code> or pass <code>--bd /path/to/bd</code>. Note <code>issues.jsonl</code> is <em>not</em> required.</td>
+</tr>
+<tr>
+<td>Browser tab never opens even though the server is up</td>
+<td><code>--no-browser</code> was passed, or the socket didn't accept within the 10s <code>_open_when_ready</code> deadline</td>
+<td>Open <code>http://&lt;host&gt;:&lt;port&gt;/</code> manually; for slow boots, the URL is also printed by uvicorn.</td>
+</tr>
+<tr>
+<td><code>OSError [Errno 24] Too many open files</code> shortly after boot</td>
+<td>Someone switched <code>awatch</code> to <code>recursive=True</code> over the churning <code>noms/</code> object store, blowing past <code>RLIMIT_NOFILE</code></td>
+<td>Keep <code>recursive=False</code> and watch only the <code>watch_targets()</code> set — that's the whole point of the non-recursive design (bdboard-3sf).</td>
+</tr>
+<tr>
+<td>Dev <code>uvicorn bdboard.app:app --reload</code> ignores <code>--dir</code></td>
+<td>The CLI was bypassed, so workspace comes from <code>BDBOARD_WORKSPACE</code> / cwd, not a <code>--dir</code> flag uvicorn doesn't know about</td>
+<td>Export <code>BDBOARD_WORKSPACE=/path</code> (and <code>BDBOARD_BD_BIN</code>) before launching uvicorn, or just use the <code>bdboard</code> console script.</td>
+</tr>
+<tr>
+<td>New dolt db added after startup isn't watched yet</td>
+<td>The <code>_rescan_targets</code> poller hasn't ticked, or <code>watch_signature</code> couldn't <code>stat()</code> the new path</td>
+<td>Wait one <code>WATCHER_RESCAN_S</code> (3s) cycle; the signature change trips <code>stop_event</code> and re-enumerates targets automatically.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="LiveRefreshPipeline.html">Live-refresh pipeline (Flow)</a> — the watcher this
+startup flow boots; everything after <code>watcher started</code> is that pipeline's
+domain (debounce, cooldown, self-feedback skip, SSE broadcast).</li>
+<li><a href="FieldEditWritePath.html">Inline field-edit write path (Flow)</a> — a write flow
+whose subprocesses run with the <code>cwd=workspace</code> that this flow resolves and
+stamps onto <code>BdClient</code>.</li>
+<li><a href="FormulaPourFanout.html">Formula pour fan-out (Flow)</a> — another flow gated by the
+same resolved workspace + <code>bd</code> binary this startup path establishes.</li>
+<li><a href="../Concepts/WatcherScheduling.html">Watcher debounce/cooldown &amp; self-feedback skip</a>
+— the <code>RefreshScheduler</code> the lifespan wires into <code>_watch_beads</code> at boot.</li>
+<li><a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a> —
+the <code>Store</code> singleton constructed at import here and lazily populated on the
+first hydrate fetch.</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why
+<code>validate()</code> only needs a <code>.beads/</code> dir + a <code>bd</code> binary (and why
+<code>issues.jsonl</code> is deliberately not required).</li>
+<li><a href="../Endpoints/SseEvents.html">SSE events (<code>/api/events</code>)</a> — the stream the
+EventBus (constructed at startup) feeds once the watcher fires.</li>
+<li><a href="../Views/BoardPage.html">Board page (<code>/</code>)</a> — the view the first request renders
+(skeleton-then-hydrate) after <code>_validate_or_warn</code> passes.</li>
+<li><a href="index.html">Flows index</a> · <a href="../Architecture.html#system-diagram">Architecture</a> ·
+<a href="../index.html">Manifest</a> — the flow catalog and system view this item sits in.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

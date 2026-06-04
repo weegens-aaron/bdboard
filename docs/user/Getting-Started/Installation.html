@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick Start: Install bdboard</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="quick-start-install-bdboard">Quick Start: Install bdboard</h1>
+<h2 id="what-youll-achieve">What You'll Achieve</h2>
+<p>bdboard installed on your computer and ready to launch against any project you
+track work in.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>You'll need a few things in place before you install. You only do this once.</p>
+<ul>
+<li>A computer where you can run command-line tools (macOS, Linux, or Windows).</li>
+<li><strong>bd</strong> (the beads tool) available on your system. bdboard reads your project's
+work items through bd, so it has to be installed and runnable first.</li>
+<li><strong>Python 3.11 or newer.</strong></li>
+<li><strong>uv</strong>, a fast Python installer and environment manager.</li>
+<li>The project folder you want to look at — the one your team tracks work in. It
+contains a hidden <code>.beads</code> folder.</li>
+</ul>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>bdboard never changes your project's work items on its own. It reads them and
+shows them. The only thing <em>you</em> can change from the board is an individual
+field on an open item, and only when you choose to.</p>
+</div>
+<h2 id="step-1-get-the-project-folder">Step 1: Get the project folder</h2>
+<p>Open a terminal and go into the folder your team uses to track work — the one
+that contains a <code>.beads</code> folder.</p>
+<pre><code class="language-sh">cd ~/work/my-project   # swap in the folder your team actually uses
+</code></pre>
+<p><strong>Expected result:</strong> your terminal is now &quot;inside&quot; the project folder.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Not sure you're in the right place? Listing the folder's contents should show
+a <code>.beads</code> entry. That hidden folder is what bdboard reads from.</p>
+</div>
+<h2 id="step-2-install-bdboard">Step 2: Install bdboard</h2>
+<p>From inside the project folder, install bdboard with uv:</p>
+<pre><code class="language-sh">uv venv
+uv pip install .
+source .venv/bin/activate
+</code></pre>
+<p><strong>Expected result:</strong> the commands finish without errors, and your terminal
+prompt changes to show the active environment. bdboard is now installed for this
+project.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>If your organization uses a private package mirror, ask whoever set the
+project up for the one extra setting you may need. Everything else stays the
+same.</p>
+</div>
+<h2 id="step-3-hydrate-the-work-history-first-time-only">Step 3: Hydrate the work history (first time only)</h2>
+<p>A freshly copied project may not include the work history yet. If your board
+later looks empty, pull the history in once:</p>
+<pre><code class="language-sh">bd bootstrap --yes
+</code></pre>
+<p><strong>Expected result:</strong> bd downloads the project's work history. You only do this
+the first time you set up a fresh copy.</p>
+<h2 id="step-4-confirm-it-runs">Step 4: Confirm it runs</h2>
+<p>Launch bdboard:</p>
+<pre><code class="language-sh">bdboard
+</code></pre>
+<p><strong>Expected result:</strong> bdboard starts and a browser tab opens showing your
+project's board. The terminal prints the address it's serving so you can reopen
+the tab any time.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Want to keep the tab from opening automatically, or point bdboard at a
+different project folder? See the launch options in the
+<a href="QuickStart.html">Quick Start</a>.</p>
+</div>
+<h2 id="common-issues">Common Issues</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The board opens but every lane shows an error</td>
+<td>bd isn't installed or isn't on your system path. Install bd, then run <code>bdboard</code> again.</td>
+</tr>
+<tr>
+<td>The board is completely empty</td>
+<td>The project history hasn't been pulled in yet. Run <code>bd bootstrap --yes</code>, then refresh.</td>
+</tr>
+<tr>
+<td><code>bdboard</code> is &quot;not found&quot; after install</td>
+<td>The environment isn't active in this terminal. Run <code>source .venv/bin/activate</code> and try again.</td>
+</tr>
+<tr>
+<td>A message about Python version</td>
+<td>You need Python 3.11 or newer. Update Python, then reinstall.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-you-learned">What You Learned</h2>
+<p>You installed bdboard, pulled in your project's work history, and confirmed the
+board opens.</p>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Open your first board and learn the layout in the
+<a href="QuickStart.html">Quick Start</a>.</li>
+<li>Then learn everyday tasks in the <a href="../Guides/index.html">Guides</a>.</li>
+<li>New to the whole idea? Read the <a href="../Overview.html">Overview</a>.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

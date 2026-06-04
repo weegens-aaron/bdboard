@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inline Field-Edit Write Path</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="inline-field-edit-write-path">Inline Field-Edit Write Path</h1>
+<h2 id="what-happens">What Happens</h2>
+<p>A user edits <strong>one</strong> field of an open bead in the detail modal — types a new
+title, picks a priority, rewrites the markdown description, or appends a note —
+and clicks <strong>Save</strong>. That single in-place form submit runs a fixed, heavily
+hedged write pipeline: CSRF guard → field-registry whitelist check →
+append-only emptiness check → a <strong>single LIVE (cache-bypassing) re-read</strong> of the
+bead that does double duty as the status gate <strong>and</strong> the optimistic-lock
+precondition → one serialized <code>bd update &lt;id&gt; &lt;flag&gt; &lt;value&gt;</code> mutation → SSE
+broadcast → optimistic re-read → and finally the <strong>re-rendered field row</strong> swapped
+back into <code>#field-row-&lt;field&gt;</code> via HTMX <code>outerHTML</code>. No full-page reload, no JSON
+envelope — the response is always an HTML fragment.</p>
+<p>This is the <strong>only</strong> write path in bdboard that mutates bead <em>content</em>
+(everything else is read-only or lifecycle-only). Because it is the one place a
+human can clobber data, it is deliberately fenced: the registry decides <em>which</em>
+fields are ever editable and <em>which</em> <code>bd update</code> flag to use (the client never
+chooses the flag), the status gate decides <em>when</em> (only open beads), and the
+optimistic lock prevents a stale tab from silently overwriting a concurrent
+change.</p>
+<h2 id="trigger">Trigger</h2>
+<p>A <code>POST /api/bead/{bead_id}/field</code> request, fired by the inline edit <code>&lt;form&gt;</code> (or
+the add-a-note <code>&lt;form&gt;</code>) inside <code>partials/field_row.html</code>. The form posts
+<code>application/x-www-form-urlencoded</code> via HTMX (<code>hx-post</code>,
+<code>hx-target=&quot;#field-row-&lt;key&gt;&quot;</code>, <code>hx-swap=&quot;outerHTML&quot;</code>) and carries the per-process
+CSRF token in the <code>X-CSRF-Token</code> header (<code>hx-headers</code>) with a hidden <code>csrf_token</code>
+form field as a non-JS fallback. The hidden <code>field</code> input pins the field key and a
+hidden <code>expected_updated_at</code> input carries the bead's <code>updated_at</code> at render time
+(the optimistic-lock token). The sibling read routes — <code>GET /api/bead/{id}</code>,
+<code>/audit</code>, <code>/raw</code> — never mutate; this POST is the lone content-write entry point.</p>
+<h2 id="outcome">Outcome</h2>
+<p>On success: the field is committed via <code>bd update</code>, every open tab gets an
+optimistic <code>beads_changed</code> SSE pulse, and the dialog swaps in the freshly
+re-rendered field row (collapsing the editor, showing the new value, carrying a
+<strong>fresh</strong> <code>expected_updated_at</code> for the next edit). A <code>priority</code> edit additionally
+appends an <strong>out-of-band</strong> copy of the modal-header priority badge so it updates
+in the same swap. On a recoverable failure the row is <strong>never</strong> wiped — the
+<code>htmx:beforeSwap</code> handler in <code>base.html</code> cancels the swap for any <code>4xx</code>/<code>5xx</code> and
+renders the server's <code>&lt;p class=&quot;field-error&quot;&gt;</code> fragment into the form's polite
+<code>[data-edit-feedback]</code> aria-live region instead. Append-only <code>notes</code> edits append
+text and never replace existing content.</p>
+<pre class="mermaid">flowchart TD
+    START[&quot;POST /api/bead/{id}/field\n(field, value, expected_updated_at, CSRF)&quot;]
+    CSRF{&quot;_check_csrf\nheader OR form == _CSRF_TOKEN?&quot;}
+    START --&gt; CSRF
+    CSRF -- no --&gt; E403C[&quot;403 HTTPException\n&#x27;Invalid or missing CSRF token…&#x27;&quot;]
+    CSRF -- yes --&gt; SPEC[&quot;_field_spec(field)\n(lookup in _FIELD_REGISTRY)&quot;]
+    SPEC --&gt; EDIT{&quot;spec.editable AND spec.flag?&quot;}
+    EDIT -- no --&gt; E400N[&quot;400 &#x27;Field “…” is not editable.&#x27;&quot;]
+    EDIT -- yes --&gt; NORM[&quot;new_value = value if editor==&#x27;md&#x27;\nelse value.strip()&quot;]
+    NORM --&gt; APPEND{&quot;append_only AND blank?&quot;}
+    APPEND -- yes --&gt; E400E[&quot;400 &#x27;Nothing to add.&#x27;&quot;]
+    APPEND -- no --&gt; LIVE[&quot;bd.show_long(id, fresh=True)\n(LIVE, cache-bypassing read)&quot;]
+    LIVE -- read failed (current=None) --&gt; WRITE
+    LIVE -- ok --&gt; GATE{&quot;_bead_is_editable?\n(status NOT in _LOCKED_EDIT_STATUSES)&quot;}
+    GATE -- no --&gt; E403S[&quot;403 &#x27;This bead is &lt;status&gt; and can\nno longer be edited…&#x27;&quot;]
+    GATE -- yes --&gt; LOCK{&quot;expected_updated_at set\nAND not append_only\nAND live updated_at moved?&quot;}
+    LOCK -- yes --&gt; E409[&quot;409 &#x27;This bead changed since you\nopened it — please refresh…&#x27;&quot;]
+    LOCK -- no --&gt; WRITE[&quot;bd.update_field(id, spec.flag, new_value,\nactor=_ACTOR)  (gated, single-writer)&quot;]
+    WRITE -- RuntimeError --&gt; E500[&quot;500 &#x27;Could not save: &lt;bd stderr&gt;&#x27;&quot;]
+    WRITE --&gt; BCAST[&quot;bus.broadcast(&#x27;beads_changed&#x27;)&quot;]
+    BCAST --&gt; REREAD[&quot;bd.show_long(id)  (post-edit re-read,\nfalls back to store.snapshot)&quot;]
+    REREAD -- bead None --&gt; SAVED1[&quot;200 &#x27;Saved, but could not refresh…&#x27;&quot;]
+    REREAD --&gt; ROW{&quot;field still in _ordered_fields?&quot;}
+    ROW -- no --&gt; SAVED2[&quot;200 &#x27;Saved.&#x27;&quot;]
+    ROW -- yes --&gt; RENDER[&quot;render partials/field_row.html\nfor #field-row-&lt;field&gt;&quot;]
+    RENDER --&gt; PRI{&quot;field == &#x27;priority&#x27;?&quot;}
+    PRI -- yes --&gt; OOB[&quot;append OOB bead_priority_badge.html&quot;]
+    PRI -- no --&gt; OK
+    OOB --&gt; OK[&quot;200 row fragment\n(HTMX outerHTML swap)&quot;]
+</pre>
+<h2 id="step-by-step">Step-by-Step</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>What</th>
+<th>Where (file:symbol)</th>
+<th>Failure mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Bind the request: <code>bead_id</code> (path), <code>field</code>/<code>value</code>/<code>expected_updated_at</code>/<code>csrf</code> (form), <code>x_csrf_token</code> (header)</td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code></td>
+<td>FastAPI binding; a missing <code>field</code> is a <code>422</code> from FastAPI (<code>Form(...)</code> required), all other params default and are validated downstream</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>field = field.strip()</code>, then resolve its <code>FieldSpec</code> from the registry</td>
+<td><code>src/bdboard/app.py:_field_spec</code> / <code>_FIELD_REGISTRY</code></td>
+<td>Unknown field returns the shared <code>_READONLY_SPEC</code> (<code>editable=False</code>) → handled in step 4</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Editability whitelist: refuse unless <code>spec.editable</code> <strong>and</strong> a non-empty <code>spec.flag</code></td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code> (<code>if not spec.editable or not spec.flag</code>)</td>
+<td><code>400</code> <code>Field &quot;&lt;field&gt;&quot; is not editable.</code> — the registry's <code>flag</code> is the ONLY flag ever passed to bd; the client can't choose it</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Normalize the value: keep verbatim for <code>editor == &quot;md&quot;</code>, else <code>.strip()</code>; for append-only fields reject blank content</td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code> (<code>new_value = …</code>; <code>if spec.append_only and not new_value.strip()</code>)</td>
+<td><code>400</code> <code>Nothing to add.</code> for an empty <code>notes</code> append</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Single LIVE re-read</strong> (cache-bypassing) of the bead — shared by the status gate and the optimistic lock so bd is never double-shelled</td>
+<td><code>src/bdboard/bd.py:BdClient.show_long</code> (<code>fresh=True</code>, <code>SHOW_TIMEOUT_S</code>)</td>
+<td>Read failure (<code>current is None</code>) <strong>degrades</strong> — both checks are skipped and the write proceeds (registry whitelist already bounds the blast radius)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Status gate: a locked (<code>in_progress</code> or closed) bead rejects ALL field writes</td>
+<td><code>src/bdboard/app.py:_bead_is_editable</code> / <code>_LOCKED_EDIT_STATUSES</code> (`derive.CLOSED_STATUSES</td>
+<td>{&quot;in_progress&quot;}`)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Optimistic-lock precondition (replace-semantics only): if <code>expected_updated_at</code> is set, not append-only, and the LIVE <code>updated_at</code> has moved, reject</td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code> (<code>if expected_updated_at and not spec.append_only</code>)</td>
+<td><code>409</code> <code>This bead changed since you opened it — please refresh…</code>; append-only edits skip this (an append can't clobber)</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Serialized mutation: <code>bd update &lt;id&gt; &lt;flag&gt; &lt;value&gt;</code> (long markdown streamed on stdin via the <code>--body-file -</code> / <code>--design-file -</code> aliases), <code>--actor</code> forwarded when set</td>
+<td><code>src/bdboard/bd.py:BdClient.update_field</code> / <code>_run_mutate</code> / <code>_STDIN_FLAG_ALIASES</code> (gated on <code>_subprocess_gate</code>, <code>UPDATE_TIMEOUT_S=10.0</code>)</td>
+<td>Non-zero exit → <code>RuntimeError(stderr)</code> → <code>500</code> <code>Could not save: &lt;bd stderr&gt;</code>; timeout → <code>RuntimeError(&quot;Request timed out…&quot;)</code> → <code>500</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td>Drop the per-bead show cache + invalidate sibling caches so the follow-up re-read sees post-edit state</td>
+<td><code>src/bdboard/bd.py:BdClient.update_field</code> (<code>self._show_cache.clear()</code> + <code>invalidate_caches</code>)</td>
+<td>None</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Optimistic SSE broadcast so every open tab re-fetches its live regions</td>
+<td><code>src/bdboard/app.py:bus.broadcast</code> → <code>src/bdboard/events.py:EventBus.broadcast</code></td>
+<td>Lossy under backpressure (drop-oldest); a dropped event is healed by the next watcher refresh</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Optimistic re-read of the post-edit bead; fall back to the cached snapshot if the live read momentarily fails</td>
+<td><code>src/bdboard/bd.py:BdClient.show_long</code> → <code>src/bdboard/store.py:Store.snapshot</code> / <code>Store.bead</code></td>
+<td>Both empty → <code>200</code> <code>Saved, but could not refresh — reopen the bead to see the change.</code> (write already committed)</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Locate the edited field's row dict in display order</td>
+<td><code>src/bdboard/app.py:_ordered_fields</code> (<code>next(r for r … if r[&quot;key&quot;] == field)</code>)</td>
+<td>Field saved but filtered out (e.g. cleared to empty) → <code>200</code> <code>Saved.</code> acknowledgement</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Re-render just the affected field row for an in-place swap</td>
+<td><code>src/bdboard/templates/partials/field_row.html</code> (<code>field_form</code> macro + <code>#field-row-&lt;key&gt;</code> div)</td>
+<td>None — pure render; carries a fresh <code>expected_updated_at</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td>For <code>priority</code> edits, append an OOB copy of the header badge so the modal-header badge updates in the same swap</td>
+<td><code>src/bdboard/templates/partials/bead_priority_badge.html</code> (<code>oob=True</code>)</td>
+<td>None — same OOB idiom the audit endpoint uses for <code>#lifecycle-slot</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>Client routes the response: <code>2xx</code> swaps the row (announces &quot;Saved.&quot;, moves focus); <code>4xx</code>/<code>5xx</code> cancels the swap and shows the error in the feedback region</td>
+<td><code>src/bdboard/templates/base.html</code> (<code>htmx:beforeSwap</code> / <code>htmx:afterSwap</code> handlers)</td>
+<td>A failed save never wipes the row — <code>e.detail.shouldSwap = false</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="data-transformations">Data Transformations</h2>
+<p>Input → output at each hop:</p>
+<ol>
+<li>
+<p><strong>Browser form → request.</strong> The <code>field_form</code> macro <code>&lt;form&gt;</code> posts
+<code>application/x-www-form-urlencoded</code>: <code>field=&lt;key&gt;</code> (hidden), <code>value=&lt;new&gt;</code>,
+<code>expected_updated_at=&lt;render-time updated_at&gt;</code> (hidden, replace-edit forms
+only), <code>csrf_token=&lt;token&gt;</code> (hidden fallback), plus the <code>X-CSRF-Token</code>
+header. FastAPI binds <code>bead_id</code> (path), <code>field</code>/<code>value</code>/<code>expected_updated_at</code>
+(<code>Form</code>), <code>csrf</code> (<code>Form(None, alias=&quot;csrf_token&quot;)</code>) and <code>x_csrf_token</code>
+(<code>Header(None)</code>).</p>
+</li>
+<li>
+<p><strong>field key → FieldSpec.</strong> <code>_field_spec(field)</code> →
+<code>FieldSpec(editable, flag, editor, enum_options, append_only)</code> from
+<code>_FIELD_REGISTRY</code>, or the shared read-only fallback. Example for a title edit:</p>
+<pre><code class="language-json">{
+  &quot;editable&quot;: true,
+  &quot;flag&quot;: &quot;--title&quot;,
+  &quot;editor&quot;: &quot;text&quot;,
+  &quot;enum_options&quot;: null,
+  &quot;append_only&quot;: false
+}
+</code></pre>
+</li>
+<li>
+<p><strong>raw value → normalized value.</strong> <code>new_value = value if spec.editor == &quot;md&quot; else value.strip()</code>. Markdown editors (<code>description</code>, <code>acceptance_criteria</code>,
+<code>design</code>, <code>notes</code>) keep whitespace verbatim; everything else is trimmed.
+Append-only (<code>notes</code>) with a blank trimmed value short-circuits to <code>400</code>.</p>
+</li>
+<li>
+<p><strong>bead id → LIVE bead.</strong> <code>show_long(bead_id, fresh=True)</code> →
+<code>(bead_dict | None, err)</code>; <code>fresh=True</code> pops the per-bead cache so the read
+bypasses the up-to-<code>SUCCESS_TTL_S</code>-stale snapshot. The handler reads two
+fields off it: <code>status</code> (for the gate) and <code>updated_at</code> (for the lock).</p>
+</li>
+<li>
+<p><strong>lock comparison.</strong> <code>live_updated_at = str(current.get(&quot;updated_at&quot;) or &quot;&quot;)</code>;
+reject when <code>live_updated_at and live_updated_at != expected_updated_at.strip()</code>
+(replace-semantics fields only).</p>
+</li>
+<li>
+<p><strong>spec.flag + value → bd argv.</strong> <code>update_field</code> builds
+<code>[&quot;update&quot;, &lt;id&gt;]</code>; for <code>--description</code>/<code>--design</code> it appends
+<code>[--body-file | --design-file, &quot;-&quot;]</code> and streams <code>value</code> on <strong>stdin</strong>; every
+other flag appends <code>[flag, value]</code> directly. <code>--actor &lt;_ACTOR&gt;</code> is appended
+when <code>_ACTOR</code> is set. Example for the title edit:</p>
+<pre><code class="language-json">{
+  &quot;argv&quot;: [&quot;update&quot;, &quot;bdboard-mol-bfs.9&quot;, &quot;--title&quot;, &quot;New title&quot;, &quot;--actor&quot;, &quot;Aaron&quot;],
+  &quot;stdin&quot;: null
+}
+</code></pre>
+<p>…versus a description edit (long markdown via stdin):</p>
+<pre><code class="language-json">{
+  &quot;argv&quot;: [&quot;update&quot;, &quot;bdboard-mol-bfs.9&quot;, &quot;--body-file&quot;, &quot;-&quot;],
+  &quot;stdin&quot;: &quot;## Overview\n\nThe full markdown body…&quot;
+}
+</code></pre>
+</li>
+<li>
+<p><strong>post-edit bead → row dict.</strong> <code>show_long(bead_id)</code> (now cache-cleared) →
+the bead; <code>_ordered_fields(bead)</code> → list of row dicts; <code>next(...)</code> selects the
+one whose <code>key == field</code>. The row dict shape (per <code>_field_row</code>):</p>
+<pre><code class="language-json">{
+  &quot;key&quot;: &quot;priority&quot;,
+  &quot;val&quot;: 1,
+  &quot;kind&quot;: &quot;scalar&quot;,
+  &quot;short_meta&quot;: true,
+  &quot;editable&quot;: true,
+  &quot;editor&quot;: &quot;select&quot;,
+  &quot;flag&quot;: &quot;--priority&quot;,
+  &quot;enum_options&quot;: [&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;],
+  &quot;append_only&quot;: false
+}
+</code></pre>
+</li>
+<li>
+<p><strong>row dict → HTML fragment.</strong> <code>field_row.html</code> renders
+<code>&lt;div id=&quot;field-row-&lt;field&gt;&quot; …&gt;</code> with a fresh <code>expected_updated_at</code> =
+<code>bead.get(&quot;updated_at&quot;)</code>. For <code>priority</code>, an OOB
+<code>bead_priority_badge.html</code> (<code>oob=True</code>) fragment is appended so HTMX swaps the
+header badge too. The whole thing returns as <code>HTMLResponse</code>.</p>
+</li>
+</ol>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Sync vs async.</strong> The handler is <code>async</code>, but the bd subprocesses run behind
+<code>BdClient._subprocess_gate</code> (an <code>asyncio.Semaphore(1)</code>) because bd's embedded
+dolt store is single-writer. Concurrent edits from multiple tabs <strong>queue</strong>
+rather than run in parallel.</li>
+<li><strong>Subprocess budget.</strong> Up to <strong>three</strong> sequential bd subprocesses on the happy
+path: the LIVE precondition read (<code>bd show --long</code>, <code>SHOW_TIMEOUT_S</code>), the
+mutation (<code>bd update</code>, <code>UPDATE_TIMEOUT_S=10.0</code>), and the post-edit re-read
+(<code>bd show --long</code>, served from cache only if warm — but <code>update_field</code> clears
+<code>_show_cache</code>, so this re-read is effectively always a fresh shell). The
+re-read is the price of an accurate optimistic render.</li>
+<li><strong>The fresh read is deliberate, not wasteful.</strong> The <code>fresh=True</code> precondition
+read intentionally bypasses the cache: a stale <code>updated_at</code> could let a
+concurrent edit slip through the optimistic lock undetected and silently
+clobber the other writer. Correctness wins over saving one shell.</li>
+<li><strong>No N+1.</strong> Exactly one field is edited per request, one <code>bd update</code> is issued.
+There is no per-field fan-out — the modal posts each row independently.</li>
+<li><strong>Broadcast cost.</strong> <code>bus.broadcast(&quot;beads_changed&quot;)</code> is O(N) over connected
+tabs and content-free; the actual re-render cost is paid by each <em>other</em> tab
+re-fetching <code>/api/lanes</code> etc., not by this handler. The editing tab gets its
+fresh row directly in the POST response (no SSE round-trip needed for itself).</li>
+</ul>
+<h2 id="failure-handling">Failure Handling</h2>
+<ul>
+<li><strong>CSRF (403).</strong> Hard reject before any I/O — <code>_check_csrf</code> raises
+<code>HTTPException(403)</code>; no bead is touched. No retry; the user must refresh to
+pick up a valid per-process token.</li>
+<li><strong>Non-editable field (400).</strong> A crafted POST for a non-whitelisted field
+(<code>status</code>, <code>parent</code>, <code>id</code>, <code>story_points</code>, timestamps, …) is refused
+server-side even though the UI never renders an editor for it. Read-only is the
+safe default; the registry whitelist bounds the blast radius.</li>
+<li><strong>Empty append (400).</strong> An append-only <code>notes</code> submit with blank content is a
+no-op we reject rather than silently swallow — <code>bd update --notes</code> would
+<em>replace</em> and nuke verification history, so the registry pins <code>--append-notes</code>
+and the route guards emptiness.</li>
+<li><strong>Status gate (403).</strong> Re-checked server-side against the <strong>LIVE</strong> status so a
+freshly-claimed (<code>in_progress</code>) bead can't slip an edit through a stale cache.
+Pre-work states (<code>blocked</code>, <code>deferred</code>) stay editable; only <code>in_progress</code> and
+the closed set lock.</li>
+<li><strong>Optimistic lock (409).</strong> A stale <code>expected_updated_at</code> (the tab opened the
+bead before another writer changed it) is rejected with a friendly &quot;refresh and
+re-apply&quot; rather than overwriting the newer value. A missing/empty token
+<strong>degrades to last-write-wins</strong> rather than blocking edits outright; append-only
+edits skip the lock entirely.</li>
+<li><strong>Precondition read failure degrades open, not closed.</strong> If the LIVE read
+fails (<code>current is None</code>), the status gate and lock are <em>skipped</em> and the write
+proceeds — blocking edits on a transient bd hiccup would be worse than the
+bounded risk, since the registry whitelist already limits what can be written.</li>
+<li><strong>Mutation failure (500).</strong> <code>bd update</code> non-zero exit → <code>RuntimeError</code> with
+bd's stderr surfaced verbatim (<code>Could not save: &lt;stderr&gt;</code>); a timeout yields
+<code>Request timed out while saving. Please try again.</code> No partial state — a single
+<code>bd update</code> is atomic.</li>
+<li><strong>Re-render failure is non-fatal.</strong> If the post-edit re-read fails the write is
+<strong>already committed</strong>: the route returns <code>200</code> <code>Saved, but could not refresh…</code>
+(or <code>Saved.</code> if the field filtered out of the rendered set). The SSE-driven
+refresh reconciles the modal.</li>
+<li><strong>Client never loses the row.</strong> <code>base.html</code>'s <code>htmx:beforeSwap</code> sets
+<code>e.detail.shouldSwap = false</code> for any <code>4xx</code>/<code>5xx</code>, so a failed save shows the
+error in the polite <code>[data-edit-feedback]</code> aria-live region without wiping the
+row; only a <code>2xx</code> actually swaps it (and announces &quot;Saved.&quot; + moves focus).</li>
+</ul>
+<h2 id="key-log-messages">Key Log Messages</h2>
+<table>
+<thead>
+<tr>
+<th>Log line</th>
+<th>Where</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>locked field edit rejected: %s %s status=%s</code></td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code></td>
+<td>The status gate fired — a write to an <code>in_progress</code>/closed bead was refused <code>403</code>. Args are <code>bead_id</code>, <code>field</code>, live <code>status</code>. Nothing was written.</td>
+</tr>
+<tr>
+<td><code>stale field edit rejected: %s %s expected=%s live=%s</code></td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code></td>
+<td>The optimistic lock fired — the LIVE <code>updated_at</code> moved since the form was rendered, so the edit was refused <code>409</code> to avoid clobbering a concurrent change.</td>
+</tr>
+<tr>
+<td><code>bd update %s %s failed: %s</code></td>
+<td><code>src/bdboard/app.py:api_bead_field_update</code></td>
+<td><code>bd update</code> exited non-zero (or timed out); its stderr was surfaced to the user as <code>500 &quot;Could not save: …&quot;</code>. Args are <code>bead_id</code>, <code>flag</code>, the error.</td>
+</tr>
+<tr>
+<td><code>store: bd list failed; keeping previous snapshot</code></td>
+<td><code>src/bdboard/store.py:Store.refresh</code></td>
+<td>The fallback <code>store.snapshot()</code> (used when the post-edit re-read fails) couldn't re-list; the prior snapshot is kept. The edit still committed.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-issues">Common Issues</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Save returns <code>403</code> &quot;Invalid or missing CSRF token&quot; on a freshly-loaded page</td>
+<td>The page's CSRF token is stale (server restarted → new per-process <code>_CSRF_TOKEN</code>) or the header/form field wasn't sent</td>
+<td>Reload so <code>field_row.html</code> re-renders with the current <code>_CSRF_TOKEN</code>; confirm <code>hx-headers='{&quot;X-CSRF-Token&quot;: …}'</code> is present.</td>
+</tr>
+<tr>
+<td><code>400 Field &quot;&lt;x&gt;&quot; is not editable</code> for a field that looks scalar</td>
+<td>The field isn't in <code>_FIELD_REGISTRY</code>'s v1 whitelist (e.g. <code>status</code>, <code>parent</code>, <code>id</code>, <code>story_points</code>, timestamps) — read-only is the safe default</td>
+<td>Lifecycle/shape/no-update-flag fields are intentionally not editable here; use the proper bd lifecycle path. Add a registry entry only if the field has a real <code>bd update</code> flag.</td>
+</tr>
+<tr>
+<td><code>400 Nothing to add</code> when appending a note</td>
+<td>The trimmed <code>value</code> is empty (whitespace-only)</td>
+<td>Type non-empty note content; <code>notes</code> is append-only (<code>--append-notes</code>) and won't accept blanks.</td>
+</tr>
+<tr>
+<td><code>403 This bead is &lt;status&gt; and can no longer be edited</code></td>
+<td>The bead is <code>in_progress</code> or closed — the LIVE status gate locks it</td>
+<td>Only open (and pre-work <code>blocked</code>/<code>deferred</code>) beads are editable; un-claim or reopen via the proper lifecycle path if you really must edit.</td>
+</tr>
+<tr>
+<td><code>409 This bead changed since you opened it</code></td>
+<td>Another tab/agent edited the bead after you opened the modal — your <code>expected_updated_at</code> is stale</td>
+<td>Refresh the bead and re-apply your edit so you don't overwrite the newer value.</td>
+</tr>
+<tr>
+<td><code>500 Could not save: &lt;bd stderr&gt;</code></td>
+<td><code>bd update</code> rejected the value (bad enum, malformed input) or the subprocess failed</td>
+<td>Read the surfaced bd stderr; fix the value and re-save. A timeout message means try again.</td>
+</tr>
+<tr>
+<td>Edit saved but other tabs still show the old value</td>
+<td>The optimistic <code>beads_changed</code> broadcast was dropped under backpressure, or the SSE stream is buffered by a reverse proxy</td>
+<td>The next watcher-driven refresh heals it; for proxies, ensure <code>X-Accel-Buffering: no</code> is honored (see SSE events doc).</td>
+</tr>
+<tr>
+<td>Priority changed in the row but the modal-header badge stayed stale</td>
+<td>The OOB <code>bead_priority_badge.html</code> append didn't swap (only happens for <code>field == &quot;priority&quot;</code>)</td>
+<td>Confirm the response carried the OOB badge fragment; reopen the modal as a fallback.</td>
+</tr>
+<tr>
+<td>Append-only note edit kept the old <code>expected_updated_at</code> but still succeeded</td>
+<td><strong>Expected</strong> — append-only edits skip the optimistic lock (an append can't clobber), so a stale token doesn't block them</td>
+<td>Not a bug; only replace-semantics edits are lock-checked.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ServerStartup.html">Server startup &amp; workspace resolution (Flow)</a> — resolves the
+workspace + <code>bd</code> binary and stamps the <code>cwd=workspace</code> that every <code>bd update</code>
+subprocess in this write path runs under.</li>
+<li><a href="../Features/BeadDetailAndInlineEditing.html">Bead detail &amp; inline editing (Feature)</a> —
+the user-facing feature whose inline editors and &quot;Add a note&quot; affordance
+trigger this write path.</li>
+<li><a href="../Endpoints/BeadFieldEditApi.html">Bead field-edit API (<code>POST /api/bead/{id}/field</code>)</a>
+— the HTTP contract for this write path (request/response shapes, status codes,
+curl examples); this flow is the end-to-end story behind it.</li>
+<li><a href="../Endpoints/BeadDetailApi.html">Bead detail API (<code>/api/bead/{id}</code>, <code>/audit</code>, <code>/raw</code>)</a>
+— the <strong>read</strong> sibling that renders the modal whose rows this flow edits; both
+share <code>BdClient.show_long</code> and <code>partials/field_row.html</code>.</li>
+<li><a href="FormulaPourFanout.html">Formula pour fan-out (Flow)</a> — the sibling write flow;
+shares the <code>_check_csrf</code>/<code>_CSRF_TOKEN</code> guard, the serialized-mutation posture,
+and the refresh/broadcast ordering.</li>
+<li><a href="../Endpoints/SseEvents.html">SSE events (<code>/api/events</code>)</a> — the channel the
+post-edit optimistic <code>beads_changed</code> broadcast rides so every other tab
+re-fetches the freshly edited bead.</li>
+<li><a href="../Views/BoardPage.html">Board page (<code>/</code>)</a> — opens the bead modal whose per-field
+rows carry the inline edit / add-note affordances that post here, and re-renders
+its lanes when the broadcast lands.</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why the
+write bottoms out in <code>bd update</code> and how <code>update_field</code> streams long markdown on
+stdin via the <code>--body-file -</code> / <code>--design-file -</code> aliases.</li>
+<li><a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a> —
+the cache invalidation and <code>fresh=True</code> cache-bypassing read this flow depends
+on for an accurate status gate, optimistic lock, and post-edit re-render.</li>
+<li><a href="../Concepts/WatcherScheduling.html">Watcher debounce/cooldown &amp; self-feedback skip</a>
+— the producer side that turns the edit's <code>.beads/</code> mutation into exactly one
+<code>beads_changed</code> pulse without spinning on bdboard's own reads.</li>
+<li><a href="../Concepts/HtmxPartialsArchitecture.html">HTMX + server-rendered partials</a> — the
+<code>field_form</code> macro, the <code>outerHTML</code> row swap, the OOB priority-badge idiom, and
+the <code>htmx:beforeSwap</code> error-routing into the <code>[data-edit-feedback]</code> region.</li>
+<li><a href="index.html">Flows index</a> · <a href="../Architecture.html#key-flows">Architecture</a> ·
+<a href="../index.html">Manifest</a> — the flow catalog and system view this item sits in.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

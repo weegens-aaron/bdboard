@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting (maintainer)</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../index.html">Docs Home</a> <a href="index.html">Maintainer Docs</a> <a href="../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="troubleshooting-maintainer">Troubleshooting (maintainer)</h1>
+<blockquote>
+<p>Operational gotchas for running, developing, and debugging <strong>bdboard</strong>. Each
+entry is <strong>Symptom → Cause → Fix</strong>, with pointers into the code and the doc
+that explains the mechanism in depth. For the big picture start at
+<a href="./Architecture.html">Architecture</a>; for the full catalog see the
+<a href="index.html">Manifest</a>.</p>
+</blockquote>
+<hr />
+<h2 id="startup--ports">Startup &amp; ports</h2>
+<h3 id="the-browser-opens-on-a-port-i-didnt-expect-not-7332">The browser opens on a port I didn't expect (not 7332)</h3>
+<ul>
+<li><strong>Symptom:</strong> You launch bdboard and the tab opens on <code>:7333</code>, <code>:7334</code>, …
+instead of the documented default <code>127.0.0.1:7332</code>.</li>
+<li><strong>Cause:</strong> bdboard binds <code>127.0.0.1:7332</code> by default but <strong>auto-increments to
+the next free port</strong> when 7332 is already taken (e.g. a previous instance is
+still running). This is intentional — it lets you run several workspaces at
+once.</li>
+<li><strong>Fix:</strong> Pass <code>--strict-port</code> to force 7332 and fail loudly if it's busy, or
+just read the actual URL from the startup log. To find/stop a stale instance,
+look for the prior <code>uvicorn</code> process. See
+<a href="./Flows/ServerStartup.html">Flow: ServerStartup</a> and the CLI wiring in
+<a href="https://github.com/weegens-aaron/bdboard/blob/main/src/bdboard/cli.py"><code>src/bdboard/cli.py</code></a>.</li>
+</ul>
+<h3 id="a-browser-tab-opens-when-i-dont-want-one-headless--ci--tmux">A browser tab opens when I don't want one (headless / CI / tmux)</h3>
+<ul>
+<li><strong>Symptom:</strong> Running bdboard pops a browser tab you didn't ask for.</li>
+<li><strong>Cause:</strong> bdboard auto-opens the browser once the socket is live.</li>
+<li><strong>Fix:</strong> Pass <code>--no-browser</code>. The server still binds normally; only the
+<code>webbrowser.open</code> call is suppressed. See
+<a href="./Flows/ServerStartup.html">Flow: ServerStartup</a>.</li>
+</ul>
+<h3 id="bdboard-points-at-the-wrong-workspace-or-the-wrong-bd">bdboard points at the wrong workspace or the wrong <code>bd</code></h3>
+<ul>
+<li><strong>Symptom:</strong> The board is empty, or shows beads from a different project.</li>
+<li><strong>Cause:</strong> Workspace is resolved from <code>--dir</code> (or <code>$PWD</code>), and the <code>bd</code> binary
+from <code>--bd</code> (or <code>$PATH</code>). A surprising <code>$PWD</code> or a shadowed <code>bd</code> on <code>PATH</code>
+silently picks the wrong source.</li>
+<li><strong>Fix:</strong> Run with explicit <code>--dir /path/to/repo</code> and, if needed,
+<code>--bd /path/to/bd</code>. Confirm <code>.beads/</code> exists under the chosen dir. See
+<a href="./Concepts/BdCliSourceOfTruth.html">Concept: bd CLI as runtime source of truth</a>
+and <a href="./Flows/ServerStartup.html">Flow: ServerStartup</a>.</li>
+</ul>
+<hr />
+<h2 id="live-refresh">Live refresh</h2>
+<h3 id="the-board-doesnt-update-when-beads-change">The board doesn't update when beads change</h3>
+<ul>
+<li><strong>Symptom:</strong> You run <code>bd update …</code> in a terminal but the open board doesn't
+move the card until you reload.</li>
+<li><strong>Cause:</strong> The live-sync chain is
+<code>bd write → dolt mutates .beads/embeddeddolt/&lt;db&gt;/.dolt/noms/ → watchfiles.awatch → RefreshScheduler (debounce + cooldown) → store.refresh() → SSE broadcast → HTMX swap</code>. The watcher (<code>app._watch_beads</code>) is
+<strong>non-recursive</strong>, so writes landing outside the watched path won't trip it;
+and the debounce/cooldown deliberately coalesces bursts.</li>
+<li><strong>Fix:</strong> Confirm your write lands in the watched <code>.beads/</code> tree (an
+in-memory or out-of-tree write won't trip the non-recursive watcher). Allow a
+moment for the debounce window to elapse. Verify the page's live-status dot is
+connected (an <code>EventSource</code> drop stops swaps). Deep dive:
+<a href="./Flows/LiveRefreshPipeline.html">Flow: LiveRefreshPipeline</a>,
+<a href="./Concepts/WatcherScheduling.html">Concept: WatcherScheduling</a>,
+<a href="./Features/LiveAutoRefresh.html">Feature: LiveAutoRefresh</a>.</li>
+</ul>
+<h3 id="a-read-only-bd-list-seems-to-trigger-a-refresh-loop">A read-only <code>bd list</code> seems to trigger a refresh loop</h3>
+<ul>
+<li><strong>Symptom:</strong> The board appears to refresh even when nothing &quot;changed.&quot;</li>
+<li><strong>Cause:</strong> Even read-only <code>bd</code> calls can perturb the Dolt working tree under
+<code>.beads/</code>, which would otherwise self-trigger the watcher.</li>
+<li><strong>Fix:</strong> This is handled by the <strong>self-feedback skip</strong> in the scheduler — if
+you've disabled or bypassed it, refreshes can loop. Keep the skip in place;
+see <a href="./Concepts/WatcherScheduling.html">Concept: WatcherScheduling</a> and
+<a href="./Concepts/StoreSnapshotCache.html">Concept: StoreSnapshotCache</a> (the
+<code>revision_signature</code> oracle that decides whether a broadcast actually fires).</li>
+</ul>
+<h3 id="my-history-filter-keeps-snapping-back-to-the-default-30-day-window">My history filter keeps snapping back to the default 30-day window</h3>
+<ul>
+<li><strong>Symptom:</strong> You pick a custom range on <code>/history</code>, then a bead changes and
+the view jumps back to the 30-day default.</li>
+<li><strong>Cause:</strong> <code>#history-region</code> carried <code>hx-trigger=&quot;load, refresh from:body&quot;</code> on
+a <strong>bare</strong> <code>/api/history</code> (no params), so every SSE <code>beads_changed → refresh</code>
+re-fetched the server-default window and discarded the user's selection.</li>
+<li><strong>Fix:</strong> This was addressed in <code>bdboard-li44</code>; the live re-fetch must preserve
+the active window params. If it regresses, check the <code>hx-trigger</code> /
+<code>hx-get</code> on <code>#history-region</code> and the <code>/api/history</code> query handling. See
+<a href="./Views/HistoryPage.html">View: HistoryPage</a>,
+<a href="./Endpoints/HistoryApi.html">Endpoint: History API</a>, and
+<a href="./Features/HistoryAndTrends.html">Feature: HistoryAndTrends</a>.</li>
+</ul>
+<hr />
+<h2 id="history-page">History page</h2>
+<h3 id="the-history-page-is-slow--returns-a-huge-result-set">The history page is slow / returns a huge result set</h3>
+<ul>
+<li><strong>Symptom:</strong> <code>/history</code> takes a while or returns far more closed beads than
+expected.</li>
+<li><strong>Cause:</strong> The closed-bead source is <strong>count-uncapped</strong>:
+<code>BdClient.list_closed_history</code> shells <code>bd list --status closed --sort closed --limit 0</code>. There is <strong>no hidden cap</strong> — the page's range / custom-date /
+pagination controls are the only thing bounding the result set.</li>
+<li><strong>Fix:</strong> Tighten the range or page size on the page itself; don't expect a
+server-side ceiling. See <a href="./Endpoints/HistoryApi.html">Endpoint: History API</a>,
+<a href="./Views/HistoryPage.html">View: HistoryPage</a>, and <code>list_closed_history</code> in
+<a href="https://github.com/weegens-aaron/bdboard/blob/main/src/bdboard/bd.py"><code>src/bdboard/bd.py</code></a>.</li>
+</ul>
+<hr />
+<h2 id="formula-pour">Formula pour</h2>
+<h3 id="bd-formula-pour-creates-the-wrong-number-of-beads-only-the-root"><code>bd formula pour</code> creates the wrong number of beads (only the root)</h3>
+<ul>
+<li><strong>Symptom:</strong> You pour a formula and get a single root issue instead of the
+full tree, or counts are off.</li>
+<li><strong>Cause:</strong> A <code>phase:vapor</code> formula wisped via <code>bd mol wisp</code> materializes
+<strong>only the root issue</strong> unless the formula sets <strong>top-level</strong> <code>pour: true</code> — a
+<strong>step-level</strong> <code>pour:</code> is ignored.</li>
+<li><strong>Fix:</strong> Set top-level <code>pour: true</code> in the formula. Validate the plan before
+applying (graph creation silently ignores <code>--dry-run</code>). See
+<a href="./Features/FormulaPour.html">Feature: Formula pour</a> and
+<a href="./Flows/FormulaPourFanout.html">Flow: FormulaPourFanout</a>.</li>
+</ul>
+<h3 id="formula-var-substitutions-dont-take-their-defaults">Formula <code>{{var}}</code> substitutions don't take their defaults</h3>
+<ul>
+<li><strong>Symptom:</strong> A poured formula has empty/unsubstituted variables even though
+the formula declares defaults.</li>
+<li><strong>Cause:</strong> <code>bd formula pour</code> requires <code>--var</code> for <strong>every</strong> <code>{{var}}</code>
+referenced in the template and <strong>ignores the variables-block defaults</strong>.</li>
+<li><strong>Fix:</strong> Pass <code>--var key=value</code> for every referenced variable. See
+<a href="./Endpoints/FormulasApi.html">Endpoint: Formulas API</a> and
+<a href="./Flows/FormulaPourFanout.html">Flow: FormulaPourFanout</a>.</li>
+</ul>
+<h3 id="a-poured-validate-task-closes-before-the-docs-it-should-gate-are-written">A poured &quot;validate&quot; task closes before the docs it should gate are written</h3>
+<ul>
+<li><strong>Symptom:</strong> A re-pour/validate task closes immediately, before generated
+output exists.</li>
+<li><strong>Cause:</strong> A &quot;Re-pour and run the X formula&quot; task that runs <code>bd formula pour</code>
+<strong>spawns a separate, disconnected generation epic</strong>; the pour task closes on
+<em>pour</em>, not on doc completion. The real output is produced by the spawned
+epic's doc beads.</li>
+<li><strong>Fix:</strong> After pouring, capture the spawned generation epic and its
+finalize/terminal task id, then add a dependency from the downstream
+<em>Validate</em> bead onto that finalize task (tasks can't block epics — depend on
+the terminal task). See <a href="./Flows/FormulaPourFanout.html">Flow: FormulaPourFanout</a>.</li>
+</ul>
+<hr />
+<h2 id="off-machine-sync-dolt">Off-machine sync (Dolt)</h2>
+<h3 id="bead-changes-dont-show-up-on-a-fresh-clone--on-another-machine">Bead changes don't show up on a fresh clone / on another machine</h3>
+<ul>
+<li><strong>Symptom:</strong> You committed bead writes locally but a teammate or fresh clone
+doesn't see them.</li>
+<li><strong>Cause:</strong> Bead history rides Dolt's git-compatible wire protocol under
+<code>refs/dolt/data</code> on the <strong>same</strong> GitHub origin as the code.
+<code>.beads/issues.jsonl</code> is a passive export, <strong>not</strong> the wire protocol. A
+misconfigured Dolt remote (pointing at a separate repo) silently strands
+writes — this exact drift was resolved in <code>bdboard-calu</code> by repointing the
+Dolt <code>origin</code> at the code origin.</li>
+<li><strong>Fix:</strong> After local <code>bd</code> writes + <code>git commit</code>, run <strong><code>bd dolt push</code></strong> to
+replicate. On a fresh clone, hydrate with <code>bd dolt pull</code> (or <code>bd bootstrap</code>).
+Verify the Dolt remote <code>origin</code> matches the code origin. See
+<a href="./Concepts/BdCliSourceOfTruth.html">Concept: bd CLI as runtime source of truth</a>.</li>
+</ul>
+<hr />
+<h2 id="tests--ci">Tests &amp; CI</h2>
+<h3 id="uv-run-fails-in-ci-on-public-github-runners"><code>uv run</code> fails in CI on public GitHub runners</h3>
+<ul>
+<li><strong>Symptom:</strong> CI on <code>ubuntu-latest</code> fails resolving packages from
+<code>pypi.ci.artifacts.walmart.com</code>.</li>
+<li><strong>Cause:</strong> <code>uv run</code> auto-syncs from <code>uv.lock</code> <strong>before</strong> running; a lock
+pinned to the internal Walmart artifactory proxy DNS-fails on public runners.</li>
+<li><strong>Fix:</strong> Use <code>uv run --no-sync</code> in CI so it uses the already-installed
+environment instead of re-resolving against the unreachable proxy.</li>
+</ul>
+<h3 id="uv-pip-install---system--e--fails-on-github-runners"><code>uv pip install --system -e .</code> fails on GitHub runners</h3>
+<ul>
+<li><strong>Symptom:</strong> Install step errors with an externally-managed-environment
+(PEP 668) complaint.</li>
+<li><strong>Cause:</strong> <code>--system</code> installs into the runner's managed Python, which refuses
+the write.</li>
+<li><strong>Fix:</strong> Create and use a virtualenv (<code>uv venv</code> + activate) rather than
+<code>--system</code>.</li>
+</ul>
+<h3 id="local-dev-quick-reference">Local dev quick reference</h3>
+<ul>
+<li><strong>Setup / run / test / lint</strong> are make-driven:
+<code>make venv</code> → <code>make install</code> → <code>make dev</code>/<code>make run</code> → <code>make test</code> →
+<code>make lint</code>/<code>make fmt</code>. Linting is <code>ruff check --fix .</code> then <code>ruff format .</code>.
+See the dev notes in <a href="./Architecture.html">Architecture</a>.</li>
+</ul>
+<hr />
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="./Architecture.html">Architecture</a> — system diagram, tech stack, API surface,
+and where the code lives.</li>
+<li><a href="index.html">Manifest</a> — the full catalog of documented items.</li>
+<li><a href="./Flows/ServerStartup.html">Flow: ServerStartup</a> ·
+<a href="./Flows/LiveRefreshPipeline.html">Flow: LiveRefreshPipeline</a> ·
+<a href="./Flows/FormulaPourFanout.html">Flow: FormulaPourFanout</a> — the pipelines behind
+the startup, live-refresh, and pour gotchas above.</li>
+<li><a href="./Concepts/WatcherScheduling.html">Concept: WatcherScheduling</a> ·
+<a href="./Concepts/StoreSnapshotCache.html">Concept: StoreSnapshotCache</a> ·
+<a href="./Concepts/BdCliSourceOfTruth.html">Concept: bd CLI as runtime source of truth</a>
+— the timing, caching, and source-of-truth mechanics.</li>
+<li><a href="./Endpoints/HistoryApi.html">Endpoint: History API</a> ·
+<a href="./Views/HistoryPage.html">View: HistoryPage</a> — the history filter/perf entries.</li>
+<li><a href="./Features/LiveAutoRefresh.html">Feature: Live auto-refresh</a> ·
+<a href="./Features/FormulaPour.html">Feature: Formula pour</a> — the user-visible features
+whose failure modes are catalogued here.</li>
+<li><a href="./Features/index.html">Sections: Features</a> · <a href="./Flows/index.html">Flows</a> ·
+<a href="./Endpoints/index.html">Endpoints</a> · <a href="./Views/index.html">Views</a> ·
+<a href="./Concepts/index.html">Concepts</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

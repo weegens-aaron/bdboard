@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to inspect a bead in detail</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="how-to-inspect-a-bead-in-detail">How to inspect a bead in detail</h1>
+<h2 id="what-youll-learn">What You'll Learn</h2>
+<p>How to open any item's full detail panel, read its timeline, follow its links to
+related work, and find the answers to &quot;what is this?&quot;, &quot;who touched it?&quot;, and
+&quot;what is it waiting on?&quot;.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>Every card on the board is a doorway. Clicking one opens a detail panel that
+shows everything bdboard knows about that item — its description, all its
+fields, a status timeline, and a complete change log. It's a read-and-review
+view; if the item is still open you can also fix a field from here (see
+<a href="EditingABead.html">Edit a bead's fields</a>).</p>
+<h2 id="step-1-open-the-detail-panel">Step 1: Open the detail panel</h2>
+<p>Click any card — on the board, an epic chip in the top strip, an Activity row,
+or a card on the <a href="../Reference/HistoryScreen.html">History screen</a>.</p>
+<p><strong>Expected result:</strong> a panel opens over the board showing the item's ID,
+priority, status, and full title at the top.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>To close the panel, click the close button in its top corner or click the
+dimmed area outside it. The board is still live behind it.</p>
+</div>
+<h2 id="step-2-read-the-header">Step 2: Read the header</h2>
+<p>The top of the panel gives you the at-a-glance facts: the item's ID, its
+priority badge, and its current status.</p>
+<p><strong>Expected result:</strong> you can tell what the item is and what state it's in
+without scrolling.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>If the panel shows a small warning line, it means bdboard fell back to a
+cached or partial view of this item — the details are still shown, it's just
+flagging that they may be a moment behind.</p>
+</div>
+<h2 id="step-3-skim-the-lifecycle-timeline">Step 3: Skim the lifecycle timeline</h2>
+<p>Just below the header, the <strong>Lifecycle</strong> section lists each status the item has
+passed through, when it entered that status, how long it stayed there, and who
+moved it.</p>
+<p><strong>Expected result:</strong> you can see the item's journey — for example <em>open to in
+progress to closed</em> — and how long it spent in each stage.</p>
+<h2 id="step-4-read-the-details">Step 4: Read the details</h2>
+<p>The <strong>Bead details</strong> section lists every field: description, labels, assignee,
+priority, dependencies, comments, and more. Long text is shown formatted, and
+linked items appear as their own rows.</p>
+<p><strong>Expected result:</strong> you can read the full description and every field value.</p>
+<h2 id="step-5-follow-a-dependency">Step 5: Follow a dependency</h2>
+<p>If the item depends on (or is depended on by) others, those appear as a list of
+linked IDs in the details. Click any linked ID.</p>
+<p><strong>Expected result:</strong> the panel swaps to show that related item. To learn what
+the relationship means, see
+<a href="../Concepts/BlockedVsReady.html">Blocked vs ready work</a>.</p>
+<h2 id="step-6-review-the-audit-trail">Step 6: Review the audit trail</h2>
+<p>At the bottom, the <strong>Audit trail</strong> lists every recorded change — when it
+happened, who made it, and what changed.</p>
+<p><strong>Expected result:</strong> you can trace the item's history field by field. If there's
+no history yet, you'll see a short &quot;no recorded history&quot; note.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Need the data behind the panel? The header has a <strong>raw JSON</strong> link that opens
+the item's raw record in a new tab.</p>
+</div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The panel says audit history is unavailable</td>
+<td>bd couldn't be reached for a moment. Close the panel and reopen it shortly.</td>
+</tr>
+<tr>
+<td>A linked ID won't open</td>
+<td>The related item may have been removed; check the <a href="../Reference/BoardScreen.html">Board screen</a> or <a href="../Reference/HistoryScreen.html">History screen</a>.</td>
+</tr>
+<tr>
+<td>There's no Edit control on a field</td>
+<td>Only open items expose inline editing, and only some fields are editable. See <a href="EditingABead.html">Edit a bead's fields</a>.</td>
+</tr>
+<tr>
+<td>The panel won't close</td>
+<td>Click the close button, or click the dimmed area outside it.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-guides">Related Guides</h2>
+<ul>
+<li><a href="EditingABead.html">Edit a bead's fields</a></li>
+<li><a href="ViewingYourWork.html">View your work on the board</a></li>
+<li><a href="ReviewingHistory.html">Review history &amp; trends</a></li>
+<li>Reference: <a href="../Reference/BoardScreen.html">The board screen</a></li>
+<li>Concept: <a href="../Concepts/BlockedVsReady.html">Blocked vs ready work</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The History Screen Reference</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="the-history-screen-reference">The History Screen Reference</h1>
+<h2 id="overview">Overview</h2>
+<p>The History screen is bdboard's look back over time. It shows a created-vs-closed
+chart, a strip of summary stats, and a paginated list of finished work — all
+scoped to a time range you choose. This page is a lookup for every control on it.</p>
+<h2 id="the-range-control">The range control</h2>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7d</td>
+<td>Scope everything to the last 7 days.</td>
+</tr>
+<tr>
+<td>30d</td>
+<td>Scope to the last 30 days (the default).</td>
+</tr>
+<tr>
+<td>90d</td>
+<td>Scope to the last 90 days.</td>
+</tr>
+<tr>
+<td>All</td>
+<td>Show all time.</td>
+</tr>
+<tr>
+<td>Custom</td>
+<td>Open a date picker to choose an exact From/To window.</td>
+</tr>
+<tr>
+<td>Apply</td>
+<td>Apply the chosen custom dates.</td>
+</tr>
+<tr>
+<td>Clear</td>
+<td>Discard the custom window and return to the preset range.</td>
+</tr>
+</tbody>
+</table>
+<p>The active range stays highlighted, and every region below reacts to it.</p>
+<h2 id="the-created-vs-closed-chart">The created-vs-closed chart</h2>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Created bars</td>
+<td>How many items were created each day (hatched, so they read in greyscale).</td>
+</tr>
+<tr>
+<td>Closed bars</td>
+<td>How many items were closed each day.</td>
+</tr>
+<tr>
+<td>Legend</td>
+<td>Names each series with its total over the window.</td>
+</tr>
+<tr>
+<td>Day labels</td>
+<td>The date each pair of bars represents.</td>
+</tr>
+</tbody>
+</table>
+<p>Both series share one scale so they're directly comparable.</p>
+<h2 id="the-stats-strip">The stats strip</h2>
+<table>
+<thead>
+<tr>
+<th>Stat</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total</td>
+<td>Workspace-wide total across all items (not range-scoped).</td>
+</tr>
+<tr>
+<td>Closed (all time)</td>
+<td>Every item ever closed in the workspace (not range-scoped).</td>
+</tr>
+<tr>
+<td>Avg lead</td>
+<td>Average claim-to-close time over the active range.</td>
+</tr>
+<tr>
+<td>Closed (range)</td>
+<td>Items closed within the active range.</td>
+</tr>
+<tr>
+<td>Median lead</td>
+<td>Median filed-to-closed time over the active range.</td>
+</tr>
+<tr>
+<td>Throughput</td>
+<td>Average items closed per day over the active range.</td>
+</tr>
+</tbody>
+</table>
+<p>Each stat has a small <strong>i</strong> you can hover or focus for its precise definition.</p>
+<h2 id="the-closed-list-and-pager">The closed list and pager</h2>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Closed beads list</td>
+<td>Finished items, newest-closed first; click one to open its detail panel.</td>
+</tr>
+<tr>
+<td>Newer</td>
+<td>Page toward more recent items.</td>
+</tr>
+<tr>
+<td>Older</td>
+<td>Page toward older items.</td>
+</tr>
+<tr>
+<td>Page indicator</td>
+<td>The page you're currently on.</td>
+</tr>
+<tr>
+<td>Per page</td>
+<td>How many items to show per page (remembered as you navigate).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tips">Tips</h2>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>The board only reaches back 3 days; the History screen is where you go for
+weeks or months. See <a href="../Guides/FilteringClosedWork.html">Filter recently closed work</a>.</p>
+</div>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>The workspace totals (Total, Closed all time) don't move with the range — only
+the range-scoped stats do.</p>
+</div>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li>Guide: <a href="../Guides/ReviewingHistory.html">Review history and trends</a></li>
+<li>Guide: <a href="../Guides/FilteringClosedWork.html">Filter recently closed work</a></li>
+<li>Reference: <a href="BoardScreen.html">The board screen</a></li>
+<li>Concept: <a href="../Concepts/LiveUpdates.html">Live updates</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

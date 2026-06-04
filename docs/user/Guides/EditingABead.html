@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to edit a bead&#x27;s fields</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="how-to-edit-a-beads-fields">How to edit a bead's fields</h1>
+<h2 id="what-youll-learn">What You'll Learn</h2>
+<p>How to change a field on an open item right from its detail panel, how to add a
+note without overwriting the history, and why some fields can't be edited.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+<li>The item you want to change is still <strong>open</strong> (editing is only offered on open
+items).</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>bdboard lets you fix small things in place — a priority, an assignee, a
+description — without leaving the board. You open the item, expand the field you
+want to change, type the new value, and save. The card and counts update live.</p>
+<h2 id="step-1-open-the-item">Step 1: Open the item</h2>
+<p>Click the card to open its detail panel. See
+<a href="InspectingABead.html">Inspect a bead in detail</a> for the full tour.</p>
+<p><strong>Expected result:</strong> the detail panel opens with the <strong>Bead details</strong> section
+listing every field.</p>
+<h2 id="step-2-find-an-editable-field">Step 2: Find an editable field</h2>
+<p>Editable fields show an <strong>Edit</strong> control beneath their value. Not every field
+has one — only fields bdboard knows are safe to change from the board.</p>
+<p><strong>Expected result:</strong> under an editable field you see a small &quot;Edit&quot; disclosure.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>No Edit control? Either the item is closed, or that particular field isn't
+editable from the board. That's by design — it keeps risky changes off the
+quick-edit path.</p>
+</div>
+<h2 id="step-3-expand-the-editor-and-change-the-value">Step 3: Expand the editor and change the value</h2>
+<p>Click <strong>Edit</strong>. The field opens an inline editor sized to the field:</p>
+<ul>
+<li>A <strong>dropdown</strong> for fixed-choice fields like priority or status.</li>
+<li>A <strong>number box</strong> for numeric fields.</li>
+<li>A <strong>text box</strong> or a larger <strong>text area</strong> for free text and descriptions.</li>
+</ul>
+<p>The current value is pre-filled. Change it.</p>
+<p><strong>Expected result:</strong> the editor opens with focus already in the input, showing
+the current value ready to edit.</p>
+<h2 id="step-4-save">Step 4: Save</h2>
+<p>Click <strong>Save</strong> (or <strong>Cancel</strong> to back out without changing anything).</p>
+<p><strong>Expected result:</strong> the field's row updates in place to show the new value, and
+the board's cards and counts reflect the change. A short confirmation appears by
+the field.</p>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p>If someone else changed the same item while you had it open, your save is
+rejected so you can't silently overwrite their change. Close the panel,
+reopen the item to see the latest, and redo your edit.</p>
+</div>
+<h2 id="step-5-add-a-note-without-erasing-history">Step 5: Add a note (without erasing history)</h2>
+<p>Notes are special: they're append-only. Instead of replacing the existing notes,
+you add to them. Expand <strong>Add a note</strong>, type your note, and submit.</p>
+<p><strong>Expected result:</strong> your note is added below the existing notes — nothing above
+it is overwritten — and the form collapses again.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Notes support markdown, so you can use lists, emphasis, and links to keep
+them readable.</p>
+</div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No Edit control anywhere</td>
+<td>The item is closed. Editing is only offered on open items.</td>
+</tr>
+<tr>
+<td>A specific field has no Edit control</td>
+<td>That field isn't editable from the board by design.</td>
+</tr>
+<tr>
+<td>My save was rejected</td>
+<td>The item changed underneath you. Reopen it to get the latest, then redo the edit.</td>
+</tr>
+<tr>
+<td>The save seemed to do nothing</td>
+<td>Watch for the confirmation by the field; if an error shows there, read it and try again.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-guides">Related Guides</h2>
+<ul>
+<li><a href="InspectingABead.html">Inspect a bead in detail</a></li>
+<li><a href="ViewingYourWork.html">View your work on the board</a></li>
+<li><a href="ManagingMemories.html">Manage project memories</a></li>
+<li>Reference: <a href="../Reference/BoardScreen.html">The board screen</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

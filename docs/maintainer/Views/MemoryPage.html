@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Page (/memory)</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="memory-page-memory">Memory Page (/memory)</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Auth</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /memory</code></td>
+<td>None (localhost single-user tool); list reads are unauthenticated, mutating POST/DELETE are guarded by a double-submit CSRF token</td>
+<td>Browse, search, create/update, and delete the workspace's <code>bd</code> memories — the notes injected into every agent session at <code>bd prime</code></td>
+</tr>
+</tbody>
+</table>
+<p>The page itself is a cheap, non-blocking shell: <code>page_memory</code> renders
+<code>memory.html</code> (which extends <code>base.html</code>) instantly with a skeleton, then the
+real list hydrates via an HTMX <code>load</code> fetch to <code>/api/memory</code>. The route never
+blocks on a <code>bd</code> subprocess — every <code>bd</code>-backed read/write happens on the
+<code>/api/memory</code> endpoints.</p>
+<h2 id="url-params">URL Params</h2>
+<p>The <code>/memory</code> page route itself takes <strong>no</strong> path or query params. The search
+term is sent on the <em>partial</em> fetch to <code>/api/memory</code>, not on the page URL.</p>
+<table>
+<thead>
+<tr>
+<th>Param</th>
+<th>Type</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(none on the page route)</em></td>
+<td>—</td>
+<td>—</td>
+<td><code>GET /memory</code> ignores all query params; it always renders the same shell</td>
+</tr>
+<tr>
+<td><code>q</code> (on <code>/api/memory</code>)</td>
+<td>string (query)</td>
+<td>No</td>
+<td>Search term forwarded to <code>bd memories &lt;term&gt; --json</code>; empty/omitted lists all memories. Sent by the debounced search input's <code>hx-get</code>, not part of the <code>/memory</code> URL</td>
+</tr>
+<tr>
+<td><code>key</code> (on <code>DELETE /api/memory/{key:path}</code>)</td>
+<td>string (path)</td>
+<td>Yes</td>
+<td>Memory key to forget; <code>:path</code> so keys containing <code>/</code> survive; client URL-encodes via <code>encodeURIComponent</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-it-does">What It Does</h2>
+<p>The Memory page is the single human-facing surface for the <code>bd</code> memory store.
+On load it paints a four-card shimmer skeleton, then swaps in the live list of
+<code>{key, body}</code> memories (alphabetical by key, bodies rendered from markdown).
+A debounced search box filters server-side; a <code>+ New Memory</code> button opens a
+modal <code>&lt;dialog&gt;</code> to create or update a memory; each card carries edit and
+forget affordances. Forgetting requires explicit confirmation in a second
+modal because a stray forget silently degrades every future agent session. The
+list re-fetches live whenever the watcher detects a <code>.beads/</code> change (SSE
+<code>refresh from:body</code>), so mutations made elsewhere (other tabs, the <code>bd</code> CLI)
+appear without a manual reload.</p>
+<h2 id="user-actions">User Actions</h2>
+<ul>
+<li><strong>Search</strong> — type in the search box; after a 250 ms debounce the list region
+re-fetches <code>/api/memory?q=&lt;term&gt;</code> and swaps in matches. Clearing the native
+search input re-fires (<code>search</code> event) and returns to the full list.</li>
+<li><strong>Create / update a memory</strong> — click <code>+ New Memory</code>, fill Key + Body, Save.
+The form POSTs to <code>/api/memory</code> (upsert: existing key → body replaced).</li>
+<li><strong>Edit a memory</strong> — click the edit button on a card; the form dialog opens
+pre-filled with that memory's key (read-only — keys can't be renamed via
+<code>bd remember</code>) and body. Save POSTs the new body.</li>
+<li><strong>Forget a memory</strong> — click the forget button; a confirm dialog opens with
+the key shown and a warning. Confirming issues <code>DELETE /api/memory/&lt;key&gt;</code>.</li>
+<li><strong>Toggle theme</strong> — the shared theme toggle in the masthead second row.</li>
+<li><strong>Navigate</strong> — the shared <code>nav.html</code> links to Board (<code>/</code>) and History
+(<code>/history</code>).</li>
+</ul>
+<pre class="mermaid">flowchart TD
+    PAGE[&quot;/memory page (memory.html extends base.html)&quot;]
+    PAGE --&gt; MAST[&quot;header.masthead&quot;]
+    MAST --&gt; BRAND[&quot;masthead-brand: h1 &#x27;Memory&#x27;&quot;]
+    MAST --&gt; NAVROW[&quot;masthead-nav-row&quot;]
+    NAVROW --&gt; NAV[&quot;nav.html (Board / History / Memory)&quot;]
+    NAVROW --&gt; TOG[&quot;theme_toggle.html&quot;]
+    PAGE --&gt; MAIN[&quot;main.layout.layout-memory&quot;]
+    MAIN --&gt; REGION[&quot;section.memory-region&quot;]
+    REGION --&gt; TOOLBAR[&quot;div.memory-toolbar&quot;]
+    TOOLBAR --&gt; SEARCH[&quot;form.memory-search (input#memory-q, hx-get /api/memory)&quot;]
+    TOOLBAR --&gt; NEWBTN[&quot;button.memory-new-btn (+ New Memory)&quot;]
+    REGION --&gt; LIST[&quot;div#memory-list (hx-get /api/memory on load + refresh)&quot;]
+    LIST --&gt; SKEL[&quot;partials/memory_skeleton.html (initial shimmer)&quot;]
+    LIST -. swapped on load .-&gt; MLIST[&quot;partials/memory_list.html (cards or empty state)&quot;]
+    PAGE --&gt; FORMDLG[&quot;dialog#memory-form-dialog (create/edit, hx-post /api/memory)&quot;]
+    PAGE --&gt; FORGETDLG[&quot;dialog#memory-forget-dialog (confirm, hx-delete /api/memory/{key})&quot;]
+    PAGE --&gt; FOOTER[&quot;footer (base.html): live-status SSE dot&quot;]
+</pre>
+<h2 id="components">Components</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Responsibility</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Page shell</td>
+<td>Full-page memory view; masthead + toolbar + list region; never blocks on <code>bd</code></td>
+<td><code>src/bdboard/templates/memory.html</code></td>
+</tr>
+<tr>
+<td>Base layout</td>
+<td><code>&lt;head&gt;</code>, HTMX + SSE wiring, theme bootstrap, footer live-status, shared body block</td>
+<td><code>src/bdboard/templates/base.html</code></td>
+</tr>
+<tr>
+<td>Primary nav</td>
+<td>Board / History / Memory links with <code>aria-current</code> on the active page</td>
+<td><code>src/bdboard/templates/partials/nav.html</code></td>
+</tr>
+<tr>
+<td>Theme toggle</td>
+<td>Light/dark switch (shared, <code>aria-pressed</code>)</td>
+<td><code>src/bdboard/templates/partials/theme_toggle.html</code></td>
+</tr>
+<tr>
+<td>List skeleton</td>
+<td>Four shimmer cards shown until the first <code>/api/memory</code> swap; <code>aria-hidden</code></td>
+<td><code>src/bdboard/templates/partials/memory_skeleton.html</code></td>
+</tr>
+<tr>
+<td>List partial</td>
+<td>The HTMX swap target: result-count status + memory cards (key heading + markdown body + edit/forget buttons) or empty state</td>
+<td><code>src/bdboard/templates/partials/memory_list.html</code></td>
+</tr>
+<tr>
+<td>Create/Edit dialog</td>
+<td>Native modal <code>&lt;dialog&gt;</code> with key + body fields; posts to <code>/api/memory</code>; <code>editMemory()</code> pre-fills + locks key</td>
+<td><code>src/bdboard/templates/memory.html</code> (<code>#memory-form-dialog</code>, JS <code>editMemory</code>)</td>
+</tr>
+<tr>
+<td>Forget confirm dialog</td>
+<td>Native modal warning; <code>confirmForget()</code> wires <code>hx-delete</code> to the right key URL</td>
+<td><code>src/bdboard/templates/memory.html</code> (<code>#memory-forget-dialog</code>, JS <code>confirmForget</code>)</td>
+</tr>
+<tr>
+<td>Page route handler</td>
+<td>Renders the shell, surfaces workspace validation errors</td>
+<td><code>src/bdboard/app.py:page_memory</code></td>
+</tr>
+<tr>
+<td>List/search handler</td>
+<td><code>bd memories(q)</code> → renders <code>memory_list.html</code>; degrades to friendly message on <code>bd</code> failure</td>
+<td><code>src/bdboard/app.py:api_memory</code></td>
+</tr>
+<tr>
+<td>Create/update handler</td>
+<td>CSRF-checked <code>bd remember</code>; broadcasts SSE; re-renders list</td>
+<td><code>src/bdboard/app.py:api_memory_create</code></td>
+</tr>
+<tr>
+<td>Delete handler</td>
+<td>CSRF-checked <code>bd forget</code>; broadcasts SSE; re-renders list</td>
+<td><code>src/bdboard/app.py:api_memory_delete</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Source</th>
+<th>Updated by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Memory list (<code>[{key, body}]</code>)</td>
+<td><code>bd memories [term] --json</code> via <code>Bd.memories()</code> (TTL-cached, semaphore-gated)</td>
+<td>First <code>load</code> swap, debounced search swap, post-mutation re-render, and SSE <code>refresh from:body</code></td>
+</tr>
+<tr>
+<td>Search term (<code>q</code>)</td>
+<td>The <code>#memory-q</code> <code>&lt;input type=&quot;search&quot;&gt;</code> value</td>
+<td>User keystrokes → <code>hx-get=&quot;/api/memory&quot;</code> on <code>keyup changed delay:250ms, search</code>; <code>hx-sync=&quot;this:replace&quot;</code> cancels in-flight</td>
+</tr>
+<tr>
+<td><code>aria-busy</code> on <code>#memory-list</code></td>
+<td>Set <code>true</code> in the template; flipped <code>false</code> after each settle</td>
+<td><code>base.html</code> global <code>htmx:afterSettle</code> handler clears <code>aria-busy</code> on any settled region</td>
+</tr>
+<tr>
+<td>Dialog open/closed + mode</td>
+<td>Native <code>&lt;dialog&gt;</code> modal state + <code>editMemory</code>/<code>confirmForget</code>/<code>close</code> JS</td>
+<td><code>showModal()</code>/<code>close()</code>; the form-dialog <code>close</code> listener resets title/key/body so the next &quot;New Memory&quot; starts fresh</td>
+</tr>
+<tr>
+<td>Forget target key</td>
+<td><code>#forget-key-display</code> text + <code>hx-delete</code> attribute on <code>#forget-confirm-btn</code></td>
+<td><code>confirmForget(key)</code> sets both, then <code>htmx.process()</code> re-parses the button so HTMX sees the new URL</td>
+</tr>
+<tr>
+<td>CSRF token</td>
+<td><code>secrets.token_urlsafe(32)</code> injected as a Jinja global at startup</td>
+<td><code>app.py</code> <code>_CSRF_TOKEN</code> → <code>TEMPLATES.env.globals[&quot;csrf_token&quot;]</code>; sent via <code>hx-headers</code> (<code>X-CSRF-Token</code>) and a hidden <code>csrf_token</code> form field</td>
+</tr>
+<tr>
+<td>Live-status (SSE connection)</td>
+<td><code>EventSource('/api/events')</code> in <code>base.html</code></td>
+<td><code>open</code>/<code>error</code>/<code>beads_changed</code> listeners update <code>#live-status</code> + <code>#live-dot</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="data-flow">Data Flow</h2>
+<pre class="mermaid">sequenceDiagram
+    participant U as User (browser)
+    participant V as memory.html / #memory-list
+    participant A as app.py routes
+    participant BD as Bd (bd CLI wrapper)
+    participant BUS as EventBus (SSE)
+
+    U-&gt;&gt;A: GET /memory
+    A--&gt;&gt;V: memory.html shell + memory_skeleton.html
+    V-&gt;&gt;A: GET /api/memory (hx-trigger=&quot;load&quot;)
+    A-&gt;&gt;BD: memories(&quot;&quot;)  -&gt; bd memories --json
+    BD--&gt;&gt;A: [{key, body}, ...] (schema_version stripped)
+    A--&gt;&gt;V: partials/memory_list.html (swap #memory-list)
+
+    U-&gt;&gt;V: type search term
+    V-&gt;&gt;A: GET /api/memory?q=term (debounced 250ms)
+    A-&gt;&gt;BD: memories(&quot;term&quot;) -&gt; bd memories term --json
+    BD--&gt;&gt;A: filtered [{key, body}]
+    A--&gt;&gt;V: re-rendered list (innerHTML swap)
+
+    U-&gt;&gt;V: + New Memory / Save (X-CSRF-Token)
+    V-&gt;&gt;A: POST /api/memory (key, body, csrf)
+    A-&gt;&gt;A: _check_csrf()
+    A-&gt;&gt;BD: remember(key, body) -&gt; bd remember body --key key
+    A-&gt;&gt;BUS: broadcast(&quot;beads_changed&quot;)
+    A-&gt;&gt;BD: memories(&quot;&quot;)
+    A--&gt;&gt;V: fresh list swap
+    BUS--&gt;&gt;V: SSE beads_changed -&gt; body &#x27;refresh&#x27; -&gt; #memory-list re-fetch
+
+    U-&gt;&gt;V: confirm Forget (X-CSRF-Token)
+    V-&gt;&gt;A: DELETE /api/memory/{key}
+    A-&gt;&gt;A: _check_csrf()
+    A-&gt;&gt;BD: forget(key) -&gt; bd forget key
+    A-&gt;&gt;BUS: broadcast(&quot;beads_changed&quot;)
+    A--&gt;&gt;V: fresh list swap
+</pre>
+<h2 id="api-dependencies">API Dependencies</h2>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Used for</th>
+<th>Doc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/memory?q=</code></td>
+<td>Initial list hydration + debounced server-side search; renders <code>memory_list.html</code></td>
+<td><a href="../Endpoints/MemoryApi.html">MemoryApi</a></td>
+</tr>
+<tr>
+<td><code>POST /api/memory</code></td>
+<td>Create/update (upsert) a memory via <code>bd remember</code>; CSRF-guarded; returns fresh list</td>
+<td><a href="../Endpoints/MemoryApi.html">MemoryApi</a></td>
+</tr>
+<tr>
+<td><code>DELETE /api/memory/{key:path}</code></td>
+<td>Forget a memory via <code>bd forget</code>; CSRF-guarded; returns fresh list</td>
+<td><a href="../Endpoints/MemoryApi.html">MemoryApi</a></td>
+</tr>
+<tr>
+<td><code>GET /api/events</code></td>
+<td>SSE stream; a <code>beads_changed</code> event triggers a <code>refresh</code> on <code>&lt;body&gt;</code>, re-fetching <code>#memory-list</code></td>
+<td><a href="../Endpoints/SseEvents.html">SseEvents</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="states">States</h2>
+<ul>
+<li><strong>Loading</strong> — <code>#memory-list</code> ships with <code>partials/memory_skeleton.html</code>
+(four shimmer cards, <code>aria-hidden=&quot;true&quot;</code>) and <code>aria-busy=&quot;true&quot;</code>. The first
+<code>/api/memory</code> swap replaces the skeleton; <code>base.html</code>'s <code>htmx:afterSettle</code>
+handler flips <code>aria-busy</code> to <code>false</code>. No blank flash, no layout jump.</li>
+<li><strong>Empty (no memories at all)</strong> — <code>memory_list.html</code> renders the count (<code>0 memories</code>) plus a guidance line: <em>&quot;No memories yet — click + New Memory or
+run <code>bd remember</code> to add one.&quot;</em></li>
+<li><strong>Empty (no search matches)</strong> — when <code>q</code> is set but nothing matches, the
+count reads <code>0 matching &quot;&lt;q&gt;&quot;</code> and the body shows <em>&quot;No memories matching
+&quot;&lt;q&gt;&quot;.&quot;</em></li>
+<li><strong>Populated</strong> — count (<code>N memory</code>/<code>N memories</code>, or <code>N matching &quot;&lt;q&gt;&quot;</code>) in an
+<code>aria-live=&quot;polite&quot;</code> region, then a <code>&lt;ul class=&quot;memory-list&quot;&gt;</code> of cards
+(monospace key heading + markdown-rendered <code>.prose</code> body + edit/forget).</li>
+<li><strong>Error (list)</strong> — if <code>bd memories</code> raises, <code>api_memory</code> returns HTTP 200
+with a friendly inline <code>role=&quot;status&quot; aria-live=&quot;polite&quot;</code> message
+(<em>&quot;Couldn't load memories right now. Please try again in a moment.&quot;</em>) rather
+than 500-ing and breaking the swap.</li>
+<li><strong>Error (create)</strong> — empty key/body → HTTP 400 <code>role=&quot;alert&quot;</code> message; a
+<code>bd remember</code> failure → HTTP 500 <code>role=&quot;alert&quot;</code> (<em>&quot;Could not save: …&quot;</em>).</li>
+<li><strong>Error (delete)</strong> — empty key → HTTP 400; a <code>bd forget</code> failure → HTTP 500
+<code>role=&quot;alert&quot;</code> (<em>&quot;Could not delete: …&quot;</em>).</li>
+<li><strong>Error (CSRF)</strong> — a missing/invalid token on POST/DELETE raises HTTP 403
+(&quot;Invalid or missing CSRF token. Please refresh the page and try again.&quot;).</li>
+<li><strong>Error (workspace)</strong> — if <code>_validate_or_warn()</code> fails, <code>GET /memory</code> returns
+<code>error.html</code> with HTTP 500 instead of an empty page.</li>
+</ul>
+<h2 id="accessibility">Accessibility</h2>
+<ul>
+<li><strong>Search control</strong> — wrapped in <code>role=&quot;search&quot;</code>; the input has both a visible
+<code>&lt;label for=&quot;memory-q&quot;&gt;</code> and an <code>aria-label</code>, with <code>autocomplete=off</code>,
+<code>autocapitalize=none</code>, <code>spellcheck=false</code>.</li>
+<li><strong>Live regions</strong> — the result-count <code>&lt;p class=&quot;memory-count&quot;&gt;</code> is
+<code>role=&quot;status&quot; aria-live=&quot;polite&quot;</code> so screen readers hear filter/result
+changes; the list-load error reuses the same polite pattern.</li>
+<li><strong>Loading announcement</strong> — the skeleton is <code>aria-hidden=&quot;true&quot;</code> so assistive
+tech waits for the real list (which self-announces via its count); <code>aria-busy</code>
+on <code>#memory-list</code> marks the region as loading until settle.</li>
+<li><strong>Modals</strong> — native <code>&lt;dialog&gt;</code> elements (<code>showModal()</code>) trap focus
+automatically; each is <code>aria-labelledby</code> its title. The edit flow moves focus
+to the body textarea (<code>bodyInput.focus()</code>).</li>
+<li><strong>Buttons</strong> — <code>+ New Memory</code> has <code>aria-haspopup=&quot;dialog&quot;</code>; each card's
+edit/forget buttons have descriptive <code>aria-label</code>s (&quot;Edit <code>&lt;key&gt;</code>&quot; / &quot;Forget
+<code>&lt;key&gt;</code>&quot;) and <code>title</code>s, so the emoji glyphs aren't the sole label.</li>
+<li><strong>Destructive friction</strong> — forget is a two-step confirm with an explicit
+warning explaining the <code>bd prime</code> injection consequence; nothing deletes on a
+single click.</li>
+<li><strong>Focus visibility</strong> — <code>.memory-search-input:focus-visible</code> draws a 2px
+<code>--brand-blue</code> outline (offset 1px) for keyboard users.</li>
+<li><strong>Nav</strong> — the active page link carries <code>aria-current=&quot;page&quot;</code> and uses three
+non-colour cues (ink + bold + baseline rule), satisfying WCAG 2.2 AA's
+not-by-colour-alone requirement.</li>
+<li><strong>Contrast</strong> — colours come from the shared light/dark token palette in
+<code>styles.css</code>, authored to WCAG AA; the theme toggle exposes <code>aria-pressed</code>.</li>
+</ul>
+<h2 id="responsive-behavior">Responsive Behavior</h2>
+<ul>
+<li>The page uses <code>.layout.layout-memory</code>, which switches from the dashboard's
+flex lane row to a single scrollable block column (<code>display: block; overflow: auto</code>).</li>
+<li><code>.memory-region</code> is a vertical flex column capped at <code>max-width: 760px</code> and
+centered (<code>margin: 0 auto</code>), so the reading column stays comfortable on wide
+screens and fills the viewport on narrow ones (<code>width: 100%</code>).</li>
+<li>Cards (<code>.memory-card</code>) are full-width within that column; keys use
+<code>word-break: break-word</code> so long slugs wrap rather than overflow.</li>
+<li>The shared masthead breakpoints (<code>@media (max-width: 900px)</code> and below in
+<code>styles.css</code>) collapse the two-row masthead for small screens; the memory
+column simply reflows since it's a single linear column with no multi-column
+grid to break.</li>
+<li>Motion respects <code>@media (prefers-reduced-motion: reduce)</code> (skeleton shimmer
+and transitions are disabled), so the loading state degrades gracefully.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/MemoryManagement.html">Memory management (Feature)</a> — the feature
+this page is the UI for.</li>
+<li><a href="../Endpoints/MemoryApi.html">Memory API (/api/memory)</a> — the endpoints this
+page calls for list/search/create/delete.</li>
+<li><a href="../Endpoints/SseEvents.html">SSE events (/api/events)</a> — the live-refresh
+stream that re-fetches the list on <code>.beads/</code> changes.</li>
+<li><a href="BoardPage.html">Board page (/)</a> and <a href="HistoryPage.html">History page (/history)</a> —
+sibling pages sharing the masthead, nav, and shell pattern.</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why
+every memory read/write shells out to <code>bd</code>.</li>
+<li><a href="../Concepts/HtmxPartialsArchitecture.html">HTMX + server-rendered partials</a> —
+the swap/partial pattern this page is built on.</li>
+<li><a href="../Architecture.html">Architecture</a> — system-wide view &amp; API surface.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

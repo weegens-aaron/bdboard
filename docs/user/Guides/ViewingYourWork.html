@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to view your work on the board</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="how-to-view-your-work-on-the-board">How to view your work on the board</h1>
+<h2 id="what-youll-learn">What You'll Learn</h2>
+<p>How to read the board, tell the lanes apart, find the work that's yours to pick
+up, and narrow down what you're looking at.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>The board is the main screen. It shows every in-flight item as a card, grouped
+into lanes by what you'd do with it. It's a <em>recent</em> view — finished work older
+than a few days lives on the <a href="../Reference/HistoryScreen.html">History screen</a>
+instead.</p>
+<h2 id="step-1-get-your-bearings">Step 1: Get your bearings</h2>
+<p>Look at the board top to bottom.</p>
+<ul>
+<li>The <strong>Epics</strong> strip across the top holds the big containers.</li>
+<li>Below it sit the lanes: <strong>Deferred</strong>, <strong>Blocked</strong>, <strong>Ready</strong>,
+<strong>In Progress</strong>, and <strong>Closed</strong>.</li>
+<li>An <strong>Activity</strong> feed shows the most recent changes.</li>
+<li>The bar at the top (the masthead) shows running counts and links to the other
+pages.</li>
+</ul>
+<p><strong>Expected result:</strong> you can name each lane and find the counts in the masthead.</p>
+<h2 id="step-2-find-what-you-can-start-now">Step 2: Find what you can start now</h2>
+<p>Look at the <strong>Ready</strong> lane. Every card there is genuinely available — nothing in
+it is secretly waiting on something else.</p>
+<p><strong>Expected result:</strong> the top card in Ready is the highest-priority, freshest
+thing you could pick up.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>If a card you expected to be ready is sitting in <strong>Blocked</strong> instead, it's
+waiting on another item to finish. See
+<a href="../Concepts/BlockedVsReady.html">Blocked vs ready work</a> for why.</p>
+</div>
+<h2 id="step-3-scan-priority-and-freshness">Step 3: Scan priority and freshness</h2>
+<p>Within each lane, cards are ordered highest-priority and newest first, so you can
+read top-to-bottom.</p>
+<p><strong>Expected result:</strong> the most important, most recent work is always at the top of
+its lane.</p>
+<h2 id="step-4-narrow-the-recently-closed-view">Step 4: Narrow the recently-closed view</h2>
+<p>The <strong>Closed</strong> lane shows only the last few days by default. Use its filter to
+switch between the last 12 hours, 1 day, or 3 days.</p>
+<p><strong>Expected result:</strong> the Closed lane shows only work finished within the window
+you picked, and the masthead's closed count matches it.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>Looking for something finished longer ago? The board deliberately keeps a short
+window. Use the <a href="../Reference/HistoryScreen.html">History screen</a> for the long
+view.</p>
+</div>
+<h2 id="step-5-dig-into-a-card">Step 5: Dig into a card</h2>
+<p>Click any card — on the board, an epic chip, or an activity row — to open its
+full detail.</p>
+<p><strong>Expected result:</strong> a panel opens with everything about that item. See
+<a href="InspectingABead.html">Inspect a bead in detail</a>.</p>
+<h2 id="step-6-let-it-refresh-itself">Step 6: Let it refresh itself</h2>
+<p>Keep the board open while you work. It updates live as things change.</p>
+<p><strong>Expected result:</strong> cards move and counts change without a manual reload. See
+<a href="../Concepts/LiveUpdates.html">Live updates</a>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A lane shows an error instead of cards</td>
+<td>bd isn't available where bdboard is running. See <a href="../Getting-Started/Installation.html">Installation</a>.</td>
+</tr>
+<tr>
+<td>The Closed lane looks empty</td>
+<td>Widen its filter, or check the <a href="../Reference/HistoryScreen.html">History screen</a> for older work.</td>
+</tr>
+<tr>
+<td>A card won't move out of Blocked</td>
+<td>It's waiting on another item; open it to see what. See <a href="../Concepts/BlockedVsReady.html">Blocked vs ready work</a>.</td>
+</tr>
+<tr>
+<td>The board seems frozen</td>
+<td>Refresh once; live updates resume automatically.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-guides">Related Guides</h2>
+<ul>
+<li><a href="InspectingABead.html">Inspect a bead in detail</a></li>
+<li><a href="FilteringClosedWork.html">Filter recently closed work</a></li>
+<li><a href="ReviewingHistory.html">Review history &amp; trends</a></li>
+<li>Reference: <a href="../Reference/BoardScreen.html">The board screen</a></li>
+<li>Concept: <a href="../Concepts/LanesExplained.html">Lanes &amp; how cards are sorted</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

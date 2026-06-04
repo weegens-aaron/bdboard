@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to filter recently closed work</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="how-to-filter-recently-closed-work">How to filter recently closed work</h1>
+<h2 id="what-youll-learn">What You'll Learn</h2>
+<p>How to control which finished work shows on the board, the difference between the
+board's short window and the History screen's long view, and when to use each.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>The board keeps a deliberately short memory of finished work so it stays focused
+on what's current. You can adjust that window with the board's time filter, and
+when you need to look further back, you switch to the
+<a href="../Reference/HistoryScreen.html">History screen</a>.</p>
+<h2 id="step-1-find-the-board-time-filter">Step 1: Find the board time filter</h2>
+<p>At the top of the board, above the lanes, is a small set of range buttons:
+<strong>12h</strong>, <strong>1d</strong>, and <strong>3d</strong>. The default is <strong>1d</strong>.</p>
+<p><strong>Expected result:</strong> you can see the three range buttons, with one highlighted as
+active.</p>
+<h2 id="step-2-choose-a-window">Step 2: Choose a window</h2>
+<p>Click a range to change how far back the <strong>Closed</strong> lane reaches.</p>
+<p><strong>Expected result:</strong> the Closed lane shows only work finished within the window
+you picked, and the closed count in the top bar matches it.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>The board's longest window is 3 days on purpose. It's a <em>recent</em> view — for
+anything older, use the History screen.</p>
+</div>
+<h2 id="step-3-read-the-closed-lane">Step 3: Read the Closed lane</h2>
+<p>The <strong>Closed</strong> lane lists items finished inside the active window, newest-first.</p>
+<p><strong>Expected result:</strong> the most recently finished work sits at the top of the lane.</p>
+<h2 id="step-4-go-further-back-with-history">Step 4: Go further back with History</h2>
+<p>When you need weeks or months instead of days, click <strong>History</strong> in the top bar.
+There you get <strong>7d / 30d / 90d / All</strong> ranges plus a custom date picker.</p>
+<p><strong>Expected result:</strong> the History screen opens with a much longer reach over
+finished work. See <a href="ReviewingHistory.html">Review history and trends</a>.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Rule of thumb: use the <strong>board</strong> filter for &quot;what did we just finish?&quot; and the
+<strong>History</strong> screen for &quot;what got done last week/month?&quot;.</p>
+</div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Closed lane is empty</td>
+<td>Widen the board window, or check the <a href="../Reference/HistoryScreen.html">History screen</a> for older work.</td>
+</tr>
+<tr>
+<td>I can't find something I closed last week</td>
+<td>The board only reaches 3 days; use History with a wider range.</td>
+</tr>
+<tr>
+<td>The closed count doesn't match the lane</td>
+<td>Both follow the same window; switch the filter once to resync.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-guides">Related Guides</h2>
+<ul>
+<li><a href="ReviewingHistory.html">Review history and trends</a></li>
+<li><a href="ViewingYourWork.html">View your work on the board</a></li>
+<li>Reference: <a href="../Reference/BoardScreen.html">The board screen</a></li>
+<li>Reference: <a href="../Reference/HistoryScreen.html">The history screen</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

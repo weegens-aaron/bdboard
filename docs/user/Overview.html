@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bdboard</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../index.html">Docs Home</a> <a href="index.html">User Guide</a> <a href="../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="bdboard">bdboard</h1>
+<blockquote>
+<p>Your project's work, shown as a live board in your browser.</p>
+</blockquote>
+<h2 id="what-is-it">What Is It</h2>
+<p>bdboard is a small tool you run on your own computer. When you start it, it opens
+a page in your web browser that shows everything your team is tracking as a set of
+cards arranged into lanes — what's ready to pick up, what's in progress, what's
+blocked, and what was recently finished. The board refreshes itself the moment
+anything changes, so you never have to reload.</p>
+<p>Alongside the board you also get a <strong>History</strong> page for looking back over time, a
+<strong>Memory</strong> page for your project's saved notes, and a <strong>Formulas</strong> feature for
+spinning up a whole batch of related work items from a template.</p>
+<h2 id="who-is-it-for">Who Is It For</h2>
+<p>bdboard is for anyone who works against a project's issue tracker and wants to
+<em>see the shape of the work</em> instead of running one query after another:</p>
+<ul>
+<li><strong>People picking up work</strong> who want to know &quot;what can I start right now?&quot;</li>
+<li><strong>People reviewing progress</strong> who want a glance-able view of what's moving.</li>
+<li><strong>People looking back</strong> who want to know what got finished last month and how
+long things take.</li>
+</ul>
+<p>You don't need to be the person who set the project up. If someone hands you the
+project folder, you can run bdboard against it.</p>
+<h2 id="key-features">Key Features</h2>
+<ul>
+<li><strong>A live board</strong> that buckets every item into Epics plus the lanes
+<em>Deferred / Blocked / Ready / In Progress / Closed</em>, newest and
+highest-priority first.</li>
+<li><strong>Bead details</strong> — click any card to read everything about an item, see its
+timeline, and (for open items) fix a field right in the page.</li>
+<li><strong>History &amp; trends</strong> — a created-vs-closed chart and a searchable list of
+finished work over weeks or months.</li>
+<li><strong>Memory</strong> — browse, search, add, and remove your project's saved notes.</li>
+<li><strong>Formulas</strong> — pour a template to create a structured batch of related items
+in one go.</li>
+<li><strong>Always current</strong> — every page updates itself live as the project changes,
+in every open tab.</li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>A computer where you can install and run a command-line tool.</li>
+<li>The project folder you want to look at (the one your team tracks work in).</li>
+<li>A modern web browser (bdboard opens one for you).</li>
+</ul>
+<h2 id="getting-started">Getting Started</h2>
+<p>New here? Start with the <a href="Getting-Started/index.html">Getting-Started</a> section —
+it walks you through <a href="Getting-Started/Installation.html">installing bdboard</a> and a
+<a href="Getting-Started/QuickStart.html">Quick Start</a> that gets you to a live board in a
+couple of minutes.</p>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Learn day-to-day tasks in the <a href="Guides/index.html">Guides</a>.</li>
+<li>Follow a full scenario in the <a href="Tutorials/index.html">Tutorials</a>.</li>
+<li>Look up a specific screen or control in the <a href="Reference/index.html">Reference</a>.</li>
+<li>Understand the ideas behind the board in the <a href="Concepts/index.html">Concepts</a>.</li>
+<li>Need a quick answer? Check the <a href="FAQ.html">FAQ</a>.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

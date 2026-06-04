@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to pour a formula</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="how-to-pour-a-formula">How to pour a formula</h1>
+<h2 id="what-youll-learn">What You'll Learn</h2>
+<p>How to open the formula picker, choose a formula, fill in its variables, and pour
+a structured batch of related work items onto the board in one go.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+<li>At least one formula available in your project.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>A <strong>formula</strong> is a template for a whole set of related items. Instead of creating
+them one at a time, you pick a formula, fill in a few blanks, and bdboard creates
+the entire batch — correctly linked — at once. This is the fastest way to spin up
+a repeatable chunk of work.</p>
+<h2 id="step-1-open-the-formula-dialog">Step 1: Open the formula dialog</h2>
+<p>In the top bar, click <strong>+ Pour Formula</strong>.</p>
+<p><strong>Expected result:</strong> a dialog opens and loads the list of available formulas.</p>
+<h2 id="step-2-pick-a-formula">Step 2: Pick a formula</h2>
+<p>Choose a formula from the list.</p>
+<p><strong>Expected result:</strong> the dialog shows that formula's name, a short description,
+and a form for any variables it needs.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Want to see what it will create first? Expand <strong>Show all steps</strong> to preview
+every item the formula will pour, with its title and type.</p>
+</div>
+<h2 id="step-3-fill-in-the-variables">Step 3: Fill in the variables</h2>
+<p>Fill each field. Required fields are marked and must be completed; fields with a
+sensible default come pre-filled, and you can change them.</p>
+<p><strong>Expected result:</strong> every required field has a value, and the <strong>Pour onto
+board</strong> button is ready to use.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>Some formulas take no variables at all — in that case you'll just see a note
+saying so, and you can pour straight away.</p>
+</div>
+<h2 id="step-4-pour">Step 4: Pour</h2>
+<p>Click <strong>Pour onto board</strong>.</p>
+<p><strong>Expected result:</strong> a confirmation appears saying how many items were added, and
+the new items show up on the board automatically — no reload needed. The picker
+resets so you can pour another if you like.</p>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p>If you see a <strong>partial pour</strong> warning instead of a clean confirmation, only
+some of the items landed. Remove the incomplete batch before retrying so you
+don't end up with duplicates.</p>
+</div>
+<h2 id="step-5-find-your-new-work">Step 5: Find your new work</h2>
+<p>Close the dialog and look at the board. The new items appear in their lanes,
+highest-priority and newest first.</p>
+<p><strong>Expected result:</strong> the poured items are visible on the board, ready to pick up.
+See <a href="ViewingYourWork.html">View your work on the board</a>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The formula list is empty</td>
+<td>Your project has no formulas available yet.</td>
+</tr>
+<tr>
+<td>The Pour button won't activate</td>
+<td>A required field is empty — fill every marked field.</td>
+</tr>
+<tr>
+<td>Partial pour warning</td>
+<td>Remove the incomplete batch, then pour again.</td>
+</tr>
+<tr>
+<td>I don't see the new items</td>
+<td>They arrive live; if needed, switch to the board tab — it updates on its own.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-guides">Related Guides</h2>
+<ul>
+<li><a href="ViewingYourWork.html">View your work on the board</a></li>
+<li><a href="InspectingABead.html">Inspect a bead in detail</a></li>
+<li><a href="ManagingMemories.html">Manage project memories</a></li>
+<li>Reference: <a href="../Reference/AppNavigation.html">App navigation and status indicators</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

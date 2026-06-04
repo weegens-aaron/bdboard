@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GET /api/bead/{bead_id} · /audit · /raw</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="get-apibeadbead_id--audit--raw">GET /api/bead/{bead_id} · /audit · /raw</h1>
+<p>The <strong>read trio</strong> behind the bead modal. Three sibling <code>GET</code> routes that turn a
+single bead id into, respectively: the rendered detail modal (<code>/api/bead/{id}</code>),
+its lazily-loaded lifecycle timeline + audit trail (<code>/api/bead/{id}/audit</code>), and
+an unstyled raw-JSON dump of every field bd knows (<code>/api/bead/{id}/raw</code>). They
+are the <strong>read</strong> counterpart to the lone write route
+(<a href="BeadFieldEditApi.html"><code>POST /api/bead/{id}/field</code></a>) and share the same
+<code>BdClient.show_long</code> source and <code>partials/field_row.html</code> row markup, so what you
+read here is byte-identical to what you edit there.</p>
+<p>All three are deliberately <strong>failure-tolerant</strong>: the modal falls back to the
+cached list snapshot when the live <code>bd show</code> is unavailable, the audit endpoint
+renders a friendly &quot;unavailable&quot; partial instead of breaking the already-open
+modal, and <code>/raw</code> returns an <code>{&quot;error&quot;: …}</code> object rather than a 5xx. The only
+hard failure is a genuinely unknown bead, which yields a <code>404</code> modal-error
+fragment.</p>
+<h2 id="overview">Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/bead/{bead_id}</code></td>
+<td>None (localhost single-user; no token, read-only)</td>
+<td>Render the bead detail modal (<code>partials/bead_modal.html</code>) from <code>bd show {id} --long --json</code>, falling back to the cached snapshot when live data is down; <code>404</code> HTML fragment if the bead is unknown</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/bead/{bead_id}/audit</code></td>
+<td>None</td>
+<td>Lazily render the lifecycle timeline + field-by-field audit trail (<code>partials/bead_audit.html</code>) from <code>bd history {id} --json</code>; the timeline swaps out-of-band into <code>#lifecycle-slot</code>. Always <code>200</code> — bd failures render a graceful &quot;unavailable&quot; partial</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/bead/{bead_id}/raw</code></td>
+<td>None</td>
+<td>Escape hatch: dump the full bead object as raw JSON (<code>bd show {id} --long --json</code>), falling back to the snapshot, then to <code>{&quot;error&quot;: …}</code>. The <strong>only</strong> JSON-returning route in bdboard</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>Like every bdboard route, these are <strong>localhost, single-user, read-only</strong></p>
+<blockquote>
+<p>endpoints with no login, no cookie, and no per-user authorization. Being GETs
+with no side effects, they carry <strong>no CSRF token</strong> (unlike the mutating
+<a href="BeadFieldEditApi.html">field-edit route</a>).</p>
+</blockquote>
+</div>
+<h2 id="request">Request</h2>
+<p>All three are plain <code>GET</code>s — no request body, no <code>Content-Type</code>, no form fields.
+The handlers are <code>api_bead</code>, <code>api_bead_audit</code>, and <code>api_bead_raw</code> in
+<code>src/bdboard/app.py</code>. The browser issues the HTMX (<code>hx-get</code>) for the modal
+flow; <code>/raw</code> is normally opened in a new tab from the modal header's &quot;raw JSON&quot;
+link.</p>
+<h3 id="pathquery-params">Path/Query Params</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>In</th>
+<th>Type</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bead_id</code></td>
+<td>path</td>
+<td>string</td>
+<td>Yes</td>
+<td>The bead to read, e.g. <code>bdboard-mol-bfs.16</code>. Passed straight to <code>bd show {bead_id} --long</code> / <code>bd history {bead_id}</code> and, on the fallback path, to <code>store.bead(bead_id)</code>. An unknown id is not an error to bd's subprocess per se — it surfaces as an empty/None result that the handler converts to a <code>404</code> (modal) or an <code>{&quot;error&quot;: …}</code> object (raw).</td>
+</tr>
+</tbody>
+</table>
+<p>There are no query params on any of the three routes.</p>
+<h3 id="headers">Headers</h3>
+<table>
+<thead>
+<tr>
+<th>Header</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HX-Request</code></td>
+<td>No</td>
+<td>Sent automatically by HTMX on the modal/audit fetches. Not inspected by these handlers — the response is the same fragment regardless, so a bare <code>curl</code> works identically.</td>
+</tr>
+<tr>
+<td><code>Accept</code></td>
+<td>No</td>
+<td>Ignored. <code>/api/bead/{id}</code> and <code>/audit</code> always return <code>text/html</code> (<code>HTMLResponse</code>); <code>/raw</code> always returns <code>application/json</code> (<code>JSONResponse</code>). Content type is fixed per route, not content-negotiated.</td>
+</tr>
+</tbody>
+</table>
+<p>There are no required headers — these are unauthenticated reads.</p>
+<h3 id="body">Body</h3>
+<p>None. All three routes are <code>GET</code> with no request body. For completeness, the
+<em>shape the modal flow exchanges</em> is: the client sends only a path, and the
+server returns HTML (or JSON for <code>/raw</code>). There is no JSON request skeleton to
+document.</p>
+<pre><code class="language-json">{}
+</code></pre>
+<h3 id="validation-rules">Validation Rules</h3>
+<p>These reads validate <strong>availability</strong>, not input — there is no user-supplied
+body to whitelist or sanitize. The &quot;rules&quot; are the fallback/escalation ladder
+each handler applies to the <code>(value, error)</code> pair returned by <code>BdClient</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Rule</th>
+<th>Error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bead_id</code> (modal)</td>
+<td><code>show_long</code> must return a bead <strong>or</strong> the cached <code>store.bead(bead_id)</code> must resolve</td>
+<td><code>404</code> HTML — <code>&lt;div class='modal-error'&gt;We couldn't find that bead. Please refresh the board and try again.&lt;/div&gt;</code></td>
+</tr>
+<tr>
+<td>live vs cached (modal)</td>
+<td>If <code>show_long</code> failed (<code>full is None and err</code>) <strong>but</strong> the cached snapshot resolved, render the cached bead with a <code>warning</code> banner</td>
+<td>No error — <code>200</code> with <code>source=&quot;Cached snapshot&quot;</code> and a <code>modal-warning</code> banner</td>
+</tr>
+<tr>
+<td><code>bead_id</code> (audit)</td>
+<td><code>history</code> returning <code>None</code> is <strong>not</strong> a hard error — render <code>bead_audit.html</code> with <code>entries=None</code>, <code>error=&lt;msg&gt;</code></td>
+<td>Inline partial — <code>Audit history is temporarily unavailable.</code> (still <code>200</code>)</td>
+</tr>
+<tr>
+<td><code>bead_id</code> (raw)</td>
+<td><code>show_long</code> returning <code>None</code> falls back to <code>store.bead(bead_id)</code>, then to a synthesized error object</td>
+<td><code>200</code> JSON — <code>{&quot;error&quot;: &quot;&lt;bd err or 'not found'&gt;&quot;}</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="rate-limit">Rate Limit</h3>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Window</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>None explicit; reads are TTL-cached (<code>SUCCESS_TTL_S=10s</code>, <code>ERROR_TTL_S=30s</code>) and in-flight-deduped, and all <code>bd</code> subprocesses are serialized by <code>BdClient._subprocess_gate</code></td>
+<td>per-process</td>
+<td>A burst of identical reads for one bead collapses to a single <code>bd</code> subprocess (cache hit or in-flight await); concurrent reads for <em>different</em> beads queue on the single-writer gate rather than running in parallel</td>
+</tr>
+</tbody>
+</table>
+<h2 id="response">Response</h2>
+<p><code>/api/bead/{id}</code> and <code>/audit</code> return <strong>HTML fragments</strong> (<code>HTMLResponse</code>) for
+HTMX to swap; <code>/raw</code> returns <strong>JSON</strong> (<code>JSONResponse</code>). None return a JSON
+envelope around the HTML — the HTML <em>is</em> the body.</p>
+<h3 id="success">Success</h3>
+<p><strong><code>200 OK</code> — <code>GET /api/bead/{bead_id}</code></strong> renders <code>partials/bead_modal.html</code>: the
+modal header (id, priority badge, status chip, title, optional cached-data
+warning, and a &quot;raw JSON&quot; link), an empty <code>#lifecycle-slot</code> (filled later by the
+out-of-band audit swap), the <code>field-grid</code> of <code>_ordered_fields(bead)</code> rows, and an
+audit <code>&lt;section&gt;</code> that self-fetches <code>/audit</code> via <code>hx-trigger=&quot;load&quot;</code>.
+Conceptually:</p>
+<pre><code class="language-json">{
+  &quot;status&quot;: 200,
+  &quot;content_type&quot;: &quot;text/html&quot;,
+  &quot;body&quot;: &quot;&lt;div class=\&quot;modal-backdrop\&quot;&gt;&lt;article class=\&quot;modal\&quot;&gt;&lt;header class=\&quot;modal-head\&quot;&gt;…id, priority badge, status chip, title…&lt;div class=\&quot;modal-source muted\&quot;&gt;view: Live details · &lt;a href=\&quot;/api/bead/{id}/raw\&quot;&gt;raw JSON&lt;/a&gt;&lt;/div&gt;&lt;/header&gt;&lt;div class=\&quot;modal-scroll\&quot;&gt;&lt;div id=\&quot;lifecycle-slot\&quot;&gt;&lt;/div&gt;&lt;section class=\&quot;modal-body\&quot;&gt;…field_row.html per field…&lt;/section&gt;&lt;section hx-get=\&quot;/api/bead/{id}/audit\&quot; hx-trigger=\&quot;load\&quot;&gt;…loading history…&lt;/section&gt;&lt;/div&gt;&lt;/article&gt;&lt;/div&gt;&quot;
+}
+</code></pre>
+<p>The template context the handler passes is:</p>
+<pre><code class="language-json">{
+  &quot;bead&quot;: { &quot;id&quot;: &quot;…&quot;, &quot;title&quot;: &quot;…&quot;, &quot;status&quot;: &quot;…&quot;, &quot;updated_at&quot;: &quot;…&quot;, &quot;...&quot;: &quot;…all bd fields…&quot; },
+  &quot;fields&quot;: [ { &quot;key&quot;: &quot;title&quot;, &quot;val&quot;: &quot;…&quot;, &quot;kind&quot;: &quot;scalar&quot;, &quot;editable&quot;: true, &quot;editor&quot;: &quot;text&quot;, &quot;flag&quot;: &quot;--title&quot;, &quot;enum_options&quot;: null, &quot;append_only&quot;: false } ],
+  &quot;source&quot;: &quot;Live details&quot;,
+  &quot;warning&quot;: null
+}
+</code></pre>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p><code>source</code> is <code>&quot;Live details&quot;</code> on the happy path and <code>&quot;Cached snapshot&quot;</code> on the
+fallback path. <code>warning</code> is non-null only when live data failed <strong>and</strong> a
+cached copy was served: <code>&quot;Showing cached details while live data is temporarily unavailable.&quot;</code></p>
+</div>
+<p><strong><code>200 OK</code> — <code>GET /api/bead/{bead_id}/audit</code></strong> renders <code>partials/bead_audit.html</code>,
+which carries an out-of-band <code>#lifecycle-slot</code> swap (the lifecycle timeline) plus
+the in-place audit trail. The template context:</p>
+<pre><code class="language-json">{
+  &quot;entries&quot;: [ { &quot;when&quot;: &quot;2026-06-04T10:24:56Z&quot;, &quot;who&quot;: &quot;Aaron Weegens&quot;, &quot;what&quot;: &quot;status: open → in_progress, set started_at&quot;, &quot;commit&quot;: &quot;4272e1fa&quot; } ],
+  &quot;timeline&quot;: [ { &quot;status&quot;: &quot;open&quot;, &quot;when&quot;: &quot;2026-06-04T09:00:00Z&quot;, &quot;who&quot;: &quot;Aaron Weegens&quot;, &quot;commit&quot;: &quot;deadbeef&quot;, &quot;dwell_h&quot;: 1.4 }, { &quot;status&quot;: &quot;in_progress&quot;, &quot;when&quot;: &quot;2026-06-04T10:24:56Z&quot;, &quot;who&quot;: &quot;Aaron Weegens&quot;, &quot;commit&quot;: &quot;4272e1fa&quot;, &quot;dwell_h&quot;: null } ],
+  &quot;error&quot;: null
+}
+</code></pre>
+<div class="callout callout-important"><p class="callout-title">Important</p>
+<p><code>entries</code> (newest-first, no-op dolt commits filtered by <code>_shape_audit</code>) and
+<code>timeline</code> (oldest-first, status-only stops with <code>dwell_h</code> from
+<code>derive.status_timeline</code>) are derived from the <strong>same</strong> <code>bd history</code> payload —
+one subprocess call feeds both views. See
+<a href="../Concepts/DeriveLayer.html">Derive layer</a>.</p>
+</div>
+<p><strong><code>200 OK</code> — <code>GET /api/bead/{bead_id}/raw</code></strong> returns the full bead object exactly
+as <code>bd show {id} --long --json</code> emits it (after unwrapping the single-element
+array). Real top-level field names:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;bdboard-mol-bfs.16&quot;,
+  &quot;title&quot;: &quot;FlowDoc maintainer: Endpoint: Bead detail API (/api/bead/{id})&quot;,
+  &quot;description&quot;: &quot;Write __docs/Endpoints/BeadDetailApi.md …&quot;,
+  &quot;acceptance_criteria&quot;: &quot;file exists at the PascalCase path …&quot;,
+  &quot;issue_type&quot;: &quot;task&quot;,
+  &quot;status&quot;: &quot;in_progress&quot;,
+  &quot;priority&quot;: 2,
+  &quot;assignee&quot;: &quot;Aaron Weegens&quot;,
+  &quot;owner&quot;: &quot;Aaron Weegens&quot;,
+  &quot;created_by&quot;: &quot;Aaron Weegens&quot;,
+  &quot;created_at&quot;: &quot;2026-06-04T09:00:00Z&quot;,
+  &quot;started_at&quot;: &quot;2026-06-04T10:24:56Z&quot;,
+  &quot;updated_at&quot;: &quot;2026-06-04T10:24:56Z&quot;,
+  &quot;closed_at&quot;: null,
+  &quot;close_reason&quot;: null,
+  &quot;parent&quot;: &quot;bdboard-mol-bfs&quot;,
+  &quot;labels&quot;: [&quot;discover&quot;, &quot;docs&quot;, &quot;flowdoc&quot;],
+  &quot;external_ref&quot;: null,
+  &quot;estimate&quot;: null,
+  &quot;dependencies&quot;: [],
+  &quot;dependents&quot;: [],
+  &quot;dependency_count&quot;: 0,
+  &quot;dependent_count&quot;: 0,
+  &quot;comments&quot;: [],
+  &quot;comment_count&quot;: 0,
+  &quot;metadata&quot;: {}
+}
+</code></pre>
+<p>When live and cache both fail, <code>/raw</code> instead returns <code>{&quot;error&quot;: &quot;&lt;bd error or 'not found'&gt;&quot;}</code> — still <code>200</code>.</p>
+<h3 id="errors">Errors</h3>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Code (response body / detail)</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>404</td>
+<td><code>&lt;div class='modal-error'&gt;We couldn't find that bead. Please refresh the board and try again.&lt;/div&gt;</code></td>
+<td><code>GET /api/bead/{id}</code>: <code>show_long</code> returned <code>None</code> <strong>and</strong> the cached <code>store.bead(bead_id)</code> lookup also returned <code>None</code> (unknown id, or bd down with an empty snapshot).</td>
+</tr>
+<tr>
+<td>200 (degraded)</td>
+<td><code>partials/bead_modal.html</code> with <code>source=&quot;Cached snapshot&quot;</code> + <code>modal-warning</code> banner</td>
+<td><code>GET /api/bead/{id}</code>: live <code>show_long</code> failed but the cached snapshot had the bead — served stale rather than failing.</td>
+</tr>
+<tr>
+<td>200 (degraded)</td>
+<td><code>partials/bead_audit.html</code> → <code>Audit history is temporarily unavailable.</code></td>
+<td><code>GET /api/bead/{id}/audit</code>: <code>bd history</code> failed/timed out (<code>entries is None</code>). Deliberately not a 5xx so the already-open modal is never broken by a flaky history call.</td>
+</tr>
+<tr>
+<td>200 (degraded)</td>
+<td><code>{&quot;error&quot;: &quot;&lt;bd err or 'not found'&gt;&quot;}</code></td>
+<td><code>GET /api/bead/{id}/raw</code>: both live and cached lookups failed.</td>
+</tr>
+<tr>
+<td>(caught upstream)</td>
+<td><code>RuntimeError(&quot;Request timed out …&quot;)</code> / <code>RuntimeError(&quot;Could not load bead data …&quot;)</code></td>
+<td>A <code>bd</code> subprocess timed out (<code>SHOW_TIMEOUT_S</code>/<code>HISTORY_TIMEOUT_S</code> = 8s) or exited non-zero inside <code>_run_json</code>; <code>_cached</code> converts it to the <code>(None, err)</code> pair the handlers degrade on — never raised to the client.</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p>Because <code>_cached</code> stores <strong>failures</strong> too (with the longer <code>ERROR_TTL_S=30s</code>),
+a bead that just 404'd or whose <code>bd show</code> errored stays in the degraded state
+for up to 30s even if bd recovers immediately. The live-refresh SSE pulse and
+<code>invalidate_caches()</code> (fired on detected workspace changes) are what clear it
+early. See <a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a>.</p>
+</div>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>File path</th>
+<th>Symbol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modal route handler (live → cached fallback → 404)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_bead</code></td>
+</tr>
+<tr>
+<td>Audit/lifecycle route handler (history → shape + timeline → graceful partial)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_bead_audit</code></td>
+</tr>
+<tr>
+<td>Raw-JSON escape-hatch handler</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_bead_raw</code></td>
+</tr>
+<tr>
+<td>Live full-detail read (<code>bd show {id} --long --json</code>, array-unwrapped, cache-bypass via <code>fresh=</code>)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.show_long</code></td>
+</tr>
+<tr>
+<td>Audit history read (<code>bd history {id} --json</code>, newest-first)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.history</code></td>
+</tr>
+<tr>
+<td>TTL cache + in-flight dedup wrapper</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient._cached</code> / <code>_show_cache</code> / <code>_history_cache</code></td>
+</tr>
+<tr>
+<td>Serialized JSON subprocess (single-writer gate, fd-leak-safe drain)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient._run_json</code> / <code>_subprocess_gate</code></td>
+</tr>
+<tr>
+<td>Cache TTLs / per-call timeouts</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>SUCCESS_TTL_S</code> / <code>ERROR_TTL_S</code> / <code>SHOW_TIMEOUT_S</code> / <code>HISTORY_TIMEOUT_S</code></td>
+</tr>
+<tr>
+<td>Cached-snapshot fallback source</td>
+<td><code>src/bdboard/store.py</code></td>
+<td><code>store.snapshot</code> / <code>store.bead</code></td>
+</tr>
+<tr>
+<td>Modal field ordering + render/editability hints</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>_ordered_fields</code> / <code>_field_row</code> / <code>_classify_field</code> / <code>_FIELD_ORDER</code></td>
+</tr>
+<tr>
+<td>Audit diff shaping (skip no-op dolt commits, force origin &quot;created&quot; row)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>_shape_audit</code> / <code>_diff_issue</code> / <code>_short</code></td>
+</tr>
+<tr>
+<td>Status-transition timeline + dwell time (pure over the same history payload)</td>
+<td><code>src/bdboard/derive/history.py</code></td>
+<td><code>status_timeline</code></td>
+</tr>
+<tr>
+<td>Modal template (header, lifecycle slot, field grid, async audit section)</td>
+<td><code>src/bdboard/templates/partials/bead_modal.html</code></td>
+<td>whole template</td>
+</tr>
+<tr>
+<td>Per-field row markup (shared with the field-edit route)</td>
+<td><code>src/bdboard/templates/partials/field_row.html</code></td>
+<td><code>field_form</code> macro + <code>#field-row-&lt;key&gt;</code></td>
+</tr>
+<tr>
+<td>Audit/lifecycle template (OOB <code>#lifecycle-slot</code> + in-place audit list)</td>
+<td><code>src/bdboard/templates/partials/bead_audit.html</code></td>
+<td>whole template</td>
+</tr>
+<tr>
+<td>Priority badge in modal header</td>
+<td><code>src/bdboard/templates/partials/bead_priority_badge.html</code></td>
+<td>whole template</td>
+</tr>
+<tr>
+<td>Regression tests (audit fragment, card <code>hx-get</code>)</td>
+<td><code>tests/test_api_history.py</code></td>
+<td>bead/audit render assertions</td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid">sequenceDiagram
+    participant U as User (browser)
+    participant H as HTMX
+    participant Rm as api_bead (app.py)
+    participant Ra as api_bead_audit (app.py)
+    participant BD as BdClient (bd.py)
+    participant Cache as _show_cache / _history_cache
+    participant Proc as bd show/history (subprocess)
+    participant St as store (snapshot fallback)
+    participant Tm as bead_modal.html
+    participant Ta as bead_audit.html
+
+    U-&gt;&gt;H: Click bead card (hx-get /api/bead/{id} → #bead-modal)
+    H-&gt;&gt;Rm: GET /api/bead/{id}
+    Rm-&gt;&gt;BD: show_long(id)
+    BD-&gt;&gt;Cache: fresh entry?
+    alt cache hit
+        Cache--&gt;&gt;BD: cached bead
+    else miss
+        BD-&gt;&gt;Proc: bd show {id} --long --json (gated)
+        Proc--&gt;&gt;BD: JSON array / non-zero exit
+        BD-&gt;&gt;Cache: store (value, err)
+    end
+    alt live ok
+        BD--&gt;&gt;Rm: bead (source=&quot;Live details&quot;)
+    else live failed
+        Rm-&gt;&gt;St: snapshot() + bead(id)
+        alt cached hit
+            St--&gt;&gt;Rm: bead (source=&quot;Cached snapshot&quot;, warning set)
+        else not found
+            St--&gt;&gt;Rm: None
+            Rm--&gt;&gt;H: 404 modal-error fragment
+        end
+    end
+    Rm-&gt;&gt;Tm: render modal (_ordered_fields, source, warning)
+    Tm--&gt;&gt;Rm: modal HTML (empty #lifecycle-slot, audit section)
+    Rm--&gt;&gt;H: 200 modal fragment
+    H-&gt;&gt;U: swap into #bead-modal
+
+    Note over H,Ra: audit section self-fetches on load
+    H-&gt;&gt;Ra: GET /api/bead/{id}/audit
+    Ra-&gt;&gt;BD: history(id)
+    BD-&gt;&gt;Proc: bd history {id} --json (gated, cached)
+    Proc--&gt;&gt;BD: entries (newest-first) / err
+    alt history ok
+        BD--&gt;&gt;Ra: entries
+        Ra-&gt;&gt;Ra: _shape_audit(entries) + derive.status_timeline(entries)
+        Ra-&gt;&gt;Ta: render (entries, timeline)
+    else history failed
+        BD--&gt;&gt;Ra: None, err
+        Ra-&gt;&gt;Ta: render (entries=None, error)
+    end
+    Ta--&gt;&gt;Ra: audit HTML (+ OOB #lifecycle-slot timeline)
+    Ra--&gt;&gt;H: 200 audit fragment
+    H-&gt;&gt;U: swap audit in place + OOB lifecycle at top
+</pre>
+<h2 id="example">Example</h2>
+<p>Open the modal fragment for a bead (what HTMX does on a card click):</p>
+<pre><code class="language-bash">curl -i &#x27;http://127.0.0.1:8765/api/bead/bdboard-mol-bfs.16&#x27; \
+  -H &#x27;HX-Request: true&#x27;
+</code></pre>
+<p>Returns <code>200</code> with the <code>&lt;div class=&quot;modal-backdrop&quot;&gt;…&lt;/div&gt;</code> modal fragment. An
+unknown id returns <code>404</code> with the <code>&lt;div class='modal-error'&gt;…&lt;/div&gt;</code> fragment.</p>
+<p>Fetch the lazily-loaded lifecycle timeline + audit trail (what the modal's audit
+section self-fetches on load):</p>
+<pre><code class="language-bash">curl -i &#x27;http://127.0.0.1:8765/api/bead/bdboard-mol-bfs.16/audit&#x27;
+</code></pre>
+<p>Returns <code>200</code> with the <code>#lifecycle-slot</code> OOB timeline plus the in-place audit
+list — or, if <code>bd history</code> is down, the friendly &quot;Audit history is temporarily
+unavailable&quot; partial (still <code>200</code>).</p>
+<p>Dump the full raw bead JSON (the modal header's &quot;raw JSON&quot; link), pretty-printed:</p>
+<pre><code class="language-bash">curl -s &#x27;http://127.0.0.1:8765/api/bead/bdboard-mol-bfs.16/raw&#x27; | jq .
+</code></pre>
+<p>Returns the complete <code>bd show --long</code> object, or <code>{&quot;error&quot;: &quot;not found&quot;}</code> for an
+unknown id.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="BeadFieldEditApi.html">Bead field-edit API (<code>POST /api/bead/{id}/field</code>)</a> — the
+<strong>write</strong> sibling that edits the very field rows this trio renders; both share
+<code>BdClient.show_long</code> and <code>partials/field_row.html</code>.</li>
+<li><a href="../Features/BeadDetailAndInlineEditing.html">Bead detail &amp; inline editing (Feature)</a> —
+the user-facing feature these read routes power (the shared modal, lazy
+audit/lifecycle, and raw-JSON escape hatch).</li>
+<li><a href="../Views/BoardPage.html">Board page (<code>/</code>)</a> — opens the shared <code>#bead-modal</code> from
+epic chips, bead cards, and activity rows via <code>hx-get=&quot;/api/bead/{id}&quot;</code>.</li>
+<li><a href="../Views/HistoryPage.html">History page (<code>/history</code>)</a> — opens the same modal for
+closed beads via <code>hx-get=&quot;/api/bead/{id}&quot;</code>.</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why
+the modal/audit/raw reads bottom out in <code>bd show</code> / <code>bd history</code> rather than a
+re-implemented store.</li>
+<li><a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a> —
+the TTL cache, error caching, and the <code>snapshot()</code>/<code>bead(id)</code> fallback the
+modal and raw routes degrade onto.</li>
+<li><a href="../Concepts/DeriveLayer.html">Derive layer (pure view shaping)</a> — the
+<code>status_timeline</code> enrichment the audit endpoint renders alongside the
+field-diff audit rows.</li>
+<li><a href="../Concepts/HtmxPartialsArchitecture.html">HTMX + server-rendered partials</a> —
+the <code>hx-get</code>/<code>hx-trigger=&quot;load&quot;</code> modal-then-audit pattern and the out-of-band
+<code>#lifecycle-slot</code> swap idiom; also documents <code>/raw</code> as the sole JSON route.</li>
+<li><a href="index.html">Endpoints index</a> · <a href="../Architecture.html#api-surface">Architecture</a> ·
+<a href="../index.html">Manifest</a> — the API surface and doc catalog this item sits in.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live updates</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="live-updates">Live updates</h1>
+<h2 id="what-is-it">What Is It</h2>
+<p><strong>Live updates</strong> mean the board, the History screen, and the Memory screen keep
+themselves current on their own. When work changes — yours or a teammate's — the
+pages reflect it within moments, with no reloading and no refresh button.</p>
+<h2 id="why-it-matters">Why It Matters</h2>
+<p>A board is only trustworthy if it's true <em>right now</em>. If you had to remember to
+reload, you'd constantly be looking at a stale picture and second-guessing it.
+Live updates mean what you see is what's actually happening, so you can leave a
+board open all day and trust it as your single source of truth — even across
+several open tabs.</p>
+<h2 id="how-it-works">How It Works</h2>
+<p>Picture a noticeboard with a quiet assistant standing beside it. Whenever
+anything about the project changes, the assistant swaps the affected card for an
+up-to-date one — you just see it change.</p>
+<p>bdboard works the same way:</p>
+<ul>
+<li>It watches your project for changes behind the scenes.</li>
+<li>When something changes, only the affected parts of the page are updated — a
+card moves lanes, a count ticks up, a memory appears — rather than reloading
+the whole page.</li>
+<li>Every open tab gets the same update, so two people (or two windows) never drift
+out of sync.</li>
+</ul>
+<p>Because of this, actions you take in bdboard show their results automatically.
+Claim an item and it slides from Ready to In Progress; pour a formula and the new
+items appear; close something and the counts adjust — all without you reloading.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>If a page ever looks frozen, a single manual refresh re-establishes the live
+connection and updates resume on their own.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li>Concept: <a href="LanesExplained.html">Lanes and how cards are sorted</a></li>
+<li>Concept: <a href="BlockedVsReady.html">Blocked vs ready work</a></li>
+<li>Guide: <a href="../Guides/ViewingYourWork.html">View your work on the board</a></li>
+<li>Reference: <a href="../Reference/AppNavigation.html">App navigation and status indicators</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

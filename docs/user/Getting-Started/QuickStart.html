@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick Start: Open your first board</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="quick-start-open-your-first-board">Quick Start: Open your first board</h1>
+<h2 id="what-youll-achieve">What You'll Achieve</h2>
+<p>A live board open in your browser, showing your project's work, so you can tell
+at a glance what's ready to pick up.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard installed — see <a href="Installation.html">Installation</a>.</li>
+<li>A terminal open inside the project folder you want to look at.</li>
+</ul>
+<h2 id="step-1-start-bdboard">Step 1: Start bdboard</h2>
+<p>In your terminal, from inside the project folder, run:</p>
+<pre><code class="language-sh">bdboard
+</code></pre>
+<p><strong>Expected result:</strong> a browser tab opens with your project's board, and your
+terminal prints the address it's serving. If a tab doesn't open on its own, open
+the address the terminal prints.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Already have something running on the usual address? bdboard quietly picks the
+next free one and prints it — you don't have to do anything.</p>
+</div>
+<h2 id="step-2-read-the-lanes">Step 2: Read the lanes</h2>
+<p>Look across the board. Your work is grouped into columns called <strong>lanes</strong>:</p>
+<ul>
+<li><strong>Epics</strong> — the big containers, shown in a strip across the top.</li>
+<li><strong>Deferred</strong> — work intentionally put off for now.</li>
+<li><strong>Blocked</strong> — work that's waiting on something else to finish first.</li>
+<li><strong>Ready</strong> — work you can pick up right now.</li>
+<li><strong>In Progress</strong> — work someone is actively doing.</li>
+<li><strong>Closed</strong> — work finished recently.</li>
+</ul>
+<p><strong>Expected result:</strong> every item your project tracks appears as a card in exactly
+one lane, highest-priority and newest first.</p>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>You can't drag cards between lanes. A card's lane is decided automatically from
+its state and what it's waiting on. To learn why, see
+<a href="../Concepts/LanesExplained.html">Lanes &amp; how cards are sorted</a>.</p>
+</div>
+<h2 id="step-3-open-a-card">Step 3: Open a card</h2>
+<p>Click any card.</p>
+<p><strong>Expected result:</strong> a panel opens showing everything about that item — its full
+description, its history, and (if it's still open) controls to fix a field. Close
+the panel to return to the board.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Want the details on editing? See
+<a href="../Guides/InspectingABead.html">Inspect a bead in detail</a> and
+<a href="../Guides/EditingABead.html">Edit a bead's fields</a>.</p>
+</div>
+<h2 id="step-4-watch-it-stay-current">Step 4: Watch it stay current</h2>
+<p>Leave the board open. As work changes in your project — yours or a teammate's —
+the board updates on its own.</p>
+<p><strong>Expected result:</strong> cards move, appear, and disappear without you reloading the
+page.</p>
+<h2 id="step-5-optional-adjust-how-it-launches">Step 5 (optional): Adjust how it launches</h2>
+<p>You can change a couple of things about how bdboard starts:</p>
+<ul>
+<li><strong>Point it at a different project</strong> without changing folders first, by passing
+the folder you want.</li>
+<li><strong>Stop the browser tab from opening automatically</strong>, if you'd rather open it
+yourself.</li>
+</ul>
+<p><strong>Expected result:</strong> bdboard launches the way you prefer. Run <code>bdboard --help</code>
+to see the available options.</p>
+<h2 id="common-issues">Common Issues</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No browser tab opened</td>
+<td>Open the address bdboard printed in the terminal.</td>
+</tr>
+<tr>
+<td>Lanes show errors</td>
+<td>bd isn't available. See <a href="Installation.html">Installation</a>.</td>
+</tr>
+<tr>
+<td>The board is empty</td>
+<td>Pull in the project history once with <code>bd bootstrap --yes</code>, then refresh.</td>
+</tr>
+<tr>
+<td>Stale-looking board</td>
+<td>Refresh once; if it persists, the project may simply have no recent activity — check the <a href="../Reference/HistoryScreen.html">History screen</a>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-you-learned">What You Learned</h2>
+<p>You started bdboard, read the lanes, opened a card, and saw the board keep itself
+up to date.</p>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Learn the board in depth: <a href="../Guides/ViewingYourWork.html">View your work on the board</a>.</li>
+<li>Walk through a full first session: <a href="../Tutorials/FirstSession.html">Your first bdboard session</a>.</li>
+<li>Look up any screen or control in the <a href="../Reference/index.html">Reference</a>.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

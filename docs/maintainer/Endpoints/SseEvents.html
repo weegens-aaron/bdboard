@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GET /api/events</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="get-apievents">GET /api/events</h1>
+<p>The <strong>live signal</strong> behind bdboard's &quot;close-as-you-watch&quot; feel. A single
+long-lived <strong>Server-Sent Events</strong> stream over which the server pushes one
+<code>beads_changed</code> event whenever the <code>.beads/</code> workspace changes underneath the
+process. The browser opens it <strong>once per page load</strong> (<code>EventSource('/api/events')</code>
+in <code>base.html</code>); each <code>beads_changed</code> is translated into a synthetic DOM
+<code>refresh</code> event on <code>&lt;body&gt;</code>, and every region wired with
+<code>hx-trigger=&quot;load, refresh from:body&quot;</code> re-fetches its HTML partial. No
+polling, no SPA, no client framework.</p>
+<p>Unlike every <em>other</em> bdboard route — which return one-shot HTML fragments — this
+endpoint returns a <code>text/event-stream</code> <code>StreamingResponse</code> that never completes
+until the client disconnects. It carries <strong>no application data</strong> in its frames:
+the event is a pure <em>trigger</em>, deliberately content-free, so the actual fresh
+state always comes from the regions re-fetching <code>/api/lanes</code>, <code>/api/counts</code>,
+<code>/api/history</code>, etc. against the <a href="../Concepts/StoreSnapshotCache.html">Store</a>
+snapshot. That keeps the broadcast path O(1) and the data path single-sourced.</p>
+<p>Two timing concerns shape the stream:</p>
+<ul>
+<li><strong>Bootstrap.</strong> The first frame a freshly-connected client receives is a
+synthetic <code>beads_changed: bootstrap</code>, so a brand-new tab paints immediately
+instead of waiting for the first real file change.</li>
+<li><strong>Heartbeat.</strong> When no event arrives for 15s the server emits an SSE comment
+line (<code>: heartbeat</code>) to keep proxies / load balancers from reaping the idle
+long-lived connection (typical idle timeout is 30–60s, so 15s has comfortable
+margin). A comment line fires <strong>no</strong> client-side event handler.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Auth</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/events</code></td>
+<td>None (localhost single-user tool); read-only, no body, no CSRF token</td>
+<td>Open a long-lived <code>text/event-stream</code> over which the server pushes <code>beads_changed</code> events (plus a <code>bootstrap</code> on connect and <code>: heartbeat</code> comments every 15s). Each <code>beads_changed</code> triggers the browser to re-fetch its live HTML regions, giving the board/history/memory pages live updates without polling.</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>This is the <strong>only</strong> bdboard route whose <code>media_type</code> is <code>text/event-stream</code>
+rather than <code>text/html</code>. It also never returns JSON — the SSE frames carry a
+content-free trigger, not application data (the real state is re-fetched by the
+<a href="LanesApi.html">Lanes</a> / <a href="HistoryApi.html">History</a> / <a href="MemoryApi.html">Memory</a>
+regions). The connection is open-ended: it streams until the client
+disconnects or the server shuts down.</p>
+</div>
+<div class="callout callout-important"><p class="callout-title">Important</p>
+<p>The event is a <strong>dumb trigger by design</strong> (bdboard-ywep / the
+<a href="../Concepts/HtmxPartialsArchitecture.html">HTMX partials architecture</a>). Pushing
+the actual changed beads down the wire would duplicate the derive/render logic
+that already lives behind the region endpoints and create two sources of truth.
+Keeping the frame content-free means a dropped/coalesced event is never a
+correctness problem — the next re-fetch always reads the current snapshot.</p>
+</div>
+<h2 id="request">Request</h2>
+<p>The request takes <strong>no input</strong> — no path params, no query params, no required
+headers, and no body. The browser opens it via the native <code>EventSource</code> API
+(which only issues a bare <code>GET</code> with <code>Accept: text/event-stream</code>); a plain
+<code>curl -N</code> works identically. There is exactly one connection per open tab, and
+its lifetime equals the tab's lifetime (<code>EventSource</code> auto-reconnects on drop).</p>
+<h3 id="pathquery-params">Path/Query Params</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>In</th>
+<th>Type</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(none)</em></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td><code>/api/events</code> accepts no path or query parameters. The stream content is identical for every subscriber — fan-out is per-connection, not per-parameter. The only request-scoped object the handler reads is <code>request</code> itself, and only to poll <code>request.is_disconnected()</code> for cleanup.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="headers">Headers</h3>
+<table>
+<thead>
+<tr>
+<th>Header</th>
+<th>Required</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Accept: text/event-stream</code></td>
+<td>No (recommended)</td>
+<td>Sent automatically by the browser's <code>EventSource</code>. The handler does not enforce it — it always responds with <code>media_type=&quot;text/event-stream&quot;</code> regardless — but it is the correct content negotiation and what <code>curl -N</code> should send.</td>
+</tr>
+<tr>
+<td><code>Last-Event-ID</code></td>
+<td>No</td>
+<td>The standard SSE resume header. bdboard does <strong>not</strong> emit <code>id:</code> lines, so there is no replay/resume: a reconnect simply re-subscribes and receives a fresh <code>bootstrap</code>. The header is ignored if present.</td>
+</tr>
+<tr>
+<td><em>(no <code>X-CSRF-Token</code>)</em></td>
+<td>No</td>
+<td>Read-only stream — no mutation, so no CSRF token (unlike the sibling write routes <a href="MemoryApi.html">Memory API</a> and <a href="BeadFieldEditApi.html">Bead field-edit API</a>). Being a localhost single-user tool, it carries no login or per-user authorization.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="body">Body</h3>
+<p>None. <code>GET /api/events</code> is a bare request with no body and no form payload.</p>
+<pre><code class="language-json">// No request body — a bare GET that upgrades to a long-lived event stream:
+//   GET /api/events
+//   Accept: text/event-stream
+</code></pre>
+<h3 id="validation-rules">Validation Rules</h3>
+<p>There is nothing to validate — no params, no body, no headers consulted for
+correctness. The handler cannot return a 4xx for the request shape; the only
+runtime decisions are connection lifecycle (disconnect detection) and the 15s
+heartbeat fallback.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Rule</th>
+<th>Error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(no request fields)</em></td>
+<td>N/A — <code>/api/events</code> accepts no path/query/body/required-header input</td>
+<td>Nothing to reject. There is no validation path and therefore no validation error for this endpoint.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rate-limit">Rate Limit</h3>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Window</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No explicit limit. The handler spawns <strong>zero</strong> <code>bd</code> subprocesses — it only subscribes to the in-process <code>EventBus</code> and <code>yield</code>s frames, so it never touches the single-writer <code>_subprocess_gate</code>. Practical concurrency is bounded by the per-subscriber queue (<code>events._QUEUE_SIZE = 16</code>, drop-oldest on overflow) and the 15s heartbeat keep-alive.</td>
+<td>per-connection</td>
+<td>One <code>asyncio.Queue</code> is registered per open connection (<code>EventBus.subscribe</code>); <code>broadcast</code> is O(N) over subscribers. Designed for dozens of tabs, not thousands — a slow client drops its oldest queued events rather than backpressuring the watcher.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="response">Response</h2>
+<p>A long-lived <code>200 OK</code> <code>text/event-stream</code>. Frames are emitted incrementally and
+the response never completes normally — it ends only when the client disconnects
+or the server shuts down (the watcher/lifespan tears down on app stop). There is
+<strong>no JSON body</strong> — SSE is a line-oriented wire format; the field names below are
+the SSE protocol fields (<code>event:</code>, <code>data:</code>, comment <code>:</code>), not application JSON.</p>
+<h3 id="success">Success</h3>
+<p><strong><code>200 OK</code></strong> · <code>Content-Type: text/event-stream</code> · <code>Cache-Control: no-cache</code> ·
+<code>X-Accel-Buffering: no</code> (disables nginx response buffering if proxied).</p>
+<p>The wire payload is a sequence of SSE frames (each terminated by a blank line):</p>
+<pre><code class="language-text"># 1) Bootstrap frame — sent immediately on connect so the tab paints at once:
+event: beads_changed
+data: bootstrap
+
+# 2) Real change frame — one per watcher-detected .beads/ change.
+#    `data` is the server epoch seconds at emit time (int(time.time())):
+event: beads_changed
+data: 1780000020
+
+# 3) Heartbeat — an SSE *comment* line emitted after 15s of silence.
+#    Keeps proxies from reaping the idle connection; fires NO client handler:
+: heartbeat
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>SSE frame field</th>
+<th>Example value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>event:</code></td>
+<td><code>beads_changed</code></td>
+<td>The only event name bdboard emits. The browser binds <code>es.addEventListener('beads_changed', …)</code>; the listener dispatches a bubbling <code>refresh</code> <code>CustomEvent</code> on <code>&lt;body&gt;</code>, which every <code>hx-trigger=&quot;refresh from:body&quot;</code> region observes.</td>
+</tr>
+<tr>
+<td><code>data:</code> (bootstrap)</td>
+<td><code>bootstrap</code></td>
+<td>Literal sentinel on the first frame after connect; lets a fresh tab render immediately rather than waiting for the first file change.</td>
+</tr>
+<tr>
+<td><code>data:</code> (change)</td>
+<td><code>1780000020</code></td>
+<td><code>int(time.time())</code> at emit — a monotonic-ish cache-buster / debug aid. The client ignores the value; the mere arrival of the event is the trigger.</td>
+</tr>
+<tr>
+<td><code>:</code> (comment)</td>
+<td><code>: heartbeat</code></td>
+<td>An SSE comment (line starting with <code>:</code>). Keep-alive only; the browser's <code>EventSource</code> consumes it without firing any handler.</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>bdboard intentionally emits <strong>no <code>id:</code> lines</strong> and no <code>retry:</code> directive. There
+is no event replay (<code>Last-Event-ID</code> is unused) — on reconnect the client simply
+re-subscribes and gets a fresh <code>bootstrap</code>. Reconnect cadence is left to the
+browser's built-in <code>EventSource</code> exponential backoff, which heals a transient
+server restart within a few seconds.</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p>The stream is <strong>lossy under backpressure by design</strong>. Each subscriber has a
+bounded queue (<code>_QUEUE_SIZE = 16</code>); if a client falls more than 16 events
+behind, <code>EventBus.broadcast</code> drops the <strong>oldest</strong> queued event to make room
+(logging <code>event bus subscriber queue is hot; event lost</code> only if even that
+fails). This is safe because the next event re-triggers the same full re-fetch
+— a dropped event costs at most a freshness blip, never correctness.</p>
+</div>
+<h3 id="errors">Errors</h3>
+<p>This endpoint has effectively no error surface: the request can't be malformed,
+the handler spawns no subprocess, and frame generation degrades to a heartbeat
+rather than raising. Connection loss is normal lifecycle, not an error.</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200 (heartbeat-only)</td>
+<td>No <code>beads_changed</code> for ≥15s</td>
+<td>The <code>asyncio.wait_for(q.get(), timeout=15.0)</code> times out (<code>TimeoutError</code>) and the stream yields a <code>: heartbeat</code> comment instead of an event. This is the steady-state idle behavior, not a failure.</td>
+</tr>
+<tr>
+<td><em>(connection closed)</em></td>
+<td>Client disconnect</td>
+<td><code>request.is_disconnected()</code> returns <code>True</code> (tab closed / navigated / network drop) → the <code>stream()</code> generator <code>break</code>s, the <code>bus.subscribe()</code> context manager exits, and the subscriber queue is discarded (<code>EventBus.subscribe</code>'s <code>finally</code>). The browser's <code>EventSource</code> then auto-reconnects.</td>
+</tr>
+<tr>
+<td><em>(stream end)</em></td>
+<td>Server shutdown</td>
+<td>On app stop the <code>lifespan</code> cancels the watcher task and FastAPI tears down in-flight responses; the stream ends and clients reconnect once the server is back.</td>
+</tr>
+<tr>
+<td>500</td>
+<td>FastAPI default <code>Internal Server Error</code></td>
+<td>Only if an unexpected exception escapes before the <code>StreamingResponse</code> starts streaming (none expected — the handler does no I/O beyond subscribing). Once streaming has begun, a mid-stream error simply closes the connection and the client reconnects.</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-caution"><p class="callout-title">Caution</p>
+<p>If a reverse proxy <strong>buffers</strong> the response, clients will appear &quot;stuck on
+connecting&quot; because frames never flush. bdboard sets <code>X-Accel-Buffering: no</code>
+and <code>Cache-Control: no-cache</code> to defeat nginx buffering, but other proxies may
+need their own flush/SSE config. The footer live-status dot
+(<code>#live-status</code> / <code>#live-dot</code> in <code>base.html</code>) shows <code>live · push</code> on <code>open</code> and
+<code>reconnecting…</code> on <code>error</code> — watch it to distinguish a buffering proxy from a
+genuinely dead stream.</p>
+</div>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>File path</th>
+<th>Symbol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SSE endpoint handler — subscribe, yield bootstrap, pump events, 15s heartbeat, disconnect cleanup</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>sse_events</code></td>
+</tr>
+<tr>
+<td>Inner async generator that produces the wire frames</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>sse_events.&lt;locals&gt;.stream</code></td>
+</tr>
+<tr>
+<td><code>StreamingResponse</code> wiring (<code>media_type</code>, <code>Cache-Control: no-cache</code>, <code>X-Accel-Buffering: no</code>)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>sse_events</code> return</td>
+</tr>
+<tr>
+<td>The single app-wide event bus instance</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>bus = EventBus()</code></td>
+</tr>
+<tr>
+<td>In-process pub/sub broadcaster (one queue per connection, O(N) fan-out)</td>
+<td><code>src/bdboard/events.py</code></td>
+<td><code>EventBus.broadcast</code></td>
+</tr>
+<tr>
+<td>Per-connection subscription (context-managed queue add/discard)</td>
+<td><code>src/bdboard/events.py</code></td>
+<td><code>EventBus.subscribe</code></td>
+</tr>
+<tr>
+<td>Bounded-queue / drop-oldest backpressure policy</td>
+<td><code>src/bdboard/events.py</code></td>
+<td><code>EventBus.broadcast</code> (<code>QueueFull</code> branch) / <code>_QUEUE_SIZE</code></td>
+</tr>
+<tr>
+<td>Subscriber count for diagnostics</td>
+<td><code>src/bdboard/events.py</code></td>
+<td><code>EventBus.subscriber_count</code></td>
+</tr>
+<tr>
+<td>Watcher → refresh → broadcast wiring (the producer side)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>_watch_beads</code> / <code>lifespan</code></td>
+</tr>
+<tr>
+<td>Debounce/cooldown scheduler whose <code>broadcast</code> callback fires <code>beads_changed</code></td>
+<td><code>src/bdboard/watcher.py</code></td>
+<td><code>RefreshScheduler</code> (<code>broadcast=lambda: bus.broadcast(&quot;beads_changed&quot;)</code>)</td>
+</tr>
+<tr>
+<td>Snapshot refresh that gates whether a broadcast fires (returns <code>True</code> iff changed)</td>
+<td><code>src/bdboard/store.py</code></td>
+<td><code>Store.refresh</code></td>
+</tr>
+<tr>
+<td>Self-feedback skip (revision unchanged → no re-list → no broadcast loop)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.revision_signature</code></td>
+</tr>
+<tr>
+<td>Write routes that fire an <strong>optimistic</strong> <code>beads_changed</code> after a mutation</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_memory_create</code> / <code>api_memory_delete</code> / <code>api_formula_pour</code> / <code>api_bead_field_update</code> (<code>await bus.broadcast(&quot;beads_changed&quot;)</code>)</td>
+</tr>
+<tr>
+<td>Client subscriber — <code>EventSource('/api/events')</code>, <code>beads_changed</code> → body <code>refresh</code></td>
+<td><code>src/bdboard/templates/base.html</code></td>
+<td>inline SSE bridge IIFE (<code>new EventSource('/api/events')</code>)</td>
+</tr>
+<tr>
+<td>Footer live-status indicator updated on <code>open</code>/<code>error</code></td>
+<td><code>src/bdboard/templates/base.html</code></td>
+<td><code>#live-status</code> / <code>#live-dot</code> (<code>setStatus</code>)</td>
+</tr>
+<tr>
+<td>Regions that consume the resulting <code>refresh</code> event</td>
+<td><code>src/bdboard/templates/dashboard.html</code>, <code>history.html</code>, <code>memory.html</code></td>
+<td><code>hx-trigger=&quot;load, refresh from:body&quot;</code> hosts</td>
+</tr>
+<tr>
+<td>Scheduler regression tests (broadcast iff changed; no self-feedback wedge)</td>
+<td><code>tests/test_watcher_scheduler.py</code>, <code>tests/test_watcher_self_feedback.py</code></td>
+<td><code>RefreshScheduler</code> coverage</td>
+</tr>
+<tr>
+<td>Optimistic-broadcast tests (write routes emit <code>beads_changed</code>)</td>
+<td><code>tests/test_memory_mutations.py</code>, <code>tests/test_formula_pour.py</code></td>
+<td><code>test_*_broadcasts_sse_on_success</code> / <code>_stub_bus_broadcast</code></td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid">sequenceDiagram
+    participant U as User (browser)
+    participant ES as EventSource (base.html)
+    participant H as sse_events (app.py)
+    participant BUS as EventBus (events.py)
+    participant W as RefreshScheduler (watcher.py)
+    participant S as Store (store.py)
+    participant BD as BdClient (bd.py)
+    participant FS as watchfiles (.beads/)
+
+    Note over U,FS: Connect — one stream per tab
+    U-&gt;&gt;ES: page load -&gt; new EventSource(&#x27;/api/events&#x27;)
+    ES-&gt;&gt;H: GET /api/events (Accept: text/event-stream)
+    H-&gt;&gt;BUS: subscribe() -&gt; register queue
+    H--&gt;&gt;ES: 200 text/event-stream
+    H--&gt;&gt;ES: event: beads_changed\ndata: bootstrap
+    ES-&gt;&gt;U: dispatch body &#x27;refresh&#x27; -&gt; regions re-fetch (load)
+
+    Note over U,FS: Live change — producer side fires the trigger
+    FS--&gt;&gt;W: .beads/ files mutate -&gt; awatch batch -&gt; notify()
+    W-&gt;&gt;S: refresh() (debounced + cooldown)
+    S-&gt;&gt;BD: revision_signature() (skip if unchanged)
+    alt committed state changed
+        BD--&gt;&gt;S: new signature -&gt; bd list --json
+        S--&gt;&gt;W: refresh() returns True
+        W-&gt;&gt;BUS: broadcast(&quot;beads_changed&quot;)
+        BUS--&gt;&gt;H: q.put_nowait(&quot;beads_changed&quot;)
+        H--&gt;&gt;ES: event: beads_changed\ndata: &lt;epoch&gt;
+        ES-&gt;&gt;U: dispatch body &#x27;refresh&#x27; -&gt; regions re-fetch
+    else self-read echo (no change)
+        BD--&gt;&gt;S: signature identical -&gt; skip bd list
+        S--&gt;&gt;W: refresh() returns False -&gt; NO broadcast
+    end
+
+    Note over U,FS: Idle — heartbeat keeps the pipe open
+    H--&gt;&gt;ES: (15s silence) -&gt; &quot;: heartbeat&quot; comment (no handler fires)
+
+    Note over U,FS: Disconnect — automatic cleanup + reconnect
+    U-&gt;&gt;ES: close tab / navigate
+    H-&gt;&gt;H: request.is_disconnected() -&gt; True -&gt; break
+    H-&gt;&gt;BUS: subscribe() finally -&gt; discard queue
+    ES-&gt;&gt;ES: (transient drop) auto-reconnect w/ backoff
+</pre>
+<h2 id="example">Example</h2>
+<p>Open the stream and watch frames arrive (<code>-N</code> disables curl's buffering so SSE
+frames flush live):</p>
+<pre><code class="language-bash">curl -N -H &#x27;Accept: text/event-stream&#x27; &#x27;http://127.0.0.1:8765/api/events&#x27;
+</code></pre>
+<p>Expected output — an immediate bootstrap, then a heartbeat every ~15s of
+silence, and a <code>beads_changed</code> frame each time you mutate the workspace (e.g.
+<code>bd update &lt;id&gt; --status in_progress</code> in another terminal):</p>
+<pre><code class="language-text">event: beads_changed
+data: bootstrap
+
+: heartbeat
+
+event: beads_changed
+data: 1780000020
+
+</code></pre>
+<p>In the browser this is wired natively — no curl needed:</p>
+<pre><code class="language-js">// (already in base.html) — translate each push into a DOM refresh:
+const es = new EventSource(&#x27;/api/events&#x27;);
+es.addEventListener(&#x27;beads_changed&#x27;, () =&gt; {
+  document.body.dispatchEvent(new CustomEvent(&#x27;refresh&#x27;));
+});
+</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/LiveAutoRefresh.html">Live auto-refresh (Feature)</a> — the feature
+this stream is the live signal for; covers the producer + client re-fetch story
+end to end.</li>
+<li><a href="../Flows/ServerStartup.html">Server startup &amp; workspace resolution (Flow)</a> —
+boots the <code>EventBus</code> singleton this stream subscribes to and the watcher that
+ultimately feeds it.</li>
+<li><a href="LanesApi.html">Lanes API (<code>/api/lanes</code>, <code>/api/lanes/closed</code>, <code>/api/counts</code>)</a> —
+the board regions re-fetched on every <code>beads_changed → refresh from:body</code>
+pulse this stream emits. They are pure read-only swap targets; this endpoint is
+the signal that drives them.</li>
+<li><a href="HistoryApi.html">History API (<code>/api/history</code>)</a> — the <code>#history-region</code> swap
+target that re-fetches on the same <code>refresh</code> event, giving the History page its
+live close-as-you-watch behavior.</li>
+<li><a href="MemoryApi.html">Memory API (<code>/api/memory</code>)</a> — its write routes
+(<code>api_memory_create</code> / <code>api_memory_delete</code>) fire an <strong>optimistic</strong>
+<code>bus.broadcast(&quot;beads_changed&quot;)</code> right after mutating, so the change shows up
+on every tab without waiting for the file watcher.</li>
+<li><a href="FormulasApi.html">Formulas API (<code>/api/formulas</code>, form, pour)</a> — a successful
+pour likewise emits an optimistic <code>beads_changed</code> over this stream so the new
+beads arrive live on the board.</li>
+<li><a href="../Flows/FormulaPourFanout.html">Formula pour fan-out (Flow)</a> — the end-to-end
+pour flow whose final step is the optimistic <code>beads_changed</code> broadcast this
+stream carries to every tab.</li>
+<li><a href="BeadFieldEditApi.html">Bead field-edit API (POST /api/bead/{id}/field)</a> — the
+other optimistic-broadcast write path; an inline edit pushes <code>beads_changed</code>
+so the card re-renders everywhere.</li>
+<li><a href="../Views/BoardPage.html">Board page (<code>/</code>)</a> · <a href="../Views/HistoryPage.html">History page
+(<code>/history</code>)</a> · <a href="../Views/MemoryPage.html">Memory page (<code>/memory</code>)</a>
+— the three views that open this <code>EventSource</code> (via the shared <code>base.html</code>
+bridge) and surface the footer live-status dot.</li>
+<li><a href="../Concepts/HtmxPartialsArchitecture.html">HTMX + server-rendered partials</a> —
+why the event is a content-free trigger that fans out to <code>refresh from:body</code>
+regions instead of pushing data down the wire.</li>
+<li><a href="../Flows/LiveRefreshPipeline.html">Live-refresh pipeline (Flow)</a> — the end-to-end
+producer story (bd write → watcher → refresh → broadcast → client re-fetch)
+that culminates in the events this stream delivers.</li>
+<li><a href="../Concepts/WatcherScheduling.html">Watcher debounce/cooldown &amp; self-feedback skip</a>
+— the producer side: how FS events become exactly one <code>beads_changed</code>
+broadcast (and how bdboard's own reads are skipped so the stream can't spin).</li>
+<li><a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a> —
+the cache <code>Store.refresh</code> consults to decide whether anything actually changed
+(and thus whether a broadcast fires at all).</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why a
+read-only <code>bd list</code> still perturbs <code>.beads/</code> and triggers the watcher (the
+motivation for the <code>revision_signature</code> self-feedback skip).</li>
+<li><a href="index.html">Endpoints index</a> · <a href="../Architecture.html#api-surface">Architecture</a> ·
+<a href="../index.html">Manifest</a> — the API surface and doc catalog this item sits in.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

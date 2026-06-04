@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Management</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; Maintainer Docs</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">Maintainer Docs</a> <a href="../../user/index.html">User Guide</a></nav></header>
+<main id="main" class="content">
+<h1 id="memory-management">Memory Management</h1>
+<h2 id="what-it-does">What It Does</h2>
+<p>Gives you a browser surface to <strong>browse, search, create/update, and forget bd
+memories</strong> — the persistent notes bd injects into every agent session at
+<code>bd prime</code> — from the <code>/memory</code> page, with every change fanned out live to every
+open tab.</p>
+<h2 id="why-it-exists">Why It Exists</h2>
+<p>bd memories are the project's durable, cross-session knowledge: gotchas,
+conventions, &quot;why we chose X&quot; decisions that bd re-injects at the top of every
+agent session via <code>bd prime</code>. Authoring and pruning them on the CLI
+(<code>bd remember</code>, <code>bd forget</code>, <code>bd memories</code>) works, but it's invisible to anyone
+looking at the board, hard to search/skim, and easy to fat-finger — and a stray
+<code>bd forget</code> silently degrades <em>every future agent session</em> that relied on the
+note. Memory Management surfaces the whole memory store inside bdboard so a human
+can read the rendered-markdown bodies, search them server-side, upsert one
+through a guarded form, and delete one only behind an explicit confirm dialog —
+while riding the same live-refresh pipeline as the rest of the app so a memory
+edited in one tab (or on the CLI) appears everywhere without a reload. It also
+adds three things the raw CLI doesn't give a UI: a <strong>CSRF-guarded</strong> write path, a
+<strong>failure-tolerant</strong> read that degrades to a friendly message instead of blanking
+the page, and <strong>optimistic re-rendering</strong> (re-read fresh, then broadcast) so the
+acting tab never waits on the watcher debounce to see its own change.</p>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ul>
+<li>Open <strong>/memory</strong> (linked from the masthead nav on every page). The page paints
+a four-card shimmer skeleton instantly, then hydrates the list region via an
+HTMX <code>load</code> fetch to <code>GET /api/memory</code> — a count line (<code>N memories</code>) followed
+by one card per memory: a monospace key heading, the markdown-rendered body,
+and edit/forget buttons. Cards are sorted alphabetically by key.</li>
+<li><strong>Search</strong> — type in the search box; after a 250 ms debounce the list region
+re-fetches <code>GET /api/memory?q=&lt;term&gt;</code> and swaps in matches. The term is passed
+straight to <code>bd memories &lt;term&gt; --json</code>, so the filtering is bd's own
+case-insensitive substring match across key <strong>and</strong> body. Clearing the input
+returns to the full list; the count line reads <code>N matching &quot;&lt;q&gt;&quot;</code>.</li>
+<li><strong>Create / update</strong> — click <strong>+ New Memory</strong>, fill Key + Body (markdown
+supported), Save. The form POSTs to <code>/api/memory</code> as an <strong>upsert</strong>: a new key
+is created, an existing key's body is replaced. The list re-renders in place
+with the new/updated card visible.</li>
+<li><strong>Edit</strong> — click a card's edit button; the same dialog opens pre-filled, with
+the key field <code>readonly</code> (you can't rename a key via <code>bd remember</code> — upsert
+keys on identity). Save replaces the body.</li>
+<li><strong>Forget</strong> — click a card's forget button; a second confirm <code>&lt;dialog&gt;</code> opens
+showing the key and a warning. Confirming issues <code>DELETE /api/memory/&lt;key&gt;</code> and the card
+disappears. Nothing deletes on a single click — the friction is deliberate
+because a forgotten memory degrades future agent sessions.</li>
+<li>All four operations fan out live: a memory changed in another tab (or by the
+<code>bd</code> CLI) arrives via SSE <code>beads_changed → refresh from:body</code>, re-fetching the
+list without a manual reload.</li>
+</ul>
+<h3 id="system-perspective">System Perspective</h3>
+<p>The page route <code>page_memory</code> (<code>src/bdboard/app.py</code>) renders a cheap shell and
+never blocks on a <code>bd</code> subprocess — every bd-backed read/write happens on the
+three <code>/api/memory</code> routes. <code>GET /api/memory</code> (<code>api_memory</code>) is a read-only HTMX
+swap target: it calls <code>bd.memories(term)</code> and renders <code>partials/memory_list.html</code>,
+degrading a <code>RuntimeError</code> to a friendly <code>200</code> inline message rather than 500-ing
+the swap. The two mutating routes are the only write paths and share one shape:
+<code>_check_csrf</code> (header-or-form token) → strip-and-validate non-empty key/body →
+<code>bd.remember</code>/<code>bd.forget</code> (which run <code>bd remember</code>/<code>bd forget</code> through the
+single-writer <code>_run_mutate</code>/<code>_subprocess_gate</code> and clear the memories cache) →
+<code>bus.broadcast(&quot;beads_changed&quot;)</code> → <strong>re-read</strong> <code>bd.memories()</code> fresh and
+re-render the same <code>partials/memory_list.html</code> for the acting tab's swap. The
+optimistic re-render plus the SSE broadcast (and the file watcher, which calls
+<code>invalidate_caches</code> to drop the stale memories cache) keep the acting tab <em>and</em>
+every other tab consistent. All three routes return <strong>HTML fragments</strong>, never
+JSON — the read and both writes share the identical list render, so a successful
+create/delete simply swaps the freshly-listed region into <code>#memory-list</code>.</p>
+<pre class="mermaid">sequenceDiagram
+    participant U as User (browser)
+    participant H as HTMX (memory.html)
+    participant PR as page_memory (app.py)
+    participant R as api_memory* (app.py)
+    participant C as _check_csrf
+    participant BD as BdClient (bd.py)
+    participant Proc as bd subprocess
+    participant Bus as bus.broadcast (SSE)
+    participant T as memory_list.html
+
+    U-&gt;&gt;PR: GET /memory
+    PR--&gt;&gt;H: 200 memory.html shell + skeleton
+    H-&gt;&gt;R: GET /api/memory (hx-trigger=&quot;load&quot;)
+    R-&gt;&gt;BD: memories(&quot;&quot;)
+    BD-&gt;&gt;Proc: bd memories --json (gated, cached)
+    alt bd read fails
+        Proc--&gt;&gt;BD: error
+        BD--&gt;&gt;R: raise RuntimeError
+        R--&gt;&gt;H: 200 &quot;Couldn&#x27;t load memories…&quot; (degraded)
+    else ok
+        Proc--&gt;&gt;BD: {key: body, …, schema_version}
+        BD--&gt;&gt;R: sorted [{key, body}] (sentinel stripped)
+        R-&gt;&gt;T: render memory_list.html
+        T--&gt;&gt;H: 200 list fragment → swap #memory-list
+    end
+
+    U-&gt;&gt;H: type in #memory-q (debounced 250ms)
+    H-&gt;&gt;R: GET /api/memory?q=term
+    R-&gt;&gt;BD: memories(&quot;term&quot;) → bd memories term --json
+    BD--&gt;&gt;R: filtered [{key, body}]
+    R--&gt;&gt;H: 200 re-rendered list (innerHTML swap)
+
+    U-&gt;&gt;H: Submit dialog (key, body, csrf) / confirm forget
+    H-&gt;&gt;R: POST /api/memory  ·  DELETE /api/memory/{key}  (+ X-CSRF-Token)
+    R-&gt;&gt;C: _check_csrf(header, form?)
+    alt token invalid
+        C--&gt;&gt;R: raise HTTPException(403)
+        R--&gt;&gt;H: 403 (no swap)
+    else empty key/body
+        R--&gt;&gt;H: 400 memory-error fragment
+    else ok
+        R-&gt;&gt;BD: remember(key, body) / forget(key)
+        BD-&gt;&gt;Proc: bd remember &quot;&lt;body&gt;&quot; --key &lt;key&gt; / bd forget &lt;key&gt; (single-writer)
+        alt write fails
+            Proc--&gt;&gt;BD: stderr → RuntimeError
+            BD--&gt;&gt;R: raise
+            R--&gt;&gt;H: 500 &quot;Could not save/delete: …&quot;
+        else ok
+            Proc--&gt;&gt;BD: exit 0 (memories cache cleared)
+            R-&gt;&gt;Bus: broadcast(&quot;beads_changed&quot;)
+            R-&gt;&gt;BD: memories() (fresh, unfiltered)
+            R-&gt;&gt;T: re-render memory_list.html
+            T--&gt;&gt;H: 200 fresh list → swap #memory-list
+            Bus--&gt;&gt;H: every other tab re-fetches the list
+        end
+    end
+</pre>
+<h2 id="key-data-shapes">Key Data Shapes</h2>
+<p>Memory is form-encoded in and HTML-fragment out (never JSON on the wire), but
+three internal shapes carry the feature: the raw bd payload, the per-memory dict
+the list template renders, and the upsert POST body. Real field names below.</p>
+<p>The raw <code>bd memories --json</code> payload — a <strong>flat key→body object</strong> plus a
+<code>schema_version</code> sentinel that <code>BdClient.memories</code> strips (a payload of only the
+sentinel is the empty/no-match shape and yields an empty list):</p>
+<pre><code class="language-json">{
+  &quot;dep-edge-direction&quot;: &quot;bd reports \&quot;blocks\&quot; on both sides; the label depends on direction AND type.&quot;,
+  &quot;dev-workflow&quot;: &quot;Run `uv run pytest` before every commit. Markdown is supported.&quot;,
+  &quot;schema_version&quot;: &quot;1&quot;
+}
+</code></pre>
+<p>A single memory descriptor — what <code>BdClient.memories</code> returns (one per key,
+sorted alphabetically, sentinel removed) and what each <code>memory-card</code> in
+<code>partials/memory_list.html</code> renders (<code>body</code> through the shared <code>md</code> Jinja filter):</p>
+<pre><code class="language-json">{
+  &quot;key&quot;: &quot;dev-workflow&quot;,
+  &quot;body&quot;: &quot;Run `uv run pytest` before every commit. Markdown is supported.&quot;
+}
+</code></pre>
+<p>The upsert POST body (<code>application/x-www-form-urlencoded</code>) — exactly the fields
+<code>api_memory_create</code> binds via <code>Form(...)</code>; the CSRF token may instead ride the
+<code>X-CSRF-Token</code> header:</p>
+<pre><code class="language-json">{
+  &quot;key&quot;: &quot;dev-workflow&quot;,
+  &quot;body&quot;: &quot;Run `uv run pytest` before every commit. Markdown is supported.&quot;,
+  &quot;csrf_token&quot;: &quot;&lt;per-process token, optional if X-CSRF-Token header sent&gt;&quot;
+}
+</code></pre>
+<p>The template context the list fragment renders (shared by the read and both
+writes) — <code>query</code> is the (stripped) search term, reset to <code>&quot;&quot;</code> after a mutation:</p>
+<pre><code class="language-json">{
+  &quot;memories&quot;: [
+    { &quot;key&quot;: &quot;dep-edge-direction&quot;, &quot;body&quot;: &quot;…&quot; },
+    { &quot;key&quot;: &quot;dev-workflow&quot;, &quot;body&quot;: &quot;…&quot; }
+  ],
+  &quot;query&quot;: &quot;&quot;
+}
+</code></pre>
+<h2 id="api-surface">API Surface</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Purpose</th>
+<th>→ Endpoint doc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/memory</code></td>
+<td>Render the searchable memory list (<code>partials/memory_list.html</code>) from <code>bd memories [q] --json</code>; empty <code>q</code> lists all. A bd read failure degrades to a friendly inline message (still <code>200</code>).</td>
+<td><a href="../Endpoints/MemoryApi.html">MemoryApi</a></td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/memory</code></td>
+<td><strong>Upsert</strong> a memory via <code>bd remember &quot;&lt;body&gt;&quot; --key &lt;key&gt;</code>: CSRF guard → validate → mutate → broadcast → re-render fresh list.</td>
+<td><a href="../Endpoints/MemoryApi.html">MemoryApi</a></td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/memory/{key:path}</code></td>
+<td>Forget a memory via <code>bd forget &lt;key&gt;</code> (<code>:path</code> so keys with <code>/</code> survive): CSRF guard → validate → mutate → broadcast → re-render fresh list.</td>
+<td><a href="../Endpoints/MemoryApi.html">MemoryApi</a></td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/events</code></td>
+<td>Long-lived SSE stream the post-mutation <code>beads_changed</code> broadcast rides so every open tab re-fetches <code>#memory-list</code>.</td>
+<td><a href="../Endpoints/SseEvents.html">SseEvents</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>File path</th>
+<th>Symbol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Page shell route (renders shell, surfaces workspace-validation error)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>page_memory</code></td>
+</tr>
+<tr>
+<td>List/search route (read; failure-tolerant degrade to <code>200</code>)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_memory</code></td>
+</tr>
+<tr>
+<td>Create/update route (upsert; CSRF → validate → broadcast → re-list)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_memory_create</code></td>
+</tr>
+<tr>
+<td>Delete route (forget; CSRF → validate → broadcast → re-list)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>api_memory_delete</code></td>
+</tr>
+<tr>
+<td>CSRF guard (header-or-form token check)</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>_check_csrf</code> / <code>_CSRF_TOKEN</code></td>
+</tr>
+<tr>
+<td>Optimistic SSE fan-out so all tabs re-render</td>
+<td><code>src/bdboard/app.py</code></td>
+<td><code>bus.broadcast(&quot;beads_changed&quot;)</code></td>
+</tr>
+<tr>
+<td>Search/list bd read (<code>bd memories [term] --json</code>, strips sentinel, sorts by key)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.memories</code> / <code>SCHEMA_VERSION_KEY</code></td>
+</tr>
+<tr>
+<td>TTL-cache + in-flight dedup + timeout wrapper for the read</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient._cached</code> / <code>BdClient._run_json</code></td>
+</tr>
+<tr>
+<td>Upsert mutation (<code>bd remember &quot;&lt;body&gt;&quot; --key &lt;key&gt;</code>, then clear memories cache)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.remember</code></td>
+</tr>
+<tr>
+<td>Delete mutation (<code>bd forget &lt;key&gt;</code>, then clear memories cache)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.forget</code></td>
+</tr>
+<tr>
+<td>Serialized single-writer subprocess runner (drains pipes on every exit)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient._run_mutate</code> / <code>_subprocess_gate</code></td>
+</tr>
+<tr>
+<td>Post-watcher cache invalidation (drops memories cache for fresh reads)</td>
+<td><code>src/bdboard/bd.py</code></td>
+<td><code>BdClient.invalidate_caches</code></td>
+</tr>
+<tr>
+<td>List render (shared by read + both writes; cards, count, empty states)</td>
+<td><code>src/bdboard/templates/partials/memory_list.html</code></td>
+<td><code>memory-list</code> / <code>memory-card</code> / <code>memory-count</code></td>
+</tr>
+<tr>
+<td>Loading skeleton (four shimmer cards until first swap; <code>aria-hidden</code>)</td>
+<td><code>src/bdboard/templates/partials/memory_skeleton.html</code></td>
+<td><code>memory-skeleton</code></td>
+</tr>
+<tr>
+<td>Search input, create/edit <code>&lt;dialog&gt;</code>, forget-confirm <code>&lt;dialog&gt;</code> + JS wiring</td>
+<td><code>src/bdboard/templates/memory.html</code></td>
+<td><code>#memory-q</code> / <code>#memory-form-dialog</code> / <code>editMemory</code> / <code>confirmForget</code></td>
+</tr>
+<tr>
+<td>Primary nav link to <code>/memory</code> (active-page <code>aria-current</code>)</td>
+<td><code>src/bdboard/templates/partials/nav.html</code></td>
+<td><code>nav</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MEMORIES_TIMEOUT_S</code> (<code>src/bdboard/bd.py</code>)</td>
+<td><code>8.0</code> s</td>
+<td>Per-<code>bd memories</code> subprocess timeout for the list/search read. On timeout the read raises <code>RuntimeError</code>, which <code>api_memory</code> catches and degrades to the friendly inline message.</td>
+</tr>
+<tr>
+<td><code>REMEMBER_TIMEOUT_S</code> (<code>src/bdboard/bd.py</code>)</td>
+<td><code>10.0</code> s</td>
+<td><code>bd remember</code> timeout — longer than the read because the write does a dolt commit. On timeout the user sees <code>Could not save: …</code> (<code>500</code>).</td>
+</tr>
+<tr>
+<td><code>FORGET_TIMEOUT_S</code> (<code>src/bdboard/bd.py</code>)</td>
+<td><code>10.0</code> s</td>
+<td><code>bd forget</code> timeout. On timeout/failure the user sees <code>Could not delete: …</code> (<code>500</code>).</td>
+</tr>
+<tr>
+<td><code>SCHEMA_VERSION_KEY</code> (<code>src/bdboard/bd.py</code>)</td>
+<td><code>&quot;schema_version&quot;</code></td>
+<td>The sentinel key <code>BdClient.memories</code> strips from the raw payload so it never renders as a memory card.</td>
+</tr>
+<tr>
+<td><code>_CSRF_TOKEN</code> (<code>src/bdboard/app.py</code>)</td>
+<td><code>secrets.token_urlsafe(32)</code> per process</td>
+<td>The token the POST/DELETE must echo (header or, for POST, form field). Regenerated on every server restart, so a stale tab's write gets <code>403</code> until it reloads.</td>
+</tr>
+<tr>
+<td><code>BDBOARD_WORKSPACE</code> (env)</td>
+<td><code>$PWD</code> / cwd</td>
+<td>Workspace whose <code>.beads/</code> the memory reads/writes target.</td>
+</tr>
+<tr>
+<td><code>BDBOARD_BD_BIN</code> (env)</td>
+<td><code>bd</code></td>
+<td>The <code>bd</code> binary the memory subprocesses invoke; must resolve.</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-note"><p class="callout-title">Note</p>
+<p>The three timeouts, the sentinel key, and the CSRF token are <strong>module-level
+constants</strong>, not environment variables — change them in source (and re-run the
+memory tests). Only the <code>BDBOARD_*</code> keys are runtime-configurable via the
+environment.</p>
+</div>
+<h2 id="edge-cases">Edge Cases</h2>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>The <code>schema_version</code> sentinel is not a memory.</strong> <code>bd memories --json</code>
+returns a flat key→body object that always includes a <code>schema_version</code> entry;
+<code>BdClient.memories</code> strips it, and a payload of <em>only</em> the sentinel is the
+empty shape (yields <code>[]</code>). If you ever bypass <code>BdClient.memories</code> you'll
+accidentally render <code>schema_version</code> as a card — always go through it.</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong><code>POST /api/memory</code> is an upsert, not a create.</strong> Posting an existing key
+silently replaces its body — there is no &quot;already exists&quot; error. The edit
+dialog makes the key field <code>readonly</code> precisely because you cannot rename a key
+via <code>bd remember</code>; a &quot;rename&quot; would just create a second memory and orphan the
+old one.</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>A bd <em>read</em> failure degrades; a bd <em>write</em> failure surfaces.</strong> <code>GET</code> catches
+<code>RuntimeError</code> and returns a <code>200</code> friendly fragment so a transient hiccup
+never blanks the page or breaks the HTMX swap. <code>POST</code>/<code>DELETE</code> return <code>500</code>
+fragments on failure — the asymmetry is intentional (a silently-swallowed
+write would lie to the user about what's persisted).</p>
+</div>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p><strong>Forget is irreversible and cross-session destructive.</strong> Memories are
+injected at <code>bd prime</code>, so forgetting one degrades every future agent session
+that relied on it. The endpoint forgets on the first authorized call — the only
+safety net is the UI's confirm-before-forget <code>&lt;dialog&gt;</code> (<code>confirmForget</code>).
+<code>bd forget</code> on a non-existent key exits non-zero, surfacing as <code>Could not delete: &lt;stderr&gt;</code> (<code>500</code>).</p>
+</div>
+<div class="callout callout-caution"><p class="callout-title">Caution</p>
+<p><strong>The CSRF token dies with the process.</strong> <code>_CSRF_TOKEN</code> is minted per server
+start; a tab left open across a restart will <code>403</code> on its next write until
+reloaded. Never hard-code or persist the token — read it from the rendered
+page's hidden <code>csrf_token</code> input / <code>hx-headers</code> on each load.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Behavior</th>
+<th>User sees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST/DELETE with missing/mismatched CSRF token</td>
+<td><code>_check_csrf</code> raises <code>HTTPException(403)</code> before any bd call; nothing mutated</td>
+<td><code>403</code> — no swap; reload the page to pick up the current <code>_CSRF_TOKEN</code></td>
+</tr>
+<tr>
+<td>POST/DELETE with a blank <code>key</code> (<code>key.strip()</code> empty)</td>
+<td>Validation short-circuits before the mutation</td>
+<td><code>400</code> — <code>Key cannot be empty.</code> (<code>role=&quot;alert&quot;</code>)</td>
+</tr>
+<tr>
+<td>POST with a blank <code>body</code> (<code>body.strip()</code> empty)</td>
+<td>Validation short-circuits before the mutation</td>
+<td><code>400</code> — <code>Body cannot be empty.</code> (<code>role=&quot;alert&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>GET /api/memory</code> and <code>bd memories</code> raises <code>RuntimeError</code> (timeout / non-zero / bad JSON)</td>
+<td>Logged <code>bd memories failed</code>; degrades rather than 500-ing the swap</td>
+<td><code>200</code> — <code>Couldn't load memories right now. Please try again in a moment.</code> (<code>role=&quot;status&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>POST /api/memory</code> and <code>bd remember</code> raises <code>RuntimeError</code></td>
+<td>Logged <code>bd remember failed</code>; mutation not persisted</td>
+<td><code>500</code> — <code>Could not save: &lt;bd stderr&gt;</code> (<code>role=&quot;alert&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>DELETE /api/memory/{key}</code> and <code>bd forget</code> raises (includes key-not-found)</td>
+<td>Logged <code>bd forget failed</code></td>
+<td><code>500</code> — <code>Could not delete: &lt;bd stderr&gt;</code> (<code>role=&quot;alert&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>GET /memory</code> and <code>_validate_or_warn()</code> fails (broken workspace)</td>
+<td>Page route returns <code>error.html</code> instead of an empty shell</td>
+<td><code>500</code> — workspace error page</td>
+</tr>
+<tr>
+<td>Post-mutation <code>bd.memories()</code> re-read fails</td>
+<td>Re-raises into the route's error handling; the broadcast already fired so other tabs reconcile via the watcher</td>
+<td><code>500</code> fragment for the acting tab; board heals on next refresh</td>
+</tr>
+</tbody>
+</table>
+<h2 id="testing">Testing</h2>
+<ul>
+<li><strong>Read/search</strong> — <code>tests/test_api_memory.py</code> covers <code>GET /api/memory</code> against
+a stubbed <code>BdClient</code>: full list render (count + cards), server-side search
+(term forwarded to <code>bd.memories</code>), the empty/no-match states, and the
+bd-failure <strong>degrade</strong> path (asserts <code>200</code> + the friendly message, not <code>500</code>).</li>
+<li><strong>Mutations</strong> — <code>tests/test_memory_mutations.py</code> covers <code>POST</code>/<code>DELETE</code>
+against stubbed <code>BdClient</code>/<code>bus</code>: CSRF <code>403</code> (header and form-field token
+paths), empty-<code>key</code>/<code>body</code> <code>400</code>s, successful <strong>upsert</strong> (<code>bd remember</code> called,
+<code>beads_changed</code> broadcast, fresh list re-rendered), successful <strong>forget</strong>
+(<code>bd forget</code> called, card absent in the re-render), and the <code>bd</code> write-failure
+<code>500</code> fragments for both save and delete.</li>
+<li><strong>Manual check</strong> — start the server, open <code>/memory</code>; confirm the skeleton →
+list swap, type to search, create/edit via the dialog (markdown renders), and
+forget behind the confirm dialog (card vanishes in this tab <em>and</em> a second
+tab). From a terminal (token = the per-process value the page rendered with):<pre><code class="language-bash">curl -i &#x27;http://127.0.0.1:8765/api/memory?q=workflow&#x27;
+curl -i -X POST &#x27;http://127.0.0.1:8765/api/memory&#x27; \
+  -H &#x27;X-CSRF-Token: &lt;token&gt;&#x27; \
+  -H &#x27;Content-Type: application/x-www-form-urlencoded&#x27; \
+  --data-urlencode &#x27;key=dev-workflow&#x27; \
+  --data-urlencode &#x27;body=Run `uv run pytest` before every commit.&#x27;
+curl -i -X DELETE &#x27;http://127.0.0.1:8765/api/memory/dev-workflow&#x27; \
+  -H &#x27;X-CSRF-Token: &lt;token&gt;&#x27;
+</code></pre>
+Expect <code>200</code> + the re-rendered list on success, <code>403</code> if the token is omitted,
+and <code>400</code> for a blank required field.</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Endpoints/MemoryApi.html">Memory API (<code>/api/memory</code> GET/POST/DELETE)</a> — the
+HTTP contract for the three routes (request/response shapes, validation rules,
+error table) this feature is the behavior-first overview of.</li>
+<li><a href="../Views/MemoryPage.html">Memory page (<code>/memory</code>)</a> — the full-page view (search
+box, create/edit dialog, forget-confirm dialog, skeleton) that drives every
+call to these routes; this feature is its functional spec.</li>
+<li><a href="../Endpoints/SseEvents.html">SSE events (<code>/api/events</code>)</a> — the channel the
+post-mutation optimistic <code>beads_changed</code> broadcast rides so every tab
+re-fetches the freshly-changed list.</li>
+<li><a href="../Endpoints/BeadFieldEditApi.html">Bead field-edit API (<code>POST /api/bead/{id}/field</code>)</a>
+— a <strong>sibling write route</strong> sharing the identical <code>_check_csrf</code>/<code>_CSRF_TOKEN</code>
+guard and the re-read-fresh-then-<code>broadcast</code> posture.</li>
+<li><a href="FormulaPour.html">Formula pour (Feature)</a> — the other UI write feature, built on
+the same CSRF guard, <code>_run_mutate</code> single-writer gate, and failure-tolerant
+inline-message degradation.</li>
+<li><a href="LiveAutoRefresh.html">Live auto-refresh (Feature)</a> — the live-update mechanism a
+memory change rides; each mutation fires an optimistic <code>beads_changed</code> so edits
+arrive live in every tab.</li>
+<li><a href="../Concepts/BdCliSourceOfTruth.html">bd CLI as runtime source of truth</a> — why
+every memory read/write bottoms out in <code>bd memories</code>/<code>bd remember</code>/<code>bd forget</code>
+rather than touching the dolt store directly.</li>
+<li><a href="../Concepts/StoreSnapshotCache.html">Store snapshot cache &amp; change detection</a> —
+the memories TTL-cache, <code>_subprocess_gate</code> serialization, and
+<code>invalidate_caches</code> post-watcher cache drop these routes rely on for accurate
+optimistic re-renders.</li>
+<li><a href="../Concepts/WatcherScheduling.html">Watcher debounce/cooldown &amp; self-feedback skip</a>
+— the producer side that turns a memory's <code>.beads/</code> mutation into exactly one
+<code>beads_changed</code> pulse without spinning on bdboard's own reads.</li>
+<li><a href="../Concepts/HtmxPartialsArchitecture.html">HTMX + server-rendered partials</a> —
+the <code>hx-get</code>/<code>hx-post</code>/<code>hx-delete</code> + <code>innerHTML</code> swap idiom, the <code>hx-headers</code>
+CSRF wiring, and the shared-partial render pattern these routes embody.</li>
+<li><a href="index.html">Features index</a> · <a href="../Architecture.html#key-flows">Architecture</a> ·
+<a href="../index.html">Manifest</a> — the feature catalog and system view this sits in.</li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>

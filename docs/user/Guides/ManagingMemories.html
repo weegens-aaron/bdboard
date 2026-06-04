@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to manage project memories</title>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header"><span class="site-title">bdboard &middot; User Guide</span><nav class="site-nav"><a href="../../index.html">Docs Home</a> <a href="../index.html">User Guide</a> <a href="../../maintainer/index.html">Maintainer Docs</a></nav></header>
+<main id="main" class="content">
+<h1 id="how-to-manage-project-memories">How to manage project memories</h1>
+<h2 id="what-youll-learn">What You'll Learn</h2>
+<p>How to open the Memory screen, search your project's saved notes, add a new one,
+edit an existing one, and safely remove one.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>bdboard running with your project open — see the
+<a href="../Getting-Started/QuickStart.html">Quick Start</a>.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p><strong>Memories</strong> are short, named notes your project keeps — conventions, gotchas,
+decisions worth remembering. The Memory screen lets you browse, search, and
+maintain them. Each memory has a <strong>key</strong> (a short identifier) and a <strong>body</strong> (the
+note itself, in markdown).</p>
+<h2 id="step-1-open-memory">Step 1: Open Memory</h2>
+<p>In the top bar, click <strong>Memory</strong>.</p>
+<p><strong>Expected result:</strong> the Memory screen opens listing every saved memory, with a
+count and a search box at the top.</p>
+<h2 id="step-2-search">Step 2: Search</h2>
+<p>Type in the <strong>Search memories</strong> box. The list filters as you type.</p>
+<p><strong>Expected result:</strong> the list narrows to memories matching your text, and the
+count updates to &quot;N matching ...&quot;. Clear the box to see everything again.</p>
+<h2 id="step-3-add-a-memory">Step 3: Add a memory</h2>
+<p>Click <strong>+ New Memory</strong>. In the dialog, enter a short <strong>Key</strong> and the <strong>Body</strong>,
+then click <strong>Save Memory</strong>.</p>
+<p><strong>Expected result:</strong> the dialog closes and your new memory appears in the list.</p>
+<div class="callout callout-tip"><p class="callout-title">Tip</p>
+<p>Keep keys short and slug-like (for example <code>dev-workflow</code>). If you save with a
+key that already exists, the body is updated instead of creating a duplicate.</p>
+</div>
+<h2 id="step-4-edit-a-memory">Step 4: Edit a memory</h2>
+<p>On a memory card, click the edit button. The dialog opens pre-filled. Change the
+body and click <strong>Save Memory</strong>.</p>
+<p><strong>Expected result:</strong> the card updates with your new body. The key stays fixed —
+you can't rename a key by editing; save under a new key instead.</p>
+<h2 id="step-5-remove-a-memory">Step 5: Remove a memory</h2>
+<p>On a memory card, click the forget button. A confirmation dialog appears. Read
+the warning, then click <strong>Yes, Forget It</strong> to confirm (or <strong>Cancel</strong> to keep
+it).</p>
+<p><strong>Expected result:</strong> the memory is permanently removed from the list.</p>
+<div class="callout callout-warning"><p class="callout-title">Warning</p>
+<p>Forgetting a memory is permanent and can't be undone. Memories are surfaced to
+the people and tools working on your project, so removing one can quietly take
+away context others relied on. Confirm only when you're sure.</p>
+</div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Search shows nothing</td>
+<td>Clear the box to confirm memories exist; if the list is empty, add one with <strong>+ New Memory</strong>.</td>
+</tr>
+<tr>
+<td>My new memory replaced an old one</td>
+<td>The key already existed — saving an existing key updates its body. Use a different key to keep both.</td>
+</tr>
+<tr>
+<td>I can't change the key when editing</td>
+<td>Keys are fixed on edit. Create a new memory under the desired key instead.</td>
+</tr>
+<tr>
+<td>The list looks out of date</td>
+<td>The screen updates live as memories change in any tab; reopen Memory if needed.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-guides">Related Guides</h2>
+<ul>
+<li><a href="PouringAFormula.html">Pour a formula</a></li>
+<li><a href="ViewingYourWork.html">View your work on the board</a></li>
+<li>Reference: <a href="../Reference/MemoryScreen.html">The memory screen</a></li>
+<li>Concept: <a href="../Concepts/LiveUpdates.html">Live updates</a></li>
+</ul>
+
+</main>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>
+</body>
+</html>
