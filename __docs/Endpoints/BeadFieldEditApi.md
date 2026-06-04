@@ -228,6 +228,9 @@ curl -i -X POST 'http://127.0.0.1:8765/api/bead/bdboard-mol-bfs.17/field' \
   both share `BdClient.show_long` and `partials/field_row.html`.
 - [Inline field-edit write path (Flow)](../Flows/FieldEditWritePath.md) — the
   end-to-end flow this endpoint is the HTTP entry point for.
+- [Formulas API (`/api/formulas`, form, pour)](FormulasApi.md) — the **sibling
+  write route**; the pour POST shares this endpoint's `_check_csrf`/`_CSRF_TOKEN`
+  guard and refresh-before-broadcast posture.
 - [Bead detail & inline editing (Feature)](../Features/BeadDetailAndInlineEditing.md) —
   the user-facing feature this route powers.
 - [Board page (`/`)](../Views/BoardPage.md) — opens the shared bead modal whose
