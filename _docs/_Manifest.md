@@ -17,10 +17,10 @@
 ## Progress
 
 - **Total items:** 18
-- **Done:** 3
-- **Remaining:** 15
+- **Done:** 18
+- **Remaining:** 0
 
-By group: Getting-Started 2/2 | Guides 1/7 | Tutorials 0/2 | Reference 0/4 | Concepts 0/3
+By group: Getting-Started 2/2 | Guides 7/7 | Tutorials 2/2 | Reference 4/4 | Concepts 3/3
 
 > The root **FAQ.md** is written/refreshed by the finalize step, not counted as an item here.
 
@@ -32,27 +32,27 @@ By group: Getting-Started 2/2 | Guides 1/7 | Tutorials 0/2 | Reference 0/4 | Con
 ## Guides
 
 - [x] 010 | Guide: View your work on the board -> [ViewingYourWork](Guides/ViewingYourWork.md)
-- [ ] 011 | Guide: Inspect a bead in detail -> [InspectingABead](Guides/InspectingABead.md)
-- [ ] 012 | Guide: Edit a bead's fields -> [EditingABead](Guides/EditingABead.md)
-- [ ] 013 | Guide: Review history & trends -> [ReviewingHistory](Guides/ReviewingHistory.md)
-- [ ] 014 | Guide: Manage project memories -> [ManagingMemories](Guides/ManagingMemories.md)
-- [ ] 015 | Guide: Pour a formula -> [PouringAFormula](Guides/PouringAFormula.md)
-- [ ] 016 | Guide: Filter recently closed work -> [FilteringClosedWork](Guides/FilteringClosedWork.md)
+- [x] 011 | Guide: Inspect a bead in detail -> [InspectingABead](Guides/InspectingABead.md)
+- [x] 012 | Guide: Edit a bead's fields -> [EditingABead](Guides/EditingABead.md)
+- [x] 013 | Guide: Review history & trends -> [ReviewingHistory](Guides/ReviewingHistory.md)
+- [x] 014 | Guide: Manage project memories -> [ManagingMemories](Guides/ManagingMemories.md)
+- [x] 015 | Guide: Pour a formula -> [PouringAFormula](Guides/PouringAFormula.md)
+- [x] 016 | Guide: Filter recently closed work -> [FilteringClosedWork](Guides/FilteringClosedWork.md)
 
 ## Tutorials
 
-- [ ] 040 | Tutorial: Your first bdboard session -> [FirstSession](Tutorials/FirstSession.md)
-- [ ] 041 | Tutorial: Triage and pick up work -> [TriageWalkthrough](Tutorials/TriageWalkthrough.md)
+- [x] 040 | Tutorial: Your first bdboard session -> [FirstSession](Tutorials/FirstSession.md)
+- [x] 041 | Tutorial: Triage and pick up work -> [TriageWalkthrough](Tutorials/TriageWalkthrough.md)
 
 ## Reference
 
-- [ ] 060 | Reference: The board screen -> [BoardScreen](Reference/BoardScreen.md)
-- [ ] 061 | Reference: The history screen -> [HistoryScreen](Reference/HistoryScreen.md)
-- [ ] 062 | Reference: The memory screen -> [MemoryScreen](Reference/MemoryScreen.md)
-- [ ] 063 | Reference: App navigation & status indicators -> [AppNavigation](Reference/AppNavigation.md)
+- [x] 060 | Reference: The board screen -> [BoardScreen](Reference/BoardScreen.md)
+- [x] 061 | Reference: The history screen -> [HistoryScreen](Reference/HistoryScreen.md)
+- [x] 062 | Reference: The memory screen -> [MemoryScreen](Reference/MemoryScreen.md)
+- [x] 063 | Reference: App navigation & status indicators -> [AppNavigation](Reference/AppNavigation.md)
 
 ## Concepts
 
-- [ ] 090 | Concept: Lanes & how cards are sorted -> [LanesExplained](Concepts/LanesExplained.md)
-- [ ] 091 | Concept: Blocked vs ready work -> [BlockedVsReady](Concepts/BlockedVsReady.md)
-- [ ] 092 | Concept: Live updates -> [LiveUpdates](Concepts/LiveUpdates.md)
+- [x] 090 | Concept: Lanes & how cards are sorted -> [LanesExplained](Concepts/LanesExplained.md)
+- [x] 091 | Concept: Blocked vs ready work -> [BlockedVsReady](Concepts/BlockedVsReady.md)
+- [x] 092 | Concept: Live updates -> [LiveUpdates](Concepts/LiveUpdates.md)
