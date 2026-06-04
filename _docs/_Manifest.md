@@ -22,7 +22,8 @@
 
 By group: Getting-Started 2/2 | Guides 7/7 | Tutorials 2/2 | Reference 4/4 | Concepts 3/3
 
-> The root **FAQ.md** is written/refreshed by the finalize step, not counted as an item here.
+> The root **[FAQ.md](FAQ.md)** is written/refreshed by the finalize step (now
+> in place), not counted as an item here.
 
 ## Getting-Started
 
