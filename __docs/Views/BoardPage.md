@@ -314,6 +314,9 @@ sequenceDiagram
 
 ## Related
 
+- [Live auto-refresh (Feature)](../Features/LiveAutoRefresh.md) — the feature
+  that opens this page's `EventSource` and re-fetches its lanes/counts on every
+  `beads_changed` pulse.
 - [Server startup & workspace resolution (Flow)](../Flows/ServerStartup.md) —
   the boot path that resolves the workspace, validates it, and renders this
   page's skeleton shell on the first `GET /`.

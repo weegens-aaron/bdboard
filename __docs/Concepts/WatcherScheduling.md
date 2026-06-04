@@ -278,6 +278,8 @@ revision_signature() -> frozenset[tuple[str, bytes]]      # (manifest_path, mani
 
 ## Related
 
+- [Live auto-refresh (Feature)](../Features/LiveAutoRefresh.md) — the user-facing
+  feature whose snappiness this scheduler's debounce/cooldown timing produces.
 - [Architecture](../Architecture.md) — system diagram (`watcher.py —
   RefreshScheduler` node) and the "Live-refresh pipeline" walkthrough this
   concept implements.

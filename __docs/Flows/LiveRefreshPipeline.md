@@ -262,6 +262,9 @@ Input → output at each hop:
 
 ## Related
 
+- [Live auto-refresh (Feature)](../Features/LiveAutoRefresh.md) — the
+  behavior-first feature overview this flow is the step-by-step producer story
+  for.
 - [Server startup & workspace resolution (Flow)](ServerStartup.md) — boots the
   watcher task and `Store`/`EventBus` singletons this pipeline runs on; this flow
   picks up exactly where that one's `watcher started` log leaves off.

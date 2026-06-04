@@ -276,6 +276,9 @@ es.addEventListener('beads_changed', () => {
 
 ## Related
 
+- [Live auto-refresh (Feature)](../Features/LiveAutoRefresh.md) — the feature
+  this stream is the live signal for; covers the producer + client re-fetch story
+  end to end.
 - [Server startup & workspace resolution (Flow)](../Flows/ServerStartup.md) —
   boots the `EventBus` singleton this stream subscribes to and the watcher that
   ultimately feeds it.

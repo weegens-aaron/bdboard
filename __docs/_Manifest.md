@@ -12,10 +12,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 19
-- **Remaining:** 6
+- **Done:** 20
+- **Remaining:** 5
 
-By section: Features 0/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
+By section: Features 1/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -24,7 +24,7 @@ By section: Features 0/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 - [ ] 003 | Feature: History & trends -> [HistoryAndTrends](Features/HistoryAndTrends.md)
 - [ ] 004 | Feature: Memory management -> [MemoryManagement](Features/MemoryManagement.md)
 - [ ] 005 | Feature: Formula pour -> [FormulaPour](Features/FormulaPour.md)
-- [ ] 006 | Feature: Live auto-refresh -> [LiveAutoRefresh](Features/LiveAutoRefresh.md)
+- [x] 006 | Feature: Live auto-refresh -> [LiveAutoRefresh](Features/LiveAutoRefresh.md)
 
 ## Flows
 
