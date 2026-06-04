@@ -205,6 +205,9 @@ revision_signature() -> frozenset[tuple[str, bytes]]      # (manifest_path, mani
   reason the self-feedback skip exists;
   [StoreSnapshotCache](StoreSnapshotCache.md) — `Store.refresh` (which the
   scheduler calls) holds the revision oracle and change-dedup;
+  [DeriveLayer](DeriveLayer.md) — re-shapes each refreshed snapshot; its
+  deterministic output is what lets `Store.refresh` dedup with `==` and the
+  scheduler broadcast only on real change;
   [HtmxPartialsArchitecture](HtmxPartialsArchitecture.md) — the `refresh from:body`
   re-swaps that a successful broadcast triggers.
 
