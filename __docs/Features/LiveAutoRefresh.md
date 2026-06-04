@@ -292,6 +292,8 @@ A bead dict as re-listed by `bd list --json` and diffed by `Store.refresh`
   `refresh`; its write routes fire the optimistic broadcasts.
 - [Formulas API (`/api/formulas`, form, pour)](../Endpoints/FormulasApi.md) — a
   pour fires an optimistic `beads_changed` so new beads arrive live.
+- [Formula pour (Feature)](FormulaPour.md) — the sibling feature whose pour rides
+  this live-refresh mechanism to surface new beads in every tab.
 - [Bead field-edit API (POST /api/bead/{id}/field)](../Endpoints/BeadFieldEditApi.md)
   — the other optimistic-broadcast write path.
 - [Watcher debounce/cooldown & self-feedback skip](../Concepts/WatcherScheduling.md)

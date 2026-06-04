@@ -232,6 +232,8 @@ Input → output at each hop:
 - [Server startup & workspace resolution (Flow)](ServerStartup.md) — establishes
   the resolved workspace + `bd` binary this pour flow depends on for its
   subprocesses.
+- [Formula pour (Feature)](../Features/FormulaPour.md) — the behavior-first,
+  user-facing overview of the *"+ Pour Formula"* dialog this flow powers.
 - [Formulas API (`/api/formulas`, form, pour)](../Endpoints/FormulasApi.md) — the
   HTTP contract for the three routes; this flow is the end-to-end story behind
   the `POST …/pour` write path (request/response shapes live there).
