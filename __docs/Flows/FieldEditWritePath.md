@@ -271,6 +271,9 @@ Input → output at each hop:
 
 ## Related
 
+- [Server startup & workspace resolution (Flow)](ServerStartup.md) — resolves the
+  workspace + `bd` binary and stamps the `cwd=workspace` that every `bd update`
+  subprocess in this write path runs under.
 - [Bead field-edit API (`POST /api/bead/{id}/field`)](../Endpoints/BeadFieldEditApi.md)
   — the HTTP contract for this write path (request/response shapes, status codes,
   curl examples); this flow is the end-to-end story behind it.

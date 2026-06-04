@@ -262,6 +262,9 @@ Input → output at each hop:
 
 ## Related
 
+- [Server startup & workspace resolution (Flow)](ServerStartup.md) — boots the
+  watcher task and `Store`/`EventBus` singletons this pipeline runs on; this flow
+  picks up exactly where that one's `watcher started` log leaves off.
 - [SSE events (`/api/events`)](../Endpoints/SseEvents.md) — the HTTP contract for
   the stream this pipeline broadcasts on (frame format, heartbeat, headers);
   this flow is the producer side feeding it.

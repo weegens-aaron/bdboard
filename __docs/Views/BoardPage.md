@@ -314,6 +314,9 @@ sequenceDiagram
 
 ## Related
 
+- [Server startup & workspace resolution (Flow)](../Flows/ServerStartup.md) —
+  the boot path that resolves the workspace, validates it, and renders this
+  page's skeleton shell on the first `GET /`.
 - [Swim-lane board (Feature)](../Features/SwimLaneBoard.md) — the feature this
   page is the primary UI for.
 - [Live auto-refresh (Feature)](../Features/LiveAutoRefresh.md) — the

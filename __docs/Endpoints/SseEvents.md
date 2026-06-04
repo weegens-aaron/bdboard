@@ -276,6 +276,9 @@ es.addEventListener('beads_changed', () => {
 
 ## Related
 
+- [Server startup & workspace resolution (Flow)](../Flows/ServerStartup.md) —
+  boots the `EventBus` singleton this stream subscribes to and the watcher that
+  ultimately feeds it.
 - [Lanes API (`/api/lanes`, `/api/lanes/closed`, `/api/counts`)](LanesApi.md) —
   the board regions re-fetched on every `beads_changed → refresh from:body`
   pulse this stream emits. They are pure read-only swap targets; this endpoint is
