@@ -28,7 +28,7 @@ Open a terminal and go into the folder your team uses to track work — the one
 that contains a `.beads` folder.
 
 ```sh
-cd path/to/your-project
+cd ~/work/my-project   # swap in the folder your team actually uses
 ```
 
 **Expected result:** your terminal is now "inside" the project folder.
@@ -43,7 +43,7 @@ From inside the project folder, install bdboard with uv:
 
 ```sh
 uv venv
-uv pip install -e .
+uv pip install .
 source .venv/bin/activate
 ```
 
