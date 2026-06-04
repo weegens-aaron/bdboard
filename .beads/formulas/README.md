@@ -202,3 +202,13 @@ bd mol pour flowdoc-html --var target=user
 
 Same phase approach as the others: **no `phase:vapor`**, **top-level
 `pour:true`** kept as a safety net.
+
+> [!NOTE]
+> **Skill portability (audit gap H1/H2).** The `md-to-html` skill is *preferred
+> but optional*. The `build` step resolves it in order — `<repo>/skills/…`,
+> `<repo>/.beads/skills/…`, the flowdoc toolkit checkout — and if none is found
+> falls back to an **explicit build contract** so the site still builds on an
+> arbitrary poured repo. That contract pins the carry-over items that used to be
+> left implicit: mermaid rendering, `[!NOTE]/[!TIP]/[!WARNING]` callout boxes,
+> per-section `index.html` pages, a shared `style.css`, and `.md`→`.html`
+> relative-link rewriting. The VERIFY gate fails the build if any are missing.
