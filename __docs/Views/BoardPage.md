@@ -333,6 +333,9 @@ sequenceDiagram
   pour pipeline this page's "+ Pour Formula" dialog kicks off and re-renders on.
 - [SSE events (/api/events)](../Endpoints/SseEvents.md) — the live-refresh
   stream that re-fetches the board on `.beads/` changes.
+- [Live-refresh pipeline (Flow)](../Flows/LiveRefreshPipeline.md) — the full
+  bd-write → watcher → refresh → broadcast → re-fetch flow that repaints this
+  page's lanes and counts.
 - [History page (/history)](HistoryPage.md) and [Memory page (/memory)](MemoryPage.md) —
   sibling pages sharing the masthead, nav, and shell pattern.
 - [Derive layer (pure view shaping)](../Concepts/DeriveLayer.md) — where the

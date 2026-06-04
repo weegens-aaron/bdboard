@@ -303,6 +303,9 @@ es.addEventListener('beads_changed', () => {
 - [HTMX + server-rendered partials](../Concepts/HtmxPartialsArchitecture.md) —
   why the event is a content-free trigger that fans out to `refresh from:body`
   regions instead of pushing data down the wire.
+- [Live-refresh pipeline (Flow)](../Flows/LiveRefreshPipeline.md) — the end-to-end
+  producer story (bd write → watcher → refresh → broadcast → client re-fetch)
+  that culminates in the events this stream delivers.
 - [Watcher debounce/cooldown & self-feedback skip](../Concepts/WatcherScheduling.md)
   — the producer side: how FS events become exactly one `beads_changed`
   broadcast (and how bdboard's own reads are skipped so the stream can't spin).
