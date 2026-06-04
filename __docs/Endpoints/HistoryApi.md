@@ -297,6 +297,9 @@ to 50; a non-integer `page`/`page_size` yields `422`.
 
 ## Related
 
+- [History & trends (Feature)](../Features/HistoryAndTrends.md) — the
+  behavior-first overview of the whole History surface this endpoint powers
+  (the feature spec this route implements).
 - [History page (`/history`)](../Views/HistoryPage.md) — the full-page view
   whose range control, pager, page-size selector, and Custom-date popover drive
   every call to this route; the page shell renders `#history-region` +
