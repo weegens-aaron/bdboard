@@ -408,3 +408,5 @@ CLI call can be skipped:
   [FormulasApi](../Endpoints/FormulasApi.md) ·
   [BeadFieldEditApi](../Endpoints/BeadFieldEditApi.md) — endpoints that bottom out
   in a `BdClient` call.
+- [MemoryPage](../Views/MemoryPage.md) — the memory view whose list/search/
+  create/delete actions are `memories`/`remember`/`forget` calls into this layer.

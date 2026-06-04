@@ -12,10 +12,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 5
-- **Remaining:** 20
+- **Done:** 6
+- **Remaining:** 19
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 5/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 1/3 | Concepts 5/5
 
 ## Features
 
@@ -47,7 +47,7 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 5/5
 
 - [ ] 060 | View: Board page (/) -> [BoardPage](Views/BoardPage.md)
 - [ ] 061 | View: History page (/history) -> [HistoryPage](Views/HistoryPage.md)
-- [ ] 062 | View: Memory page (/memory) -> [MemoryPage](Views/MemoryPage.md)
+- [x] 062 | View: Memory page (/memory) -> [MemoryPage](Views/MemoryPage.md)
 
 ## Concepts
 
