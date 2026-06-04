@@ -12,10 +12,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 12
-- **Remaining:** 13
+- **Done:** 13
+- **Remaining:** 12
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 4/7 | Views 3/3 | Concepts 5/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 5/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -37,7 +37,7 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 4/7 | Views 3/3 | Concepts 5/5
 
 - [ ] 050 | Endpoint: SSE events (/api/events) -> [SseEvents](Endpoints/SseEvents.md)
 - [ ] 051 | Endpoint: Lanes API (/api/lanes, /api/lanes/closed, /api/counts) -> [LanesApi](Endpoints/LanesApi.md)
-- [ ] 052 | Endpoint: History API (/api/history) -> [HistoryApi](Endpoints/HistoryApi.md)
+- [x] 052 | Endpoint: History API (/api/history) -> [HistoryApi](Endpoints/HistoryApi.md)
 - [x] 053 | Endpoint: Memory API (/api/memory GET/POST/DELETE) -> [MemoryApi](Endpoints/MemoryApi.md)
 - [x] 054 | Endpoint: Formulas API (/api/formulas, form, pour) -> [FormulasApi](Endpoints/FormulasApi.md)
 - [x] 055 | Endpoint: Bead detail API (/api/bead/{id}, /audit, /raw) -> [BeadDetailApi](Endpoints/BeadDetailApi.md)
