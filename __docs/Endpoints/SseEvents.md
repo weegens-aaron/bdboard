@@ -290,6 +290,9 @@ es.addEventListener('beads_changed', () => {
 - [Formulas API (`/api/formulas`, form, pour)](FormulasApi.md) — a successful
   pour likewise emits an optimistic `beads_changed` over this stream so the new
   beads arrive live on the board.
+- [Formula pour fan-out (Flow)](../Flows/FormulaPourFanout.md) — the end-to-end
+  pour flow whose final step is the optimistic `beads_changed` broadcast this
+  stream carries to every tab.
 - [Bead field-edit API (POST /api/bead/{id}/field)](BeadFieldEditApi.md) — the
   other optimistic-broadcast write path; an inline edit pushes `beads_changed`
   so the card re-renders everywhere.

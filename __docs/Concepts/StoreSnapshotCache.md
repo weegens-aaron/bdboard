@@ -374,6 +374,9 @@ long-window fetch nobody has asked for yet).
   change-dedup gates.
 - [FieldEditWritePath](../Flows/FieldEditWritePath.md) — the write path that
   refreshes before broadcasting.
+- [FormulaPourFanout](../Flows/FormulaPourFanout.md) — the pour write path that
+  also `store.refresh()`es before broadcasting so tabs don't fetch a snapshot
+  that omits the freshly poured beads.
 - [BeadFieldEditApi](../Endpoints/BeadFieldEditApi.md) — the field-edit endpoint
   whose `fresh=True` re-read and post-edit re-render depend on this cache's
   invalidation.

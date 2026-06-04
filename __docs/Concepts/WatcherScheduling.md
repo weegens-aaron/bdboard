@@ -285,6 +285,9 @@ revision_signature() -> frozenset[tuple[str, bytes]]      # (manifest_path, mani
 - [Manifest](../_Manifest.md) — catalog of every documented item.
 - [LiveRefreshPipeline](../Flows/LiveRefreshPipeline.md) — the end-to-end flow
   this scheduling sits in the middle of.
+- [FormulaPourFanout](../Flows/FormulaPourFanout.md) — a write flow that emits an
+  optimistic `beads_changed`; the watcher's self-feedback skip keeps the pour's
+  own `.beads/` churn from spinning into extra refreshes.
 - [LiveAutoRefresh](../Features/LiveAutoRefresh.md) — the user-facing feature.
 - [SseEvents](../Endpoints/SseEvents.md) — the stream a successful refresh
   broadcasts on.

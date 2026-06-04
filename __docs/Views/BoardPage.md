@@ -329,6 +329,8 @@ sequenceDiagram
   field row.
 - [Formulas API (/api/formulas, form, pour)](../Endpoints/FormulasApi.md) — the
   endpoints driving the two-step pour dialog.
+- [Formula pour fan-out (Flow)](../Flows/FormulaPourFanout.md) — the end-to-end
+  pour pipeline this page's "+ Pour Formula" dialog kicks off and re-renders on.
 - [SSE events (/api/events)](../Endpoints/SseEvents.md) — the live-refresh
   stream that re-fetches the board on `.beads/` changes.
 - [History page (/history)](HistoryPage.md) and [Memory page (/memory)](MemoryPage.md) —
