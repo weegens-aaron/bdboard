@@ -301,6 +301,9 @@ CLI call can be skipped:
   [FormulasApi](../Endpoints/FormulasApi.md) ·
   [BeadFieldEditApi](../Endpoints/BeadFieldEditApi.md) — every data route bottoms
   out in a `BdClient` call (directly or via `Store`).
+- **Views:**
+  [BoardPage](../Views/BoardPage.md) — its lanes, counts, and epic hydration
+  ultimately come from `list_active`/`list_closed`/`show_long` via `Store`.
 - **Related concepts:**
   [StoreSnapshotCache](StoreSnapshotCache.md) — caches `BdClient` output so the
   ~700ms subprocess isn't paid per request, and consults `revision_signature()`;

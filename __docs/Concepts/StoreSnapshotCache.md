@@ -265,6 +265,8 @@ long-window fetch nobody has asked for yet).
   [SseEvents](../Endpoints/SseEvents.md) — the `beads_changed` stream a `True`
   refresh broadcasts on.
 - **Views:**
+  [BoardPage](../Views/BoardPage.md) — reads `snapshot_active` (lanes/strip/
+  activity), `snapshot_closed` (closed lane), and `snapshot()` (counts strip);
   [HistoryPage](../Views/HistoryPage.md) — reads the window-bounded
   `snapshot_history` cache for its closed list, charts, and KPIs.
 - **Related concepts:**
