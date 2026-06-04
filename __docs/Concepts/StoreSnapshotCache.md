@@ -264,6 +264,9 @@ long-window fetch nobody has asked for yet).
   cached fallback;
   [SseEvents](../Endpoints/SseEvents.md) — the `beads_changed` stream a `True`
   refresh broadcasts on.
+- **Views:**
+  [HistoryPage](../Views/HistoryPage.md) — reads the window-bounded
+  `snapshot_history` cache for its closed list, charts, and KPIs.
 - **Related concepts:**
   [BdCliSourceOfTruth](BdCliSourceOfTruth.md) — `Store` caches the output of
   `bd list --json`, and its read-only-yet-file-touching nature is why the

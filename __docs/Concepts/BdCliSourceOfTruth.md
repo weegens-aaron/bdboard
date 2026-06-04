@@ -410,3 +410,5 @@ CLI call can be skipped:
   in a `BdClient` call.
 - [MemoryPage](../Views/MemoryPage.md) — the memory view whose list/search/
   create/delete actions are `memories`/`remember`/`forget` calls into this layer.
+- [HistoryPage](../Views/HistoryPage.md) — the history view whose closed record
+  and `bd status` totals bottom out in `list_closed_history`/`status_summary`.
