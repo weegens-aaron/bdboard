@@ -308,6 +308,11 @@ to 50; a non-integer `page`/`page_size` yields `422`.
   endpoint complements; the board's `/api/lanes` region is the symmetric
   read-only swap target `api_history` is modelled on (pure derive over a
   snapshot, HTML fragment, no mutation).
+- [Lanes API (`/api/lanes`, `/api/lanes/closed`, `/api/counts`)](LanesApi.md) —
+  the board's read-only hydration endpoints this route is symmetric with; their
+  date-capped `list_closed` board path is the complement to this route's
+  uncapped, `--closed-after`-bounded `list_closed_history` path (the board/History
+  closed-record split, bdboard-p8v / bdboard-a194).
 - [Bead detail API (`/api/bead/{id}`, …)](BeadDetailApi.md) — the modal opened
   when a card in this endpoint's closed list is clicked (`bead_card.html`).
 - [bd CLI as runtime source of truth](../Concepts/BdCliSourceOfTruth.md) — why
