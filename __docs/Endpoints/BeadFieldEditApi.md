@@ -231,6 +231,9 @@ curl -i -X POST 'http://127.0.0.1:8765/api/bead/bdboard-mol-bfs.17/field' \
 - [Formulas API (`/api/formulas`, form, pour)](FormulasApi.md) — the **sibling
   write route**; the pour POST shares this endpoint's `_check_csrf`/`_CSRF_TOKEN`
   guard and refresh-before-broadcast posture.
+- [Memory API (`/api/memory`)](MemoryApi.md) — the memory CRUD sibling write
+  route; shares the identical `_check_csrf`/`_CSRF_TOKEN` guard and the
+  refresh-before-broadcast posture.
 - [Bead detail & inline editing (Feature)](../Features/BeadDetailAndInlineEditing.md) —
   the user-facing feature this route powers.
 - [Board page (`/`)](../Views/BoardPage.md) — opens the shared bead modal whose

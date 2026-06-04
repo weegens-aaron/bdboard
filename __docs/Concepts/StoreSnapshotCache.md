@@ -380,5 +380,7 @@ long-window fetch nobody has asked for yet).
 - [LanesApi](../Endpoints/LanesApi.md) · [HistoryApi](../Endpoints/HistoryApi.md)
   · [BeadDetailApi](../Endpoints/BeadDetailApi.md) — endpoints that read the
   caches.
+- [MemoryApi](../Endpoints/MemoryApi.md) — the memory CRUD trio whose reads ride
+  the memories TTL-cache and whose writes clear it via `invalidate_caches`.
 - [SseEvents](../Endpoints/SseEvents.md) — the stream a `True` refresh broadcasts
   on.

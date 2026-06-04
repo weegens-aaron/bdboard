@@ -326,6 +326,9 @@ required variable(s): …`; a bd-layer pour failure yields `500 Pour failed:
 - [Bead field-edit API (`POST /api/bead/{id}/field`)](BeadFieldEditApi.md) — the
   sibling write route; both share `_check_csrf`/`_CSRF_TOKEN` and the
   refresh-before-broadcast posture.
+- [Memory API (`/api/memory`)](MemoryApi.md) — another sibling write trio built
+  on the same `_check_csrf`/`_CSRF_TOKEN` guard, `_run_mutate` single-writer
+  gate, and failure-tolerant inline-message degradation.
 - [bd CLI as runtime source of truth](../Concepts/BdCliSourceOfTruth.md) — why
   the pour bottoms out in `bd mol pour` and why variables/steps are read from the
   on-disk `*.formula.json` (the CLI doesn't expose them reliably).
