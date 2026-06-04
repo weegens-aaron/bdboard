@@ -12,10 +12,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 4
-- **Remaining:** 21
+- **Done:** 5
+- **Remaining:** 20
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 4/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 5/5
 
 ## Features
 
@@ -51,7 +51,7 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 0/3 | Concepts 4/5
 
 ## Concepts
 
-- [ ] 080 | Concept: bd CLI as runtime source of truth -> [BdCliSourceOfTruth](Concepts/BdCliSourceOfTruth.md)
+- [x] 080 | Concept: bd CLI as runtime source of truth -> [BdCliSourceOfTruth](Concepts/BdCliSourceOfTruth.md)
 - [x] 081 | Concept: Store snapshot cache & change detection -> [StoreSnapshotCache](Concepts/StoreSnapshotCache.md)
 - [x] 082 | Concept: Derive layer (pure view shaping) -> [DeriveLayer](Concepts/DeriveLayer.md)
 - [x] 083 | Concept: Watcher debounce/cooldown & self-feedback skip -> [WatcherScheduling](Concepts/WatcherScheduling.md)
