@@ -12,10 +12,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 8
-- **Remaining:** 17
+- **Done:** 9
+- **Remaining:** 16
 
-By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 3/3 | Concepts 5/5
+By section: Features 0/6 | Flows 0/4 | Endpoints 1/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -41,7 +41,7 @@ By section: Features 0/6 | Flows 0/4 | Endpoints 0/7 | Views 3/3 | Concepts 5/5
 - [ ] 053 | Endpoint: Memory API (/api/memory GET/POST/DELETE) -> [MemoryApi](Endpoints/MemoryApi.md)
 - [ ] 054 | Endpoint: Formulas API (/api/formulas, form, pour) -> [FormulasApi](Endpoints/FormulasApi.md)
 - [ ] 055 | Endpoint: Bead detail API (/api/bead/{id}, /audit, /raw) -> [BeadDetailApi](Endpoints/BeadDetailApi.md)
-- [ ] 056 | Endpoint: Bead field-edit API (POST /api/bead/{id}/field) -> [BeadFieldEditApi](Endpoints/BeadFieldEditApi.md)
+- [x] 056 | Endpoint: Bead field-edit API (POST /api/bead/{id}/field) -> [BeadFieldEditApi](Endpoints/BeadFieldEditApi.md)
 
 ## Views
 

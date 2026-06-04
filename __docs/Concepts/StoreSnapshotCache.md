@@ -374,6 +374,9 @@ long-window fetch nobody has asked for yet).
   change-dedup gates.
 - [FieldEditWritePath](../Flows/FieldEditWritePath.md) — the write path that
   refreshes before broadcasting.
+- [BeadFieldEditApi](../Endpoints/BeadFieldEditApi.md) — the field-edit endpoint
+  whose `fresh=True` re-read and post-edit re-render depend on this cache's
+  invalidation.
 - [LanesApi](../Endpoints/LanesApi.md) · [HistoryApi](../Endpoints/HistoryApi.md)
   · [BeadDetailApi](../Endpoints/BeadDetailApi.md) — endpoints that read the
   caches.

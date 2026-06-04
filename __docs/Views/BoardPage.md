@@ -324,6 +324,9 @@ sequenceDiagram
   the endpoints this page calls for the strip, lanes, closed lane, and counts.
 - [Bead detail API (/api/bead/{id})](../Endpoints/BeadDetailApi.md) — the
   endpoint behind the shared bead modal each chip/card/row opens.
+- [Bead field-edit API (POST /api/bead/{id}/field)](../Endpoints/BeadFieldEditApi.md) —
+  the write path behind the inline edit / add-note affordances on each modal
+  field row.
 - [Formulas API (/api/formulas, form, pour)](../Endpoints/FormulasApi.md) — the
   endpoints driving the two-step pour dialog.
 - [SSE events (/api/events)](../Endpoints/SseEvents.md) — the live-refresh

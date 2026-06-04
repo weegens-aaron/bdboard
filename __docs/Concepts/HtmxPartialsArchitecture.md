@@ -327,3 +327,6 @@ endpoint listed in [`_Manifest.md`](../_Manifest.md) rides on it:
   this concept powers.
 - [SseEvents](../Endpoints/SseEvents.md) — the endpoint that emits the live
   `beads_changed` signal driving every `refresh from:body` re-swap.
+- [BeadFieldEditApi](../Endpoints/BeadFieldEditApi.md) — the field-edit endpoint
+  that returns `partials/field_row.html` for an in-place `outerHTML` swap (incl.
+  the OOB priority-badge idiom and `htmx:beforeSwap` error routing).
