@@ -356,11 +356,9 @@ degrades to an empty/stale fragment rather than an error status.
   target modelled on `/api/lanes` (pure derive over a snapshot, HTML fragment,
   no mutation); its closed list uses the uncapped, `--closed-after`-bounded
   `list_closed_history` path rather than this board's date-capped `list_closed`.
-- **SSE events (`/api/events`)** — the live-refresh stream whose
+- [SSE events (`/api/events`)](SseEvents.md) — the live-refresh stream whose
   `beads_changed` event fires `refresh from:body`, re-fetching all three of
-  these regions so the board updates as the workspace changes. (Its own
-  maintainer doc is item 050 in the [manifest](../_Manifest.md), not yet
-  written.)
+  these regions so the board updates as the workspace changes.
 - [Bead detail API (`/api/bead/{id}`, …)](BeadDetailApi.md) — the modal opened
   when an epic chip, a lane card (`bead_card.html`), or an Activity row is
   clicked.
