@@ -3,7 +3,7 @@
   "version": 1,
   "type": "workflow",
   "pour": true,
-  "description": "Generate feature/flow documentation for a repo from scratch, FlowDoc-style (document what the code DOES, not a file inventory). Spawns: root epic -> a single discover spawner -> one doc bead per manifest item (created at runtime) -> a finalize bead gated on all the discovered docs. Replaces the flowdoc / flowdoc-user agent-loop. Template/section/naming fidelity is carried by the inlined _FlowDocGuide.md the discover step authors (there is no external 'flowdoc' skill). The maintainer edition documents code structure (Features/Flows/Endpoints/Views/Concepts); the user edition organizes docs by the Diataxis framework (Getting-Started/Guides/Tutorials/Reference/Concepts), follows task-oriented writing rules, and never exposes code, file paths, or internal URLs. Pour with --var audience=maintainer (default) or --var audience=user. Run via 'bd mol pour flowdoc-generate --var audience=...'.\n",
+  "description": "Generate feature/flow documentation for a repo from scratch, FlowDoc-style (document what the code DOES, not a file inventory). Spawns: root epic -> a single discover spawner -> one doc bead per manifest item (created at runtime) -> a finalize bead gated on all the discovered docs -> a validate bead (depends_on finalize) that scores the generated docs against the authoring contract. Replaces the flowdoc / flowdoc-user agent-loop. Template/section/naming fidelity is carried by the inlined _FlowDocGuide.md the discover step authors (there is no external 'flowdoc' skill). The maintainer edition documents code structure (Features/Flows/Endpoints/Views/Concepts); the user edition organizes docs by the Diataxis framework (Getting-Started/Guides/Tutorials/Reference/Concepts), follows task-oriented writing rules, and never exposes code, file paths, or internal URLs. Pour with --var audience=maintainer (default) or --var audience=user. Run via 'bd mol pour flowdoc-generate --var audience=...'.\n",
   "variables": {
     "audience": {
       "default": "maintainer",
@@ -21,7 +21,7 @@
         "docs",
         "generate"
       ],
-      "description": "Umbrella for a from-scratch FlowDoc documentation pass ({{audience}} edition).\n\nAUDIENCE MAP (read this first, every child obeys it):\n  - audience = maintainer -> write to __docs/ ; voice = for developers;\n    include implementation detail, file paths, mermaid, API/View tables.\n  - audience = user       -> write to _docs/  ; voice = for end users;\n    NO source paths, NO code, NO internal URLs; task/outcome oriented.\n    Organize docs by the Diataxis framework: Getting-Started / Guides /\n    Tutorials / Reference / Concepts.\n\nThis epic has exactly two authored children: 'discover' (runs first and spawns\none bead per documentation item) and 'finalize' (runs last, gated on every\nspawned doc). Do not work this epic directly — work its leaves.\n"
+      "description": "Umbrella for a from-scratch FlowDoc documentation pass ({{audience}} edition).\n\nAUDIENCE MAP (read this first, every child obeys it):\n  - audience = maintainer -> write to __docs/ ; voice = for developers;\n    include implementation detail, file paths, mermaid, API/View tables.\n  - audience = user       -> write to _docs/  ; voice = for end users;\n    NO source paths, NO code, NO internal URLs; task/outcome oriented.\n    Organize docs by the Diataxis framework: Getting-Started / Guides /\n    Tutorials / Reference / Concepts.\n\nThis epic has exactly three authored children: 'discover' (runs first and spawns\none bead per documentation item), 'finalize' (runs after every spawned doc,\ngated on children-of(discover)), and 'validate' (runs last, depends_on finalize,\nscores the generated docs against the authoring contract). Do not work this epic\ndirectly — work its leaves.\n"
     },
     {
       "id": "discover",
@@ -49,6 +49,22 @@
         "finalize"
       ],
       "description": "FINALIZE the {{audience}} documentation set. You only become ready once\n'discover' and EVERY doc bead it spawned are closed (fan-out gate).\n\nDOCS_DIR = __docs/ if maintainer, _docs/ if user.\n1. Confirm every item in DOCS_DIR/_Manifest.md is checked [x]; fix counters\n   (Total / Done / Remaining must reconcile).\n2. Write/refresh DOCS_DIR/Troubleshooting.md (maintainer) or DOCS_DIR/FAQ.md\n   (user) from gotchas surfaced while documenting.\n3. Verify all intra-doc links resolve, naming is PascalCase end to end, and\n   every section index lists its docs.\n4. (user edition only) Grep the docs for developer leakage — source paths,\n   shell/install commands, localhost/staging URLs, class/function names — and\n   replace with user-facing equivalents.\nREAD-ONLY source. Output only under DOCS_DIR. Do NOT close any bead yourself.\n"
+    },
+    {
+      "id": "validate",
+      "type": "task",
+      "priority": 1,
+      "parent": "root",
+      "depends_on": [
+        "finalize"
+      ],
+      "title": "FlowDoc {{audience}}: validate generated docs against the rubric",
+      "labels": [
+        "flowdoc",
+        "docs",
+        "validation"
+      ],
+      "description": "VALIDATE the {{audience}} documentation set against the FlowDoc authoring\ncontract. POUR-GATE (bdboard-4iud): this step declares depends_on: finalize, so\nit stays BLOCKED until 'finalize' closes — and finalize itself is gated on\nchildren-of(discover), i.e. every spawned doc bead. The validate gate is\ntherefore baked into the formula: it cannot start until the whole poured\ngeneration is complete, with NO manual 'bd dep add' after the pour. (It depends\non the finalize LEAF task, not the epic, per the bd rule that tasks cannot block\nepics.)\n\nDOCS_DIR = __docs/ if maintainer, _docs/ if user.\nRUBRIC = DOCS_DIR/_FlowDocGuide.md (the authoring contract 'discover' wrote) plus\nDOCS_DIR/_Manifest.md. Score the generated docs and record residual deltas in\nthis bead's notes:\n1. MANIFEST PARITY: every _Manifest.md item is checked [x], a file exists at its\n   exact PascalCase <Section>/<Name>.md path, and Total/Done/Remaining reconcile.\n2. TEMPLATE FIDELITY: each doc carries EVERY section + table its _FlowDocGuide.md\n   template prescribes (maintainer: Feature/Flow/Endpoint/View/Concept; user:\n   Getting-Started/Guide/Tutorial/Reference/Concept) with real column values and\n   real JSON field names — no placeholders, no TODOs, no empty tables.\n3. DIAGRAMS: every template that calls for a mermaid block has a real, non-empty\n   one (no bare fences).\n4. LINKS: intra-doc links resolve and related docs link bidirectionally.\n5. (user edition only) LEAKAGE: no source paths, code/shell snippets,\n   class/function names, or localhost/dev/staging URLs.\n6. SHAPE vs REFERENCE: section order, table headers, and naming match the\n   FlowDoc reference shape.\nProduce a scorecard (per-gate PASS/FAIL + an overall fidelity %) and record it in\nthis bead's notes. For any gap, file one fix bead per finding (Bug Discovery\nProtocol) rather than fixing inline. READ-ONLY source. Do NOT close any bead\nyourself — the LLM judges close it.\n"
     }
   ]
 }

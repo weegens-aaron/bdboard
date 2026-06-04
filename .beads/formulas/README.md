@@ -5,6 +5,36 @@ and can be referenced by name (`bd cook <name>`, `bd mol pour <name>`,
 `bd mol wisp <name>`). Don't drop scratch/sketch formulas here; keep those in
 `docs/design/` until they're intentionally promoted (see bdboard-zda spike).
 
+## Baked-in validation gate (the pour-gate fix, bdboard-4iud)
+
+The three FlowDoc formulas (`flowdoc-generate`, `flowdoc-maintain`,
+`flowdoc-html`) each end with a **`validate`** step that is part of the SAME
+poured epic as the generation work — so a single `bd mol pour` produces the whole
+phase (generate → finalize → validate) with the validation gate baked in. There
+is **no separate wrapper epic, no standalone "re-pour" task, and no manual
+`bd dep add` after the pour.**
+
+How the gate holds (verified by test pour, bdboard-4iud):
+
+- `validate` declares **`depends_on: [<terminal-leaf>]`** — `finalize` for
+  generate/maintain, `build` for html. This is a static blocking edge on a
+  **leaf task** (not the epic), respecting bd's rule that tasks cannot block
+  epics. `validate` stays **BLOCKED** until that leaf closes.
+- `finalize` keeps **`waits_for: children-of(<spawner>)`** (`discover` for
+  generate, `audit` for maintain) — a dynamic fan-out gate that re-evaluates as
+  the spawner creates one doc/fix bead per manifest/queue item. `finalize`
+  cannot close until every spawned bead closes.
+- Transitively, `validate` cannot start until the entire poured generation is
+  complete. (`bd ready` confirms: `validate` is never ready while `finalize` is
+  open; once a doc bead exists, `finalize` is blocked too.)
+
+> [!NOTE]
+> Why `depends_on` and not `waits_for`? bd's `waits_for` only accepts
+> `all-children`, `any-children`, or `children-of(step-id)` — it cannot name a
+> bare sibling step, and `children-of(<leaf>)` is empty for a leaf task.
+> `depends_on: [<step-id>]` is the grammar-correct way to make `validate`
+> wait on the terminal leaf. See memory key `flowdoc-pour-gate`.
+
 ## docs-validation
 
 A documentation validation pass that spawns an epic + 4 task children
@@ -98,11 +128,13 @@ Generate feature/flow documentation for a repo **from scratch**, FlowDoc-style
 not a file inventory. Replaces the old `flowdoc` / `flowdoc-user` agent-loop.
 
 Unlike the fixed-shape formulas above, this one **fans out at runtime**: it
-spawns a 3-step skeleton (epic → `discover` → `finalize`), and the `discover`
-step surveys the repo, scaffolds the docs tree, then creates **one doc bead per
-manifest item** (count is repo-dependent). `finalize` is gated on every
+spawns a 4-step skeleton (epic → `discover` → `finalize` → `validate`), and the
+`discover` step surveys the repo, scaffolds the docs tree, then creates **one doc
+bead per manifest item** (count is repo-dependent). `finalize` is gated on every
 spawned doc via `waits_for: children-of(discover)`, so it only becomes ready
-once the whole fan-out is closed.
+once the whole fan-out is closed. `validate` then scores the generated docs
+against the authoring contract and is gated via `depends_on: finalize` (see the
+baked-in validation gate section above).
 
 **Audience variable.** This is the first formula here to declare a variable:
 
@@ -127,8 +159,8 @@ bd mol pour flowdoc-generate --var audience=user        # end-user docs in _docs
 > `--var audience=maintainer` (or `=user`). The `default` is kept in the schema
 > as forward-looking intent for when bd honors it. (Verified bdboard-mol-iuv.)
 
-Use `--dry-run` (with the `--var`) to preview the 4 skeleton issues (proto +
-epic + `discover` + `finalize`) — the per-item doc beads are created when
+Use `--dry-run` (with the `--var`) to preview the 5 skeleton issues (proto +
+epic + `discover` + `finalize` + `validate`) — the per-item doc beads are created when
 `discover` actually runs, so they don't appear in the dry run. Poured from
 within whatever repo needs docs, so the repo is implicit.
 
@@ -145,11 +177,13 @@ loop/judge cycle. Replaces the old `flowdoc-maintainer` /
 `flowdoc-user-maintainer` agent-loop. **Precondition:** the matching
 `DOCS_DIR/_Manifest.md` must already exist — run `flowdoc-generate` first.
 
-Like `flowdoc-generate`, it **fans out at runtime**: a 3-step skeleton (epic →
-`audit` → `finalize`); `audit` detects drift, scores each finding by impact,
-writes `_UpdateQueue.md`, then spawns **one fix bead per queue item**
+Like `flowdoc-generate`, it **fans out at runtime**: a 4-step skeleton (epic →
+`audit` → `finalize` → `validate`); `audit` detects drift, scores each finding by
+impact, writes `_UpdateQueue.md`, then spawns **one fix bead per queue item**
 (UPDATE / NEW / REMOVE / VERIFY / LEAKAGE). `finalize` is gated via
 `waits_for: children-of(audit)` and archives the queue into `_AuditLog.md`.
+`validate` then scores the maintained docs and is gated via
+`depends_on: finalize` (see the baked-in validation gate section above).
 
 | `--var audience=` | Docs dir | Scoring lens |
 |---|---|---|
@@ -166,7 +200,7 @@ bd mol pour flowdoc-maintain --var audience=user
 > [!IMPORTANT]
 > Same bd 1.0.4 gotcha as `flowdoc-generate`: **`--var audience=` is
 > mandatory** — bd ignores the variables-block default. Use `--dry-run` (with
-> the `--var`) to preview the 4-issue skeleton; the per-finding fix beads are
+> the `--var`) to preview the 5-issue skeleton; the per-finding fix beads are
 > created when `audit` runs, so they don't appear in the dry run.
 
 Same phase approach as the others: **no `phase:vapor`**, **top-level
@@ -177,9 +211,11 @@ Same phase approach as the others: **no `phase:vapor`**, **top-level
 Build the static HTML documentation site(s) from the FlowDoc markdown using the
 `md-to-html` skill — a standalone capability (replaces the old `DocsToHTML` /
 `HTMLSiteBuild` flow). Pour it **after** a generate or maintain pass. It spawns
-a 2-step skeleton (epic → `build`); the `build` child converts `__docs/` →
+a 3-step skeleton (epic → `build` → `validate`); the `build` child converts `__docs/` →
 `docs/maintainer/` and/or `_docs/` → `docs/user/` and refreshes the top-level
-`docs/index.html` landing page.
+`docs/index.html` landing page. `validate` then scores the rebuilt site against
+the build contract + rubric and is gated via `depends_on: build` (see the
+baked-in validation gate section above).
 
 | `--var target=` | Builds |
 |---|---|
@@ -198,7 +234,7 @@ bd mol pour flowdoc-html --var target=user
 > [!IMPORTANT]
 > Same bd 1.0.4 gotcha: **`--var target=` is mandatory** — bd ignores the
 > variables-block default. Use `--dry-run` (with the `--var`) to preview the
-> 3-issue skeleton (proto + epic + `build`).
+> 4-issue skeleton (proto + epic + `build` + `validate`).
 
 Same phase approach as the others: **no `phase:vapor`**, **top-level
 `pour:true`** kept as a safety net.
