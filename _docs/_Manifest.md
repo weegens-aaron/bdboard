@@ -2,7 +2,7 @@
 
 > Single source of truth for what gets documented in the **user edition**. Each
 > item below has exactly one doc bead (parented to the discovery bead
-> `bdboard-mol-oot`). When a doc is written, tick its box `- [ ]` -> `- [x]`
+> `bdboard-mol-6qh`). When a doc is written, tick its box `- [ ]` -> `- [x]`
 > and bump the progress counters.
 >
 > IDs are **banded / type-segmented** by Diataxis group (Getting-Started 001+,
