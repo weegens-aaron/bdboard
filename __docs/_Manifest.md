@@ -12,14 +12,14 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 24
-- **Remaining:** 1
+- **Done:** 25
+- **Remaining:** 0
 
-By section: Features 5/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
+By section: Features 6/6 | Flows 4/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
-- [ ] 001 | Feature: Swim-lane board -> [SwimLaneBoard](Features/SwimLaneBoard.md)
+- [x] 001 | Feature: Swim-lane board -> [SwimLaneBoard](Features/SwimLaneBoard.md)
 - [x] 002 | Feature: Bead detail & inline editing -> [BeadDetailAndInlineEditing](Features/BeadDetailAndInlineEditing.md)
 - [x] 003 | Feature: History & trends -> [HistoryAndTrends](Features/HistoryAndTrends.md)
 - [x] 004 | Feature: Memory management -> [MemoryManagement](Features/MemoryManagement.md)

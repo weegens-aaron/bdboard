@@ -343,6 +343,9 @@ degrades to an empty/stale fragment rather than an error status.
 
 ## Related
 
+- [Swim-lane board (Feature)](../Features/SwimLaneBoard.md) — the behavior-first
+  feature overview these three endpoints power: the Epics strip, the
+  Deferred/Blocked/Ready/In Progress/Closed lanes, and the masthead counts.
 - [Board page (`/`)](../Views/BoardPage.md) — the full-page view these three
   endpoints hydrate. Its `.lanes-region`, `#counts`, and nested `.lane-closed`
   hosts fire the `load` + `refresh from:body` fetches documented here, and its
