@@ -12,10 +12,10 @@
 ## Progress
 
 - **Total items:** 25
-- **Done:** 16
-- **Remaining:** 9
+- **Done:** 17
+- **Remaining:** 8
 
-By section: Features 0/6 | Flows 1/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
+By section: Features 0/6 | Flows 2/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 
 ## Features
 
@@ -30,7 +30,7 @@ By section: Features 0/6 | Flows 1/4 | Endpoints 7/7 | Views 3/3 | Concepts 5/5
 
 - [ ] 010 | Flow: Server startup & workspace resolution -> [ServerStartup](Flows/ServerStartup.md)
 - [ ] 011 | Flow: Live-refresh pipeline -> [LiveRefreshPipeline](Flows/LiveRefreshPipeline.md)
-- [ ] 012 | Flow: Inline field-edit write path -> [FieldEditWritePath](Flows/FieldEditWritePath.md)
+- [x] 012 | Flow: Inline field-edit write path -> [FieldEditWritePath](Flows/FieldEditWritePath.md)
 - [x] 013 | Flow: Formula pour fan-out -> [FormulaPourFanout](Flows/FormulaPourFanout.md)
 
 ## Endpoints
