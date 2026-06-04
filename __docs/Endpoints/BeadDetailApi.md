@@ -315,6 +315,9 @@ unknown id.
 - [Bead field-edit API (`POST /api/bead/{id}/field`)](BeadFieldEditApi.md) — the
   **write** sibling that edits the very field rows this trio renders; both share
   `BdClient.show_long` and `partials/field_row.html`.
+- [Bead detail & inline editing (Feature)](../Features/BeadDetailAndInlineEditing.md) —
+  the user-facing feature these read routes power (the shared modal, lazy
+  audit/lifecycle, and raw-JSON escape hatch).
 - [Board page (`/`)](../Views/BoardPage.md) — opens the shared `#bead-modal` from
   epic chips, bead cards, and activity rows via `hx-get="/api/bead/{id}"`.
 - [History page (`/history`)](../Views/HistoryPage.md) — opens the same modal for
