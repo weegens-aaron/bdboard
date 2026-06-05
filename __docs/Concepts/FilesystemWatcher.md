@@ -228,7 +228,7 @@ changed):
 - **Live Board** ([Features index](../Features/index.md)) — board edits made in
   any terminal show up because the watcher refreshes the active snapshot the
   board reads.
-- **Watcher Refresh Cycle** ([Flows index](../Flows/index.md)) — the end-to-end
+- **Watcher Refresh Cycle** ([Watcher Refresh Cycle](../Flows/WatcherRefreshCycle.md)) — the end-to-end
   flow whose timing this concept implements (debounce → cooldown → refresh).
 - **SSE Live Update** ([SSE Live Update](../Flows/SseLiveUpdate.md)) — consumes the
   `beads_changed` broadcast the watcher gates behind `refresh()`'s `changed`.

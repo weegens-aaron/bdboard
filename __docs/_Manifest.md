@@ -6,15 +6,15 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 30
-- **Remaining:** 9
+- **Done:** 31
+- **Remaining:** 8
 
 ### By band
 
 | Band | Total | Done |
 | --- | --- | --- |
 | Features | 7 | 0 |
-| Flows | 5 | 3 |
+| Flows | 5 | 4 |
 | Endpoints | 15 | 15 |
 | Views | 3 | 3 |
 | Concepts | 9 | 9 |
@@ -34,7 +34,7 @@ Tracks every item to document. Each doc bead fills its template from
 ## Flows (010+)
 
 - [ ] 010 | Flow: Board First Paint -> [Board First Paint](Flows/BoardFirstPaint.md)
-- [ ] 011 | Flow: Watcher Refresh Cycle -> [Watcher Refresh Cycle](Flows/WatcherRefreshCycle.md)
+- [x] 011 | Flow: Watcher Refresh Cycle -> [Watcher Refresh Cycle](Flows/WatcherRefreshCycle.md)
 - [x] 012 | Flow: SSE Live Update -> [SSE Live Update](Flows/SseLiveUpdate.md)
 - [x] 013 | Flow: Field Edit Write Path -> [Field Edit Write Path](Flows/FieldEditWritePath.md)
 - [x] 014 | Flow: Formula Pour Pipeline -> [Formula Pour Pipeline](Flows/FormulaPourPipeline.md)

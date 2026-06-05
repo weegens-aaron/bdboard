@@ -275,7 +275,7 @@ flowchart TD
   successful field write broadcasts on the optimistic path.
 - **SSE Live Update** ([SSE Live Update](../Flows/SseLiveUpdate.md)) — the flow that traces
   a single change from broadcast to the browser re-fetch.
-- **Watcher Refresh Cycle** ([Flows index](../Flows/index.md)) — the upstream
+- **Watcher Refresh Cycle** ([Watcher Refresh Cycle](../Flows/WatcherRefreshCycle.md)) — the upstream
   flow whose terminal step is *broadcast iff changed*.
 - **GET /api/events** ([GET /api/events](../Endpoints/GetApiEvents.md)) — the endpoint
   that is the bus's sole subscriber surface to the browser.

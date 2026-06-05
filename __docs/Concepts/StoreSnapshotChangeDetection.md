@@ -371,7 +371,7 @@ The revision signature is a content fingerprint, not bead data:
   index.
 - **Board First Paint** ([Flows index](../Flows/index.md)) — relies on the
   lazy-loaded active cache for the ~5 KB fast first paint.
-- **Watcher Refresh Cycle** ([Flows index](../Flows/index.md)) — the upstream
+- **Watcher Refresh Cycle** ([Watcher Refresh Cycle](../Flows/WatcherRefreshCycle.md)) — the upstream
   flow whose terminal step calls `store.refresh()` and broadcasts iff it
   returns `True`.
 - **SSE Live Update** ([Flows index](../Flows/index.md)) — consumes the

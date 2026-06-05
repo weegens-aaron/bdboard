@@ -292,7 +292,7 @@ Output:  fresh HTML partials swapped into the DOM
   broadcaster.
 - [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md) —
   optimistic broadcaster.
-- [Watcher Refresh Cycle](index.md) — sibling flow documenting
+- [Watcher Refresh Cycle](WatcherRefreshCycle.md) — sibling flow documenting
   the watcher's debounce → cooldown → refresh → broadcast cycle in isolation.
 - [Field Edit Write Path](FieldEditWritePath.md) — sibling flow that includes
   an optimistic broadcast as its step 10.
