@@ -365,5 +365,7 @@ view depends on it. The most direct consumers:
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes, GET /api/bead/{id},
   GET/POST /api/memory, POST /api/bead/{id}/field, POST /api/formulas/{name}/pour.
 - [Views index](../Views/index.md) — Board, History, Memory.
+- [Memory (/memory)](../Views/MemoryView.md) — the page that shells
+  `bd memories`/`remember`/`forget` through this CLI-only posture.
 - [Architecture](../Architecture.md) — the system overview this posture anchors.
 - [Back to docs index](../index.md)

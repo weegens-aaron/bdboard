@@ -345,4 +345,6 @@ flowchart TD
 - [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle.
 - [Endpoints index](../Endpoints/index.md) — GET /api/events, plus the four
   write endpoints that broadcast.
+- [Memory (/memory)](../Views/MemoryView.md) — the view whose list re-fetches on
+  every `beads_changed` (`refresh from:body`) and whose writes broadcast.
 - [Back to docs index](../index.md)

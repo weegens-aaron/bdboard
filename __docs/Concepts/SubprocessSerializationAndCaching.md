@@ -400,4 +400,6 @@ object and returns a sorted list of `{key, body}`:
   Pipeline.
 - [Endpoints index](../Endpoints/index.md) — GET /api/bead/{id}, GET/POST
   /api/memory, DELETE /api/memory/{key}.
+- [Memory (/memory)](../Views/MemoryView.md) — the view whose list reads go
+  through `BdClient.memories` (gate + TTL cache + in-flight dedup).
 - [Back to docs index](../index.md)

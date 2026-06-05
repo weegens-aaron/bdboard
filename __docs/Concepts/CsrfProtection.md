@@ -270,4 +270,6 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
   Pipeline.
 - [Endpoints index](../Endpoints/index.md) — POST /api/memory, DELETE
   /api/memory/{key}, POST /api/formulas/{name}/pour, POST /api/bead/{id}/field.
+- [Memory (/memory)](../Views/MemoryView.md) — the view whose create/forget
+  writes are fronted by this CSRF guard.
 - [Back to docs index](../index.md)
