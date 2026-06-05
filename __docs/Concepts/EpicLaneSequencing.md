@@ -190,7 +190,7 @@ to sequence on.
 
 - **GET /api/lanes** ([Endpoints index](../Endpoints/index.md)) — the endpoint
   that hydrates epic dependencies and calls `epic_lane` for each board render.
-- **Board First Paint** ([Flows index](../Flows/index.md)) — the first-paint
+- **[Board First Paint](../Flows/BoardFirstPaint.md)** — the first-paint
   flow that builds the epic strip from the active-only snapshot.
 - **Live Board** ([Features index](../Features/index.md)) — the feature whose
   top strip is this sequenced epic list.
@@ -243,7 +243,8 @@ to sequence on.
   belongs to.
 - [Concepts index](index.md) — the other cross-cutting concepts.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes (the caller).
-- [Flows index](../Flows/index.md) — Board First Paint.
+- [Board First Paint](../Flows/BoardFirstPaint.md) — the flow that exercises
+  `epic_lane` during initial page load.
 - [Features index](../Features/index.md) — Live Board.
 - [Views index](../Views/index.md) — Board (/).
 - [Back to docs index](../index.md)

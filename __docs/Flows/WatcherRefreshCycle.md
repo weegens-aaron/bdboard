@@ -244,7 +244,7 @@ Output:  immutable snapshot with O(1) bead-by-id index
 - [SSE Live Update](SseLiveUpdate.md) — the full end-to-end pipeline from
   mutation to DOM swap; this flow covers the watcher's authoritative refresh
   path that feeds the first half of that pipeline.
-- Board First Paint ([Flows index](index.md)) — the initial load path; the
+- [Board First Paint](BoardFirstPaint.md) — the initial load path; the
   watcher is inactive during first paint but every subsequent live update rides
   this cycle.
 - [Field Edit Write Path](FieldEditWritePath.md) — a write-path flow whose

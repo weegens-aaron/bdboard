@@ -369,7 +369,7 @@ The revision signature is a content fingerprint, not bead data:
 - **Bead Detail Modal** ([Features index](../Features/index.md)) — the modal's
   fallback path uses `store.bead(id)` for O(1) lookup in the cached `by_id`
   index.
-- **Board First Paint** ([Flows index](../Flows/index.md)) — relies on the
+- **[Board First Paint](../Flows/BoardFirstPaint.md)** — relies on the
   lazy-loaded active cache for the ~5 KB fast first paint.
 - **Watcher Refresh Cycle** ([Watcher Refresh Cycle](../Flows/WatcherRefreshCycle.md)) — the upstream
   flow whose terminal step calls `store.refresh()` and broadcasts iff it
@@ -455,8 +455,10 @@ The revision signature is a content fingerprint, not bead data:
   caches the Store drives.
 - [Features index](../Features/index.md) — Live Board, History & Analytics, Live
   Updates, Bead Detail Modal.
-- [Flows index](../Flows/index.md) — Board First Paint, Watcher Refresh Cycle,
-  SSE Live Update.
+- [Board First Paint](../Flows/BoardFirstPaint.md),
+  [Watcher Refresh Cycle](../Flows/WatcherRefreshCycle.md),
+  [SSE Live Update](../Flows/SseLiveUpdate.md) — the three flows that exercise
+  the Store's snapshot and refresh paths.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes, /api/lanes/closed,
   /api/counts, /api/history.
 - [Back to docs index](../index.md)

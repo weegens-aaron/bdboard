@@ -255,7 +255,7 @@ off-by-one.
   `combined`, `lead_time_stats`, `clamp_page_size`.
 - **GET /api/bead/{id}/audit** ([GET /api/bead/{id}/audit](../Endpoints/GetApiBeadAudit.md)) —
   calls `status_timeline` over the already-fetched history payload.
-- **Board First Paint** ([Flows index](../Flows/index.md)) — the first paint
+- **[Board First Paint](../Flows/BoardFirstPaint.md)** — the first paint
   builds the strip and lanes from these derivations.
 - **History & Analytics** ([Features index](../Features/index.md)) — the
   feature whose charts/KPIs are the `history.py` series.
@@ -321,7 +321,8 @@ off-by-one.
   layer is pure over.
 - [Concepts index](index.md) — the other cross-cutting concepts.
 - [Endpoints index](../Endpoints/index.md) — the routes that call this layer.
-- [Flows index](../Flows/index.md) — Board First Paint.
+- [Board First Paint](../Flows/BoardFirstPaint.md) — the flow that calls
+  `epic_lane`, `lanes`, `activity`, and `counts` during initial page load.
 - [Features index](../Features/index.md) — History & Analytics, Live Board.
 - [Views index](../Views/index.md) — Board (/) and History (/history).
 - [Back to docs index](../index.md)

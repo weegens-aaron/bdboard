@@ -279,8 +279,10 @@ view depends on it. The most direct consumers:
   `rename_bead`.
 - **History & Analytics** ([Features index](../Features/index.md)) —
   `status_summary` + `list_closed_history`.
-- **Board First Paint / Field Edit Write Path / Formula Pour Pipeline**
-  ([Flows index](../Flows/index.md)) — the end-to-end journeys built on these
+- **[Board First Paint](../Flows/BoardFirstPaint.md) /
+  [Field Edit Write Path](../Flows/FieldEditWritePath.md) /
+  [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md)**
+  — the end-to-end journeys built on these
   reads and writes.
 - **GET /api/lanes, GET /api/bead/{id}, GET/POST /api/memory, POST
   /api/bead/{id}/field, POST /api/formulas/{name}/pour**
@@ -360,8 +362,10 @@ view depends on it. The most direct consumers:
   caches are invalidated.
 - [Features index](../Features/index.md) — Live Board, Bead Detail Modal,
   Manual Field Editing, Memory Curation, Formula Pour, History & Analytics.
-- [Flows index](../Flows/index.md) — Board First Paint, Field Edit Write Path,
-  Formula Pour Pipeline.
+- [Board First Paint](../Flows/BoardFirstPaint.md),
+  [Field Edit Write Path](../Flows/FieldEditWritePath.md),
+  [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the flows
+  built on bd reads and writes.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes, GET /api/bead/{id},
   GET/POST /api/memory, POST /api/bead/{id}/field,
   [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md).

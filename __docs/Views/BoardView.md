@@ -323,6 +323,9 @@ sequenceDiagram
 
 - [Views index](index.md) — the three pages; History (`/history`) and Memory
   (`/memory`) are this view's siblings (shared masthead, nav, and SSE wiring).
+- [Board First Paint](../Flows/BoardFirstPaint.md) — the end-to-end flow from
+  `GET /` to a fully-hydrated board; covers shell render, HTMX load triggers,
+  Store lazy-loading, derive calls, and SSE bootstrap.
 - [History (/history)](HistoryView.md) — the long-window retrospective sibling;
   this board's short 12h/1d/3d closed window hands off to History's 7d/30d/90d/All.
 - [Memory (/memory)](MemoryView.md) — the sibling full-page view this one shares

@@ -234,3 +234,5 @@ time filter then re-syncs the CLOSED cell to match the filtered Closed lane.
 - [bd CLI as Source of Truth](../Concepts/BdCliSourceOfTruth.md) — why this
   path shells `bd list` instead of reading `.beads/` directly.
 - [Back to docs index](../index.md)
+- [Board First Paint](../Flows/BoardFirstPaint.md) — the end-to-end first-paint
+  flow; this endpoint is step 10–11 (counts strip hydration).

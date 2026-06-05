@@ -324,3 +324,5 @@ Closed lane in the background.
   topological sorting and rank-based anchoring logic that orders the epic
   strip rendered by this endpoint.
 - [Back to docs index](../index.md)
+- [Board First Paint](../Flows/BoardFirstPaint.md) — the end-to-end first-paint
+  flow; this endpoint is step 6–9 (the heaviest first-paint fetch).

@@ -252,3 +252,6 @@ cell to the visible count.
   epic strip is sequenced (the active lanes endpoint, not this one, renders
   it; linked for board-wide context).
 - [Back to docs index](../index.md)
+- [Board First Paint](../Flows/BoardFirstPaint.md) — the end-to-end first-paint
+  flow; this endpoint is step 12–13 (deferred closed lane, loaded after the
+  active lanes paint).
