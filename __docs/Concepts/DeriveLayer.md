@@ -253,7 +253,7 @@ off-by-one.
 - **GET /api/history** ([Endpoints index](../Endpoints/index.md)) — calls
   `resolve_history_bounds`, `history_window`, `throughput`, `created`,
   `combined`, `lead_time_stats`, `clamp_page_size`.
-- **GET /api/bead/{id}/audit** ([Endpoints index](../Endpoints/index.md)) —
+- **GET /api/bead/{id}/audit** ([GET /api/bead/{id}/audit](../Endpoints/GetApiBeadAudit.md)) —
   calls `status_timeline` over the already-fetched history payload.
 - **Board First Paint** ([Flows index](../Flows/index.md)) — the first paint
   builds the strip and lanes from these derivations.

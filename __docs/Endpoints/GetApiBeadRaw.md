@@ -231,7 +231,7 @@ unknown-id case to confirm the `200 + {"error": …}` graceful miss.
 - [Endpoints index](index.md) — every route bdboard exposes, including the
   curated **modal** read `GET /api/bead/{id}` (this endpoint is its raw escape
   hatch — the two share `BdClient.show_long` and `_show_cache`) and its
-  lazily-loaded `GET /api/bead/{id}/audit` sibling.
+  lazily-loaded [GET /api/bead/{id}/audit](GetApiBeadAudit.md) sibling.
 - [POST /api/bead/{id}/field](PostApiBeadField.md) — the write half of the modal;
   uses `show_long(fresh=True)` to deliberately bypass the cache this read relies
   on.

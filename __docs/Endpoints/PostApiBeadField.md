@@ -233,7 +233,7 @@ A successful call returns `200` with the re-rendered `#field-row-priority`
 
 - [Endpoints index](index.md) — every route bdboard exposes, including the read
   half `GET /api/bead/{id}` (renders the modal whose field rows this endpoint
-  edits), `GET /api/bead/{id}/audit` (same OOB-swap idiom for the badge), and
+  edits), [GET /api/bead/{id}/audit](GetApiBeadAudit.md) (same OOB-swap idiom for the badge), and
   the sibling write path `POST /api/memory` (shares the exact CSRF +
   serialized-mutation + SSE-broadcast plumbing).
 - [GET /api/bead/{id}/raw](GetApiBeadRaw.md) — the raw-JSON escape hatch for the
