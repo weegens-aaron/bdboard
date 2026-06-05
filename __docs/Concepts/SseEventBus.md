@@ -281,7 +281,7 @@ flowchart TD
   that is the bus's sole subscriber surface to the browser.
 - **Filesystem Watcher** ([Concepts index](index.md)) — the authoritative
   trigger that decides when the watcher path broadcasts.
-- **Store Snapshot & Change Detection** ([Concepts index](index.md)) — supplies
+- **Store Snapshot & Change Detection** ([Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md)) — supplies
   the `changed` boolean that gates the watcher broadcast.
 - **CSRF Protection** ([CSRF Protection](CsrfProtection.md)) — the guard that
   fronts each of the four write paths *before* they reach their optimistic
@@ -336,8 +336,8 @@ flowchart TD
 - [Concepts index](index.md) — the other cross-cutting concepts.
 - [Filesystem Watcher](index.md) — the upstream trigger for the watcher
   broadcast path (see Concepts index until its page lands).
-- [Store Snapshot & Change Detection](index.md) — supplies the `changed` gate
-  (see Concepts index until its page lands).
+- [Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md) — supplies the `changed` gate
+  that dedups this bus's broadcast.
 - [CSRF Protection](CsrfProtection.md) — the guard each write path passes before
   its optimistic broadcast.
 - [Features index](../Features/index.md) — Live Updates, Memory Curation,

@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 5
-- **Remaining:** 34
+- **Done:** 6
+- **Remaining:** 33
 
 ### By band
 
@@ -17,7 +17,7 @@ Tracks every item to document. Each doc bead fills its template from
 | Flows | 5 | 0 |
 | Endpoints | 15 | 0 |
 | Views | 3 | 0 |
-| Concepts | 9 | 5 |
+| Concepts | 9 | 6 |
 
 ---
 
@@ -68,7 +68,7 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 080 | Concept: bd CLI as Source of Truth -> [bd CLI as Source of Truth](Concepts/BdCliSourceOfTruth.md)
 - [ ] 081 | Concept: Subprocess Serialization & Caching -> [Subprocess Serialization & Caching](Concepts/SubprocessSerializationAndCaching.md)
 - [ ] 082 | Concept: Filesystem Watcher -> [Filesystem Watcher](Concepts/FilesystemWatcher.md)
-- [ ] 083 | Concept: Store Snapshot & Change Detection -> [Store Snapshot & Change Detection](Concepts/StoreSnapshotChangeDetection.md)
+- [x] 083 | Concept: Store Snapshot & Change Detection -> [Store Snapshot & Change Detection](Concepts/StoreSnapshotChangeDetection.md)
 - [x] 084 | Concept: Derive Layer -> [Derive Layer](Concepts/DeriveLayer.md)
 - [x] 085 | Concept: SSE Event Bus -> [SSE Event Bus](Concepts/SseEventBus.md)
 - [x] 086 | Concept: CSRF Protection -> [CSRF Protection](Concepts/CsrfProtection.md)

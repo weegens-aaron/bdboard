@@ -264,7 +264,7 @@ off-by-one.
 - **Epic Lane Sequencing** ([Epic Lane Sequencing](EpicLaneSequencing.md)) —
   the deep-dive on `epic_lane`, the most intricate member of this layer.
 - **Store Snapshot & Change Detection**
-  ([Concepts index](index.md)) — the upstream tier that supplies the snapshot
+  ([Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md)) — the upstream tier that supplies the snapshot
   this layer is pure over.
 
 ## Conventions
@@ -317,8 +317,8 @@ off-by-one.
 ## Related
 
 - [Epic Lane Sequencing](EpicLaneSequencing.md) — deep-dive on `epic_lane`.
-- [Store Snapshot & Change Detection](index.md) — the snapshot source this
-  layer is pure over (see the Concepts index until its page lands).
+- [Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md) — the snapshot source this
+  layer is pure over.
 - [Concepts index](index.md) — the other cross-cutting concepts.
 - [Endpoints index](../Endpoints/index.md) — the routes that call this layer.
 - [Flows index](../Flows/index.md) — Board First Paint.
