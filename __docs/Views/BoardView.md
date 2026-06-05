@@ -238,7 +238,7 @@ sequenceDiagram
 | `GET /api/formulas` | The Pour-Formula picker list (loaded when the dialog opens). | [GET /api/formulas](../Endpoints/index.md) |
 | `GET /api/formulas/{name}/form` | The variable form for a picked formula. | [GET /api/formulas/{name}/form](../Endpoints/GetApiFormulaForm.md) |
 | `POST /api/formulas/{name}/pour` | Pouring the chosen formula's beads onto the board. | [POST /api/formulas/{name}/pour](../Endpoints/index.md) |
-| `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the board stays live across tabs. | [GET /api/events](../Endpoints/index.md) |
+| `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the board stays live across tabs. | [GET /api/events](../Endpoints/GetApiEvents.md) |
 
 ## States
 

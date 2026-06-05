@@ -300,7 +300,7 @@ curl -i "http://127.0.0.1:8000/api/history?range=bogus"
 - [GET /api/lanes](GetApiLanes.md) — the board's symmetric region endpoint; both
   return a `partials/*` HTMX fragment derived from a `Store` snapshot rather than
   JSON.
-- [GET /api/events](index.md) — the SSE stream whose `beads_changed` event drives
+- [GET /api/events](GetApiEvents.md) — the SSE stream whose `beads_changed` event drives
   the `refresh from:body` re-fetch of this region across tabs (see the Endpoints
   index until its own doc lands).
 - [Derive Layer](../Concepts/DeriveLayer.md) — the pure `derive.history`

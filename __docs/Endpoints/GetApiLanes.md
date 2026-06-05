@@ -303,9 +303,8 @@ Closed lane in the background.
   on `load`.
 - [GET /api/bead/{id}](GetApiBead.md) — the shared bead detail modal
   opened when an epic chip, lane card, or activity row is clicked.
-- [GET /api/events](index.md) — the SSE stream whose `beads_changed` event
-  drives the `refresh from:body` re-fetch of this endpoint across tabs (see
-  the Endpoints index until its own doc lands).
+- [GET /api/events](GetApiEvents.md) — the SSE stream whose `beads_changed`
+  event drives the `refresh from:body` re-fetch of this endpoint across tabs.
 - [Derive Layer](../Concepts/DeriveLayer.md) — the pure `derive.lanes`
   module where `epic_lane`, `lanes`, `activity`, and lane assignment logic
   live.

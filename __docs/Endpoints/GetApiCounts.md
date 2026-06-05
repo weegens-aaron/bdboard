@@ -217,7 +217,7 @@ time filter then re-syncs the CLOSED cell to match the filtered Closed lane.
 - [GET /api/lanes/closed](GetApiLanesClosed.md) — the heavy Closed lane, split for fast
   first paint; its visible count drives the client-side re-sync of the CLOSED
   cell in this strip.
-- [GET /api/events](index.md) — the SSE stream whose `beads_changed` event
+- [GET /api/events](GetApiEvents.md) — the SSE stream whose `beads_changed` event
   drives the `refresh from:body` re-fetch of this strip across tabs (see the
   Endpoints index until its own doc lands).
 - [Derive Layer](../Concepts/DeriveLayer.md) — the pure `derive.counts`

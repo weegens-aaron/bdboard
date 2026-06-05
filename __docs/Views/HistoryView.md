@@ -192,7 +192,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `GET /api/history` | Initial region load, every range/Custom/pager/page-size change, and SSE-driven re-fetch of the whole `#history-region` (+ the OOB masthead stats). | [GET /api/history](../Endpoints/GetApiHistory.md) |
 | `GET /api/bead/{id}` | Opening the shared bead detail modal when a closed-bead card is clicked. | [GET /api/bead/{id}](../Endpoints/index.md) |
-| `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the history view stays live across tabs. | [GET /api/events](../Endpoints/index.md) |
+| `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the history view stays live across tabs. | [GET /api/events](../Endpoints/GetApiEvents.md) |
 
 ## States
 

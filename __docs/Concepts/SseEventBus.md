@@ -277,7 +277,7 @@ flowchart TD
   a single change from broadcast to the browser re-fetch.
 - **Watcher Refresh Cycle** ([Flows index](../Flows/index.md)) — the upstream
   flow whose terminal step is *broadcast iff changed*.
-- **GET /api/events** ([Endpoints index](../Endpoints/index.md)) — the endpoint
+- **GET /api/events** ([GET /api/events](../Endpoints/GetApiEvents.md)) — the endpoint
   that is the bus's sole subscriber surface to the browser.
 - **Filesystem Watcher** ([Filesystem Watcher](FilesystemWatcher.md)) — the authoritative
   trigger that decides when the watcher path broadcasts.
@@ -343,7 +343,7 @@ flowchart TD
 - [Features index](../Features/index.md) — Live Updates, Memory Curation,
   Formula Pour, Manual Field Editing.
 - [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle.
-- [Endpoints index](../Endpoints/index.md) — GET /api/events, plus the four
+- [Endpoints index](../Endpoints/index.md) — [GET /api/events](../Endpoints/GetApiEvents.md), plus the four
   write endpoints that broadcast, including
   [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md).
 - [Memory (/memory)](../Views/MemoryView.md) — the view whose list re-fetches on

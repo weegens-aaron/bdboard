@@ -164,7 +164,7 @@ sequenceDiagram
 | `GET /api/memory` | Initial list load, debounced search, and SSE-driven re-fetch of the list region. | [GET /api/memory](../Endpoints/GetApiMemory.md) |
 | `POST /api/memory` | Create or update (upsert) a memory from the modal form. | [POST /api/memory](../Endpoints/index.md) |
 | `DELETE /api/memory/{key}` | Forget a memory after the confirm dialog. | [DELETE /api/memory/{key}](../Endpoints/DeleteApiMemory.md) |
-| `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the list stays live across tabs. | [GET /api/events](../Endpoints/index.md) |
+| `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the list stays live across tabs. | [GET /api/events](../Endpoints/GetApiEvents.md) |
 
 ## States
 

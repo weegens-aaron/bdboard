@@ -232,7 +232,7 @@ curl -i "http://127.0.0.1:8000/api/memory"
 - [DELETE /api/memory/{key}](DeleteApiMemory.md) — the destructive (forget)
   sibling; same story — it mutates the list this endpoint reads and triggers a
   `refresh from:body` re-fetch of this route.
-- [GET /api/events](index.md) — the SSE stream whose `beads_changed` event
+- [GET /api/events](GetApiEvents.md) — the SSE stream whose `beads_changed` event
   drives the `refresh from:body` re-fetch of this endpoint across tabs (see the
   Endpoints index until its own doc lands).
 - [Memory (/memory)](../Views/MemoryView.md) — the page surface whose search

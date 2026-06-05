@@ -234,7 +234,7 @@ changed):
   `beads_changed` broadcast the watcher gates behind `refresh()`'s `changed`.
 - **Board First Paint** ([Flows index](../Flows/index.md)) — unaffected by the
   watcher on first load, but every subsequent live update rides this path.
-- **GET /api/events** ([Endpoints index](../Endpoints/index.md)) — the SSE
+- **GET /api/events** ([GET /api/events](../Endpoints/GetApiEvents.md)) — the SSE
   endpoint whose stream the watcher's broadcast pushes into.
 - **Store Snapshot & Change Detection**
   ([Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md)) — the
@@ -316,5 +316,5 @@ changed):
 - [Features index](../Features/index.md) — Live Updates, Live Board.
 - [Flows index](../Flows/index.md) — Watcher Refresh Cycle, SSE Live Update,
   Board First Paint.
-- [Endpoints index](../Endpoints/index.md) — GET /api/events.
+- [Endpoints index](../Endpoints/index.md) — [GET /api/events](../Endpoints/GetApiEvents.md).
 - [Back to docs index](../index.md)
