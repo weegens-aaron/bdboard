@@ -1,0 +1,76 @@
+# _Manifest — bdboard maintainer documentation
+
+Tracks every item to document. Each doc bead fills its template from
+`_FlowDocGuide.md`, then ticks its line `[x]` here and bumps the counters.
+
+## Progress
+
+- **Total:** 39
+- **Done:** 0
+- **Remaining:** 39
+
+### By band
+
+| Band | Total | Done |
+| --- | --- | --- |
+| Features | 7 | 0 |
+| Flows | 5 | 0 |
+| Endpoints | 15 | 0 |
+| Views | 3 | 0 |
+| Concepts | 9 | 0 |
+
+---
+
+## Features (001+)
+
+- [ ] 001 | Feature: Live Board -> [Live Board](Features/LiveBoard.md)
+- [ ] 002 | Feature: Bead Detail Modal -> [Bead Detail Modal](Features/BeadDetailModal.md)
+- [ ] 003 | Feature: Manual Field Editing -> [Manual Field Editing](Features/ManualFieldEditing.md)
+- [ ] 004 | Feature: Memory Curation -> [Memory Curation](Features/MemoryCuration.md)
+- [ ] 005 | Feature: Formula Pour -> [Formula Pour](Features/FormulaPour.md)
+- [ ] 006 | Feature: History & Analytics -> [History & Analytics](Features/HistoryAnalytics.md)
+- [ ] 007 | Feature: Live Updates -> [Live Updates](Features/LiveUpdates.md)
+
+## Flows (010+)
+
+- [ ] 010 | Flow: Board First Paint -> [Board First Paint](Flows/BoardFirstPaint.md)
+- [ ] 011 | Flow: Watcher Refresh Cycle -> [Watcher Refresh Cycle](Flows/WatcherRefreshCycle.md)
+- [ ] 012 | Flow: SSE Live Update -> [SSE Live Update](Flows/SseLiveUpdate.md)
+- [ ] 013 | Flow: Field Edit Write Path -> [Field Edit Write Path](Flows/FieldEditWritePath.md)
+- [ ] 014 | Flow: Formula Pour Pipeline -> [Formula Pour Pipeline](Flows/FormulaPourPipeline.md)
+
+## Endpoints (050+)
+
+- [ ] 050 | Endpoint: GET /api/events -> [GET /api/events](Endpoints/GetApiEvents.md)
+- [ ] 051 | Endpoint: GET /api/lanes -> [GET /api/lanes](Endpoints/GetApiLanes.md)
+- [ ] 052 | Endpoint: GET /api/lanes/closed -> [GET /api/lanes/closed](Endpoints/GetApiLanesClosed.md)
+- [ ] 053 | Endpoint: GET /api/counts -> [GET /api/counts](Endpoints/GetApiCounts.md)
+- [ ] 054 | Endpoint: GET /api/history -> [GET /api/history](Endpoints/GetApiHistory.md)
+- [ ] 055 | Endpoint: GET /api/memory -> [GET /api/memory](Endpoints/GetApiMemory.md)
+- [ ] 056 | Endpoint: POST /api/memory -> [POST /api/memory](Endpoints/PostApiMemory.md)
+- [ ] 057 | Endpoint: DELETE /api/memory/{key} -> [DELETE /api/memory/{key}](Endpoints/DeleteApiMemory.md)
+- [ ] 058 | Endpoint: GET /api/formulas -> [GET /api/formulas](Endpoints/GetApiFormulas.md)
+- [ ] 059 | Endpoint: GET /api/formulas/{name}/form -> [GET /api/formulas/{name}/form](Endpoints/GetApiFormulaForm.md)
+- [ ] 060 | Endpoint: POST /api/formulas/{name}/pour -> [POST /api/formulas/{name}/pour](Endpoints/PostApiFormulaPour.md)
+- [ ] 061 | Endpoint: GET /api/bead/{id} -> [GET /api/bead/{id}](Endpoints/GetApiBead.md)
+- [ ] 062 | Endpoint: GET /api/bead/{id}/audit -> [GET /api/bead/{id}/audit](Endpoints/GetApiBeadAudit.md)
+- [ ] 063 | Endpoint: GET /api/bead/{id}/raw -> [GET /api/bead/{id}/raw](Endpoints/GetApiBeadRaw.md)
+- [ ] 064 | Endpoint: POST /api/bead/{id}/field -> [POST /api/bead/{id}/field](Endpoints/PostApiBeadField.md)
+
+## Views (070+)
+
+- [ ] 070 | View: Board -> [Board (/)](Views/BoardView.md)
+- [ ] 071 | View: History -> [History (/history)](Views/HistoryView.md)
+- [ ] 072 | View: Memory -> [Memory (/memory)](Views/MemoryView.md)
+
+## Concepts (080+)
+
+- [ ] 080 | Concept: bd CLI as Source of Truth -> [bd CLI as Source of Truth](Concepts/BdCliSourceOfTruth.md)
+- [ ] 081 | Concept: Subprocess Serialization & Caching -> [Subprocess Serialization & Caching](Concepts/SubprocessSerializationAndCaching.md)
+- [ ] 082 | Concept: Filesystem Watcher -> [Filesystem Watcher](Concepts/FilesystemWatcher.md)
+- [ ] 083 | Concept: Store Snapshot & Change Detection -> [Store Snapshot & Change Detection](Concepts/StoreSnapshotChangeDetection.md)
+- [ ] 084 | Concept: Derive Layer -> [Derive Layer](Concepts/DeriveLayer.md)
+- [ ] 085 | Concept: SSE Event Bus -> [SSE Event Bus](Concepts/SseEventBus.md)
+- [ ] 086 | Concept: CSRF Protection -> [CSRF Protection](Concepts/CsrfProtection.md)
+- [ ] 087 | Concept: Field Editability Registry -> [Field Editability Registry](Concepts/FieldEditabilityRegistry.md)
+- [ ] 088 | Concept: Epic Lane Sequencing -> [Epic Lane Sequencing](Concepts/EpicLaneSequencing.md)
