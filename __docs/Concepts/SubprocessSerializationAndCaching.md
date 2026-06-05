@@ -297,7 +297,7 @@ object and returns a sorted list of `{key, body}`:
   Store-owned) both ride the gate.
 - **Field Edit Write Path** ([Flows index](../Flows/index.md)) — the end-to-end
   edit whose mutate-then-invalidate sequence this concept implements.
-- **Formula Pour Pipeline** ([Flows index](../Flows/index.md)) — the pour flow
+- **Formula Pour Pipeline** ([Formula Pour Pipeline](../Flows/FormulaPourPipeline.md)) — the pour flow
   built on `pour_formula`'s hybrid mutate+parse contract.
 - **GET /api/bead/{id}** ([Endpoints index](../Endpoints/index.md)) — served by
   `show_long`; the canonical cached-read consumer.

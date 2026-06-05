@@ -264,8 +264,8 @@ A successful call returns `200` with the `#formula-pour-result` HTML fragment
   that pushes every tab to re-fetch after a pour.
 - [Feature: Formula Pour](../Features/index.md) — the feature this endpoint
   implements.
-- [Flow: Formula Pour Pipeline](../Flows/index.md) — the end-to-end preflight →
-  pour → rename → refresh flow.
+- [Flow: Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the end-to-end
+  preflight → pour → rename → refresh flow.
 - [Board (/)](../Views/BoardView.md) — the view whose "+ Pour Formula" dialog
   drives this endpoint.
 - [Back to docs index](../index.md)

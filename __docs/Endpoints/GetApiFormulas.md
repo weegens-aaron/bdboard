@@ -242,8 +242,8 @@ curl -s http://127.0.0.1:8000/api/formulas
   TTL-cached, it re-shells on every dialog open).
 - [Feature: Formula Pour](../Features/index.md) — the feature this endpoint
   helps drive (pick → fill form → pour).
-- [Flow: Formula Pour Pipeline](../Flows/index.md) — the end-to-end pick → form
-  → pour → refresh flow.
+- [Flow: Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the end-to-end
+  pick → form → pour → refresh flow.
 - [Board (/)](../Views/BoardView.md) — the view whose "+ Pour Formula" dialog
   hosts the `#formula-list` swap target this endpoint fills.
 - [Back to docs index](../index.md)
