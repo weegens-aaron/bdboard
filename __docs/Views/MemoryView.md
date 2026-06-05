@@ -163,7 +163,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `GET /api/memory` | Initial list load, debounced search, and SSE-driven re-fetch of the list region. | [GET /api/memory](../Endpoints/index.md) |
 | `POST /api/memory` | Create or update (upsert) a memory from the modal form. | [POST /api/memory](../Endpoints/index.md) |
-| `DELETE /api/memory/{key}` | Forget a memory after the confirm dialog. | [DELETE /api/memory/{key}](../Endpoints/index.md) |
+| `DELETE /api/memory/{key}` | Forget a memory after the confirm dialog. | [DELETE /api/memory/{key}](../Endpoints/DeleteApiMemory.md) |
 | `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the list stays live across tabs. | [GET /api/events](../Endpoints/index.md) |
 
 ## States
@@ -255,6 +255,8 @@ sequenceDiagram
   participates in.
 - [Endpoints index](../Endpoints/index.md) — GET /api/memory, POST /api/memory,
   DELETE /api/memory/{key}, GET /api/events.
+- [DELETE /api/memory/{key}](../Endpoints/DeleteApiMemory.md) — the forget write
+  path this view's confirm dialog fires.
 - [bd CLI as Source of Truth](../Concepts/BdCliSourceOfTruth.md) — why this page
   shells `bd memories`/`remember`/`forget` instead of touching `.beads/` directly.
 - [Subprocess Serialization & Caching](../Concepts/SubprocessSerializationAndCaching.md)
