@@ -253,6 +253,8 @@ automatically via the `EventBus.subscribe()` context manager.
 
 ## Related
 
+- [SSE Live Update](../Flows/SseLiveUpdate.md) — the end-to-end flow from
+  bd mutation to browser DOM swap; this endpoint is step 11 of that flow.
 - [Endpoints index](index.md) — every route bdboard exposes.
 - [SSE Event Bus](../Concepts/SseEventBus.md) — the in-process pub/sub
   bus that this endpoint subscribes to; documents the fan-out architecture,

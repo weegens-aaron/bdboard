@@ -230,7 +230,7 @@ changed):
   board reads.
 - **Watcher Refresh Cycle** ([Flows index](../Flows/index.md)) — the end-to-end
   flow whose timing this concept implements (debounce → cooldown → refresh).
-- **SSE Live Update** ([Flows index](../Flows/index.md)) — consumes the
+- **SSE Live Update** ([SSE Live Update](../Flows/SseLiveUpdate.md)) — consumes the
   `beads_changed` broadcast the watcher gates behind `refresh()`'s `changed`.
 - **Board First Paint** ([Flows index](../Flows/index.md)) — unaffected by the
   watcher on first load, but every subsequent live update rides this path.
@@ -314,7 +314,7 @@ changed):
 - [bd CLI as Source of Truth](BdCliSourceOfTruth.md) — the dolt-native source the watcher
   observes rather than owns.
 - [Features index](../Features/index.md) — Live Updates, Live Board.
-- [Flows index](../Flows/index.md) — Watcher Refresh Cycle, SSE Live Update,
-  Board First Paint.
+- [Flows index](../Flows/index.md) — Watcher Refresh Cycle,
+  [SSE Live Update](../Flows/SseLiveUpdate.md), Board First Paint.
 - [Endpoints index](../Endpoints/index.md) — [GET /api/events](../Endpoints/GetApiEvents.md).
 - [Back to docs index](../index.md)

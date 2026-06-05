@@ -273,7 +273,7 @@ flowchart TD
   immediately.
 - **Manual Field Editing** ([Features index](../Features/index.md)) — every
   successful field write broadcasts on the optimistic path.
-- **SSE Live Update** ([Flows index](../Flows/index.md)) — the flow that traces
+- **SSE Live Update** ([SSE Live Update](../Flows/SseLiveUpdate.md)) — the flow that traces
   a single change from broadcast to the browser re-fetch.
 - **Watcher Refresh Cycle** ([Flows index](../Flows/index.md)) — the upstream
   flow whose terminal step is *broadcast iff changed*.
