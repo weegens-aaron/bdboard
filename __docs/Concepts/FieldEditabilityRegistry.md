@@ -195,7 +195,7 @@ value on stdin so a huge body never blows the shell-arg length limit.
 - **Field Edit Write Path** ([Flows index](../Flows/index.md)) — the flow that
   validates a submitted edit against the registry and the status gate before
   shelling `bd update`.
-- **POST /api/bead/{id}/field** ([Endpoints index](../Endpoints/index.md)) — the
+- **POST /api/bead/{id}/field** ([POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md)) — the
   endpoint that re-checks `_field_spec` + `_bead_is_editable` server-side.
 - **Bead Detail Modal** ([Features index](../Features/index.md)) — the modal
   whose `_ordered_fields` rows carry the registry-sourced edit hints.
@@ -243,5 +243,6 @@ value on stdin so a huge body never blows the shell-arg length limit.
 - [CSRF Protection](CsrfProtection.md) — the write-path guard that runs first.
 - [Features index](../Features/index.md) — Manual Field Editing, Bead Detail Modal.
 - [Flows index](../Flows/index.md) — Field Edit Write Path.
-- [Endpoints index](../Endpoints/index.md) — POST /api/bead/{id}/field.
+- [Endpoints index](../Endpoints/index.md) — POST /api/bead/{id}/field
+  ([direct](../Endpoints/PostApiBeadField.md)).
 - [Back to docs index](../index.md)

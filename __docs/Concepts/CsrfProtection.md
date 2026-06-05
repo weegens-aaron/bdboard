@@ -212,7 +212,7 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
   very first step is the CSRF guard.
 - **Formula Pour Pipeline** ([Flows index](../Flows/index.md)) — the pour flow
   fronted by the same check.
-- **POST /api/bead/{id}/field** ([Endpoints index](../Endpoints/index.md)),
+- **POST /api/bead/{id}/field** ([POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md)),
   **POST /api/memory** / **DELETE /api/memory/{key}**
   ([Endpoints index](../Endpoints/index.md)),
   **POST /api/formulas/{name}/pour** ([Endpoints index](../Endpoints/index.md))
@@ -269,7 +269,9 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
 - [Flows index](../Flows/index.md) — Field Edit Write Path, Formula Pour
   Pipeline.
 - [Endpoints index](../Endpoints/index.md) — POST /api/memory, DELETE
-  /api/memory/{key}, POST /api/formulas/{name}/pour, POST /api/bead/{id}/field.
+/api/memory/{key}, POST /api/formulas/{name}/pour.
+- [POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md) — the field-write
+endpoint guarded by this CSRF check.
 - [Memory (/memory)](../Views/MemoryView.md) — the view whose create/forget
   writes are fronted by this CSRF guard.
 - [Back to docs index](../index.md)
