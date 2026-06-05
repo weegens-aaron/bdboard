@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 15
-- **Remaining:** 24
+- **Done:** 16
+- **Remaining:** 23
 
 ### By band
 
@@ -15,7 +15,7 @@ Tracks every item to document. Each doc bead fills its template from
 | --- | --- | --- |
 | Features | 7 | 0 |
 | Flows | 5 | 0 |
-| Endpoints | 15 | 3 |
+| Endpoints | 15 | 4 |
 | Views | 3 | 3 |
 | Concepts | 9 | 9 |
 
@@ -52,7 +52,7 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 058 | Endpoint: GET /api/formulas -> [GET /api/formulas](Endpoints/GetApiFormulas.md)
 - [ ] 059 | Endpoint: GET /api/formulas/{name}/form -> [GET /api/formulas/{name}/form](Endpoints/GetApiFormulaForm.md)
 - [ ] 060 | Endpoint: POST /api/formulas/{name}/pour -> [POST /api/formulas/{name}/pour](Endpoints/PostApiFormulaPour.md)
-- [ ] 061 | Endpoint: GET /api/bead/{id} -> [GET /api/bead/{id}](Endpoints/GetApiBead.md)
+- [x] 061 | Endpoint: GET /api/bead/{id} -> [GET /api/bead/{id}](Endpoints/GetApiBead.md)
 - [x] 062 | Endpoint: GET /api/bead/{id}/audit -> [GET /api/bead/{id}/audit](Endpoints/GetApiBeadAudit.md)
 - [x] 063 | Endpoint: GET /api/bead/{id}/raw -> [GET /api/bead/{id}/raw](Endpoints/GetApiBeadRaw.md)
 - [x] 064 | Endpoint: POST /api/bead/{id}/field -> [POST /api/bead/{id}/field](Endpoints/PostApiBeadField.md)

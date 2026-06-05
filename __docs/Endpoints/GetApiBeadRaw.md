@@ -229,7 +229,7 @@ unknown-id case to confirm the `200 + {"error": …}` graceful miss.
 ## Related
 
 - [Endpoints index](index.md) — every route bdboard exposes, including the
-  curated **modal** read `GET /api/bead/{id}` (this endpoint is its raw escape
+  curated **modal** read [GET /api/bead/{id}](GetApiBead.md) (this endpoint is its raw escape
   hatch — the two share `BdClient.show_long` and `_show_cache`) and its
   lazily-loaded [GET /api/bead/{id}/audit](GetApiBeadAudit.md) sibling.
 - [POST /api/bead/{id}/field](PostApiBeadField.md) — the write half of the modal;

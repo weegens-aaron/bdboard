@@ -308,7 +308,7 @@ curl -s http://127.0.0.1:8000/api/bead/bdboard-mol-q7j.25/audit \
 ## Related
 
 - [Endpoints index](index.md) — every route bdboard exposes, including the
-  curated **modal** read `GET /api/bead/{id}` that triggers this fetch on load.
+  curated **modal** read [GET /api/bead/{id}](GetApiBead.md) that triggers this fetch on load.
 - [GET /api/bead/{id}/raw](GetApiBeadRaw.md) — the sibling escape hatch on the
   same bead; both are lazily fetched by the modal and share the
   gate-serialized, TTL-cached `BdClient` read machinery (it caches `show`, this
