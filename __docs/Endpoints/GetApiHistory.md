@@ -297,9 +297,9 @@ curl -i "http://127.0.0.1:8000/api/history?range=bogus"
   **this** endpoint; it lists this route under its API Dependencies.
 - [GET /api/bead/{id}](GetApiBead.md) — the shared bead detail modal opened when
   a closed-bead card in this region's list is clicked.
-- [GET /api/lanes](index.md) — the board's symmetric region endpoint; both
+- [GET /api/lanes](GetApiLanes.md) — the board's symmetric region endpoint; both
   return a `partials/*` HTMX fragment derived from a `Store` snapshot rather than
-  JSON (see the Endpoints index until its own doc lands).
+  JSON.
 - [GET /api/events](index.md) — the SSE stream whose `beads_changed` event drives
   the `refresh from:body` re-fetch of this region across tabs (see the Endpoints
   index until its own doc lands).

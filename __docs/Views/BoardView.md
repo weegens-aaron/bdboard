@@ -229,7 +229,7 @@ sequenceDiagram
 
 | Endpoint | Used for | -> Endpoint doc |
 | --- | --- | --- |
-| `GET /api/lanes` | Initial + SSE re-fetch of the epic strip, the four active lanes, and the Activity feed (`.lanes-region`). | [GET /api/lanes](../Endpoints/index.md) |
+| `GET /api/lanes` | Initial + SSE re-fetch of the epic strip, the four active lanes, and the Activity feed (`.lanes-region`). | [GET /api/lanes](../Endpoints/GetApiLanes.md) |
 | `GET /api/lanes/closed` | Lazy + SSE re-fetch of the heavy Closed lane (`.lane-closed`), split out for fast first paint. | [GET /api/lanes/closed](../Endpoints/GetApiLanesClosed.md) |
 | `GET /api/counts` | Initial + SSE re-fetch of the masthead counts strip (`#counts`). | [GET /api/counts](../Endpoints/GetApiCounts.md) |
 | `GET /api/bead/{id}` | Opening the shared bead modal when an epic chip, lane card, or activity row is clicked. | [GET /api/bead/{id}](../Endpoints/index.md) |

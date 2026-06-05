@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 25
-- **Remaining:** 14
+- **Done:** 26
+- **Remaining:** 13
 
 ### By band
 
@@ -15,7 +15,7 @@ Tracks every item to document. Each doc bead fills its template from
 | --- | --- | --- |
 | Features | 7 | 0 |
 | Flows | 5 | 0 |
-| Endpoints | 15 | 13 |
+| Endpoints | 15 | 14 |
 | Views | 3 | 3 |
 | Concepts | 9 | 9 |
 
@@ -42,7 +42,7 @@ Tracks every item to document. Each doc bead fills its template from
 ## Endpoints (050+)
 
 - [ ] 050 | Endpoint: GET /api/events -> [GET /api/events](Endpoints/GetApiEvents.md)
-- [ ] 051 | Endpoint: GET /api/lanes -> [GET /api/lanes](Endpoints/GetApiLanes.md)
+- [x] 051 | Endpoint: GET /api/lanes -> [GET /api/lanes](Endpoints/GetApiLanes.md)
 - [x] 052 | Endpoint: GET /api/lanes/closed -> [GET /api/lanes/closed](Endpoints/GetApiLanesClosed.md)
 - [x] 053 | Endpoint: GET /api/counts -> [GET /api/counts](Endpoints/GetApiCounts.md)
 - [x] 054 | Endpoint: GET /api/history -> [GET /api/history](Endpoints/GetApiHistory.md)

@@ -225,10 +225,10 @@ cell to the visible count.
   placeholder lazy-loads from **this** endpoint on `load` and re-fetches on
   every SSE `refresh from:body`; the Closed lane sits alongside the four
   active lanes and the Activity feed.
-- [GET /api/lanes](index.md) — the active lanes + epic strip + activity
+- [GET /api/lanes](GetApiLanes.md) — the active lanes + epic strip + activity
   endpoint; both are HTMX HTML fragments that together compose the board's
-  swim-lane region, split so the lighter active data paints first (see the
-  Endpoints index until its own doc lands).
+  swim-lane region, split so the lighter active data (~5 KB) paints first
+  while the heavy closed data (~495 KB) loads in the background (bdboard-0yy).
 - [GET /api/counts](GetApiCounts.md) — the masthead counts strip endpoint;
   the Closed lane's visible count drives the client-side re-sync of the
   CLOSED cell in that strip via `syncMastheadClosedCount()`.
