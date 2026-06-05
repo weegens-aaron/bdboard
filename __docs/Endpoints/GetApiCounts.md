@@ -165,7 +165,7 @@ instantly.
 | Client-side CLOSED cell re-sync after board time filter | `src/bdboard/templates/base.html` | `syncMastheadClosedCount`, `applyBoardFilter` |
 | After-settle re-sync (if `#counts` hydrates after the closed lane) | `src/bdboard/templates/base.html` | `htmx:afterSettle` handler (`target.id === 'counts'`) |
 | Unit tests for derive.counts (fixed set, order, in_progress exclusion) | `tests/test_derive_counts.py` | `test_counts_returns_fixed_status_set_even_when_empty`, `test_counts_excludes_in_progress`, `test_counts_preserves_status_order_with_mixed_data` |
-| Markup/wiring tests for data-count-status hook + filter sync | `tests/test_board_counts_filter_sync.py` | `test_counts_cells_carry_status_hook`, `test_closed_cell_has_updatable_value`, `test_base_html_has_sync_machinery`, `test_counts_strip_resync_on_independent_settle` |
+| Markup/wiring tests for data-count-status hook + filter sync | `tests/test_board_counts_filter_sync.py` | `test_counts_cells_carry_status_hook`, `test_closed_cell_pairs_hook_with_value`, `test_sync_helper_targets_closed_cell_by_hook`, `test_sync_mirrors_zero_state_muting`, `test_apply_filter_feeds_visible_count_to_masthead`, `test_masthead_sync_guarded_by_real_closed_lane`, `test_counts_strip_resync_on_independent_settle` |
 | Board shell hydration test (lazy hx-get /api/counts) | `tests/test_snappy_transitions.py` | `test_board_shell_hydrates_lanes_and_counts_lazily` |
 
 ```mermaid
