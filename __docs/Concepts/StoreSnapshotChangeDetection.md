@@ -364,7 +364,7 @@ The revision signature is a content fingerprint, not bead data:
 - **History & Analytics** ([Features index](../Features/index.md)) — the History
   page reads `snapshot_history(closed_after=cutoff)` through the window-aware
   cache.
-- **Live Updates** ([Features index](../Features/index.md)) — `refresh()`'s
+- **Live Updates** ([Live Updates](../Features/LiveUpdates.md)) — `refresh()`'s
   `changed` boolean is what dedups the SSE broadcast that drives live refresh.
 - **Bead Detail Modal** ([Features index](../Features/index.md)) — the modal's
   fallback path uses `store.bead(id)` for O(1) lookup in the cached `by_id`

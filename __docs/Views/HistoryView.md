@@ -297,8 +297,8 @@ sequenceDiagram
   in shell structure (cheap shell + single HTMX-hydrated region).
 - [History & Analytics](../Features/index.md) — the end-to-end feature this page
   is the surface for.
-- [Live Updates](../Features/index.md) — the cross-tab live refresh this page
-  participates in via `refresh from:body`.
+- [Live Updates](../Features/LiveUpdates.md) — the cross-tab live refresh this
+  page participates in via `refresh from:body`.
 - [GET /api/history](../Endpoints/GetApiHistory.md) — the region endpoint this
   page lazy-loads, paginates, range-filters, and SSE-refreshes from.
 - [Endpoints index](../Endpoints/index.md) — GET /api/history, GET /api/bead/{id},

@@ -251,8 +251,8 @@ sequenceDiagram
   mirrors in shell structure (cheap shell + single HTMX-hydrated region).
 - [Memory Curation](../Features/index.md) — the end-to-end feature this page is
   the surface for.
-- [Live Updates](../Features/index.md) — the cross-tab live refresh this page
-  participates in.
+- [Live Updates](../Features/LiveUpdates.md) — the cross-tab live refresh this
+  page participates in.
 - [Endpoints index](../Endpoints/index.md) — GET /api/memory, POST /api/memory,
   DELETE /api/memory/{key}, GET /api/events.
 - [DELETE /api/memory/{key}](../Endpoints/DeleteApiMemory.md) — the forget write

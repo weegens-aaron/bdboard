@@ -222,7 +222,7 @@ changed):
 
 ## Where Used
 
-- **Live Updates** ([Features index](../Features/index.md)) — the watcher is
+- **Live Updates** ([Live Updates](../Features/LiveUpdates.md)) — the watcher is
   the upstream half of live sync; its broadcast is what makes open tabs
   re-fetch without a manual refresh.
 - **Live Board** ([Features index](../Features/index.md)) — board edits made in
@@ -313,7 +313,7 @@ changed):
   owns the watch/revision signatures.
 - [bd CLI as Source of Truth](BdCliSourceOfTruth.md) — the dolt-native source the watcher
   observes rather than owns.
-- [Features index](../Features/index.md) — Live Updates, Live Board.
+- [Features index](../Features/index.md) — [Live Updates](../Features/LiveUpdates.md), Live Board.
 - [Flows index](../Flows/index.md) — Watcher Refresh Cycle,
   [SSE Live Update](../Flows/SseLiveUpdate.md), Board First Paint.
 - [Endpoints index](../Endpoints/index.md) — [GET /api/events](../Endpoints/GetApiEvents.md).

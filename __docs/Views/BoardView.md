@@ -338,8 +338,8 @@ sequenceDiagram
   write endpoint the "+ Pour Formula" dialog submits to.
 - [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the end-to-end
   preflight → pour → rename → refresh flow the dialog drives.
-- [Live Updates](../Features/index.md) — the cross-tab live refresh this page
-  participates in via `refresh from:body`.
+- [Live Updates](../Features/LiveUpdates.md) — the cross-tab live refresh this
+  page participates in via `refresh from:body`.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes, GET /api/lanes/closed,
   GET /api/counts, GET /api/bead/{id}, GET /api/events.
 - [bd CLI as Source of Truth](../Concepts/BdCliSourceOfTruth.md) — why this page

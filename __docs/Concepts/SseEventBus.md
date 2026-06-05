@@ -263,7 +263,7 @@ flowchart TD
 
 ## Where Used
 
-- **Live Updates** ([Features index](../Features/index.md)) — the feature whose
+- **Live Updates** ([Live Updates](../Features/LiveUpdates.md)) — the feature whose
   entire promise (every tab reflects `bd` reality with no reload) is delivered
   by this bus.
 - **Memory Curation** ([Features index](../Features/index.md)) — both
@@ -340,7 +340,7 @@ flowchart TD
   that dedups this bus's broadcast.
 - [CSRF Protection](CsrfProtection.md) — the guard each write path passes before
   its optimistic broadcast.
-- [Features index](../Features/index.md) — Live Updates, Memory Curation,
+- [Features index](../Features/index.md) — [Live Updates](../Features/LiveUpdates.md), Memory Curation,
   Formula Pour, Manual Field Editing.
 - [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle,
   [Field Edit Write Path](../Flows/FieldEditWritePath.md).
