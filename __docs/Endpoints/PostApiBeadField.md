@@ -236,6 +236,9 @@ A successful call returns `200` with the re-rendered `#field-row-priority`
   edits), `GET /api/bead/{id}/audit` (same OOB-swap idiom for the badge), and
   the sibling write path `POST /api/memory` (shares the exact CSRF +
   serialized-mutation + SSE-broadcast plumbing).
+- [GET /api/bead/{id}/raw](GetApiBeadRaw.md) — the raw-JSON escape hatch for the
+  same bead; uses the cached `show_long` read this write path bypasses with
+  `fresh=True`.
 - [Field Editability Registry](../Concepts/FieldEditabilityRegistry.md) —
   decides WHICH fields are editable and pins the `bd update` flag.
 - [CSRF Protection](../Concepts/CsrfProtection.md) — the token guard that fronts
