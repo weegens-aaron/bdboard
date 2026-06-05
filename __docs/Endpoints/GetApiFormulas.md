@@ -1,7 +1,7 @@
 # GET /api/formulas
 
 > [!NOTE]
-> This is the **first read half** of [Formula Pour](../Features/index.md). When
+> This is the **first read half** of [Formula Pour](../Features/FormulaPour.md). When
 > the user opens the "+ Pour Formula" dialog on the [Board view](../Views/BoardView.md),
 > its `#formula-list` region fires this endpoint (`hx-get="/api/formulas"` on a
 > custom `load-formulas` trigger) and swaps in a single `<select>` picker of
@@ -240,7 +240,7 @@ curl -s http://127.0.0.1:8000/api/formulas
 - [Subprocess Serialization & Caching](../Concepts/SubprocessSerializationAndCaching.md)
   — the `_subprocess_gate` fronting `list_formulas` (note: this path is *not*
   TTL-cached, it re-shells on every dialog open).
-- [Feature: Formula Pour](../Features/index.md) — the feature this endpoint
+- [Feature: Formula Pour](../Features/FormulaPour.md) — the feature this endpoint
   helps drive (pick → fill form → pour).
 - [Flow: Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the end-to-end
   pick → form → pour → refresh flow.

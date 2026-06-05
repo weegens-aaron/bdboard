@@ -332,7 +332,7 @@ sequenceDiagram
   shell structure with (cheap shell + HTMX-hydrated regions).
 - [Live Board](../Features/index.md) — the end-to-end feature this page is the
   surface for.
-- [Formula Pour](../Features/index.md) — the pour-onto-board feature behind the
+- [Formula Pour](../Features/FormulaPour.md) — the pour-onto-board feature behind the
   "+ Pour Formula" dialog.
 - [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md) — the
   write endpoint the "+ Pour Formula" dialog submits to.

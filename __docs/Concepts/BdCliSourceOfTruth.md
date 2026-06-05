@@ -274,7 +274,7 @@ view depends on it. The most direct consumers:
   `update_field`, the canonical sanctioned write.
 - **Memory Curation** ([Features index](../Features/index.md)) — `memories`
   read plus `remember` / `forget` writes.
-- **Formula Pour** ([Features index](../Features/index.md)) — `list_formulas`,
+- **Formula Pour** ([Formula Pour](../Features/FormulaPour.md)) — `list_formulas`,
   the `*.formula.json` template reads, and the hybrid `pour_formula` +
   `rename_bead`.
 - **History & Analytics** ([Features index](../Features/index.md)) —
@@ -361,7 +361,7 @@ view depends on it. The most direct consumers:
 - [SSE Event Bus](SseEventBus.md) — the fan-out a real change drives once the
   caches are invalidated.
 - [Features index](../Features/index.md) — Live Board, Bead Detail Modal,
-  Manual Field Editing, Memory Curation, Formula Pour, History & Analytics.
+  Manual Field Editing, Memory Curation, [Formula Pour](../Features/FormulaPour.md), History & Analytics.
 - [Board First Paint](../Flows/BoardFirstPaint.md),
   [Field Edit Write Path](../Flows/FieldEditWritePath.md),
   [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the flows

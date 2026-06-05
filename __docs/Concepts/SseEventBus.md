@@ -268,7 +268,7 @@ flowchart TD
   by this bus.
 - **Memory Curation** ([Features index](../Features/index.md)) — both
   `bd remember` and `bd forget` end with `bus.broadcast("beads_changed")`.
-- **Formula Pour** ([Features index](../Features/index.md)) — the pour endpoint
+- **Formula Pour** ([Formula Pour](../Features/FormulaPour.md)) — the pour endpoint
   refreshes the store then broadcasts so the acting tab shows new beads
   immediately.
 - **Manual Field Editing** ([Features index](../Features/index.md)) — every
@@ -341,7 +341,7 @@ flowchart TD
 - [CSRF Protection](CsrfProtection.md) — the guard each write path passes before
   its optimistic broadcast.
 - [Features index](../Features/index.md) — [Live Updates](../Features/LiveUpdates.md), Memory Curation,
-  Formula Pour, Manual Field Editing.
+  [Formula Pour](../Features/FormulaPour.md), Manual Field Editing.
 - [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle,
   [Field Edit Write Path](../Flows/FieldEditWritePath.md).
 - [Endpoints index](../Endpoints/index.md) — [GET /api/events](../Endpoints/GetApiEvents.md), plus the four

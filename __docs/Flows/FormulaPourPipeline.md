@@ -206,7 +206,7 @@ fully_materialized = (len(id_mapping) == created)
   endpoint this flow documents (the write half).
 - [Board (/)](../Views/BoardView.md) — the view whose "+ Pour Formula" dialog
   triggers this flow.
-- [Feature: Formula Pour](../Features/index.md) — the feature this flow
+- [Feature: Formula Pour](../Features/FormulaPour.md) — the feature this flow
   implements.
 - [bd CLI as Source of Truth](../Concepts/BdCliSourceOfTruth.md) — why the
   pipeline shells out to `bd mol pour` and reads `*.formula.json` directly.

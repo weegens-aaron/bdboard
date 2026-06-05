@@ -204,7 +204,7 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
 - **Memory Curation** ([Features index](../Features/index.md)) — the first
   feature to introduce writes; both `bd remember` and `bd forget` go through
   `_check_csrf`.
-- **Formula Pour** ([Features index](../Features/index.md)) — the pour endpoint
+- **Formula Pour** ([Formula Pour](../Features/FormulaPour.md)) — the pour endpoint
   guards with the same posture before any `bd mol pour`.
 - **Manual Field Editing** ([Features index](../Features/index.md)) — every
   field write is CSRF-checked before the registry whitelist runs.
@@ -264,7 +264,7 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
   guard that runs immediately after this CSRF check.
 - [SSE Event Bus](SseEventBus.md) — the broadcast each guarded write path fires
   (`bus.broadcast("beads_changed")`) once this CSRF check passes.
-- [Features index](../Features/index.md) — Memory Curation, Formula Pour,
+- [Features index](../Features/index.md) — Memory Curation, [Formula Pour](../Features/FormulaPour.md),
   Manual Field Editing.
 - [Flows index](../Flows/index.md) — [Field Edit Write Path](../Flows/FieldEditWritePath.md),
   [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md).

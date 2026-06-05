@@ -286,7 +286,7 @@ object and returns a sorted list of `{key, body}`:
   tabs open the same bead without doubling the subprocess load.
 - **Memory Curation** ([Features index](../Features/index.md)) — `memories`
   (cached search) plus `remember` / `forget` writes that clear `_memories_cache`.
-- **Formula Pour** ([Features index](../Features/index.md)) — `list_formulas`,
+- **Formula Pour** ([Formula Pour](../Features/FormulaPour.md)) — `list_formulas`,
   `read_formula_detail` / `read_formula_variables`, then the hybrid
   `pour_formula` + `rename_bead`, all gate-serialized and cache-invalidating.
 - **Manual Field Editing** ([Features index](../Features/index.md)) —
@@ -395,7 +395,7 @@ object and returns a sorted list of `{key, body}`:
 - [SSE Event Bus](SseEventBus.md) — the fan-out a real change drives once the
   caches are invalidated.
 - [Features index](../Features/index.md) — Bead Detail Modal, Memory Curation,
-  Formula Pour, Manual Field Editing, History & Analytics.
+  [Formula Pour](../Features/FormulaPour.md), Manual Field Editing, History & Analytics.
 - [Flows index](../Flows/index.md) — [Field Edit Write Path](../Flows/FieldEditWritePath.md),
   [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md).
 - [Endpoints index](../Endpoints/index.md) — GET /api/bead/{id}, GET/POST

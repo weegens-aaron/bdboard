@@ -4,7 +4,7 @@
 > The route is registered as `POST /api/formulas/{name}/pour`
 > (`@app.post("/api/formulas/{name}/pour")`). The path parameter is the formula
 > **name** (e.g. `code-health-audit`, `flowdoc-html`), NOT a bead id. This is
-> the **write half** of [Formula Pour](../Features/index.md): it materializes a
+> the **write half** of [Formula Pour](../Features/FormulaPour.md): it materializes a
 > whole formula's bead tree onto the board in one atomic `bd mol pour`, renames
 > the grouping epic so repeat pours are distinguishable, then refreshes the
 > store and broadcasts an SSE event so every open tab re-fetches. It is the only
@@ -262,7 +262,7 @@ A successful call returns `200` with the `#formula-pour-result` HTML fragment
   invalidation that follows.
 - [SSE Event Bus](../Concepts/SseEventBus.md) — the `beads_changed` broadcast
   that pushes every tab to re-fetch after a pour.
-- [Feature: Formula Pour](../Features/index.md) — the feature this endpoint
+- [Feature: Formula Pour](../Features/FormulaPour.md) — the feature this endpoint
   implements.
 - [Flow: Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the end-to-end
   preflight → pour → rename → refresh flow.

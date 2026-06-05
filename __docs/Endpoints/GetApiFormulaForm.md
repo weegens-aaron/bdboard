@@ -4,7 +4,7 @@
 > The route is registered as `GET /api/formulas/{name}/form`
 > (`@app.get("/api/formulas/{name}/form")`). The path parameter is the formula
 > **name** (e.g. `flowdoc-html`, `code-health-audit`), NOT a bead id. This is
-> the **second read half** of [Formula Pour](../Features/index.md): the user
+> the **second read half** of [Formula Pour](../Features/FormulaPour.md): the user
 > picks a formula from [GET /api/formulas](GetApiFormulas.md) (the picker list — see the
 > [Endpoints index](index.md)), and
 > *that* selection fires this endpoint to render the variable form the user then
@@ -253,7 +253,7 @@ curl -i http://127.0.0.1:8000/api/formulas/does-not-exist/form
   bd CLI's structured output.
 - [Subprocess Serialization & Caching](../Concepts/SubprocessSerializationAndCaching.md)
   — the `_subprocess_gate` + TTL cache fronting `list_formulas`.
-- [Feature: Formula Pour](../Features/index.md) — the feature this endpoint
+- [Feature: Formula Pour](../Features/FormulaPour.md) — the feature this endpoint
   helps drive (pick → fill form → pour).
 - [Flow: Formula Pour Pipeline](../Flows/FormulaPourPipeline.md) — the end-to-end
   pick → form → pour → refresh flow.
