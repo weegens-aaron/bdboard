@@ -279,7 +279,7 @@ flowchart TD
   flow whose terminal step is *broadcast iff changed*.
 - **GET /api/events** ([Endpoints index](../Endpoints/index.md)) — the endpoint
   that is the bus's sole subscriber surface to the browser.
-- **Filesystem Watcher** ([Concepts index](index.md)) — the authoritative
+- **Filesystem Watcher** ([Filesystem Watcher](FilesystemWatcher.md)) — the authoritative
   trigger that decides when the watcher path broadcasts.
 - **Store Snapshot & Change Detection** ([Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md)) — supplies
   the `changed` boolean that gates the watcher broadcast.
@@ -334,8 +334,8 @@ flowchart TD
 ## Related
 
 - [Concepts index](index.md) — the other cross-cutting concepts.
-- [Filesystem Watcher](index.md) — the upstream trigger for the watcher
-  broadcast path (see Concepts index until its page lands).
+- [Filesystem Watcher](FilesystemWatcher.md) — the upstream trigger for the watcher
+  broadcast path.
 - [Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md) — supplies the `changed` gate
   that dedups this bus's broadcast.
 - [CSRF Protection](CsrfProtection.md) — the guard each write path passes before

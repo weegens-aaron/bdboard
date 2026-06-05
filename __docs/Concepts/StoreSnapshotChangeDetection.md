@@ -379,8 +379,8 @@ The revision signature is a content fingerprint, not bead data:
 - **GET /api/lanes**, **GET /api/lanes/closed**, **GET /api/counts**,
   **GET /api/history** ([Endpoints index](../Endpoints/index.md)) — every read
   endpoint sources its beads from a Store cache.
-- **Filesystem Watcher** ([Filesystem Watcher](index.md)) — the trigger that
-  decides when `refresh()` runs (see Concepts index until its page lands).
+- **Filesystem Watcher** ([Filesystem Watcher](FilesystemWatcher.md)) — the trigger that
+  decides when `refresh()` runs.
 - **bd CLI as Source of Truth** ([bd CLI as Source of Truth](index.md)) — the
   Store caches the output of `bd list --json`; it never reads `.beads/` files
   directly (see Concepts index until its page lands).
@@ -449,8 +449,7 @@ The revision signature is a content fingerprint, not bead data:
   cache supplies.
 - [SSE Event Bus](SseEventBus.md) — consumes the `changed` boolean to fan out
   `beads_changed`.
-- [Filesystem Watcher](index.md) — the trigger that calls `refresh()` (see
-  Concepts index until its page lands).
+- [Filesystem Watcher](FilesystemWatcher.md) — the trigger that calls `refresh()`.
 - [bd CLI as Source of Truth](index.md) — the data source the Store caches (see
   Concepts index until its page lands).
 - [Subprocess Serialization & Caching](index.md) — the `BdClient` fetch + detail
