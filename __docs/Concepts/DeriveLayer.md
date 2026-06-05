@@ -248,7 +248,7 @@ off-by-one.
 
 - **GET /api/lanes** ([Endpoints index](../Endpoints/index.md)) — calls
   `epic_lane`, `lanes`, `activity` to build the board payload.
-- **GET /api/counts** ([Endpoints index](../Endpoints/index.md)) — calls
+- **GET /api/counts** ([GET /api/counts](../Endpoints/GetApiCounts.md)) — calls
   `counts` for the masthead.
 - **GET /api/history** ([Endpoints index](../Endpoints/index.md)) — calls
   `resolve_history_bounds`, `history_window`, `throughput`, `created`,
