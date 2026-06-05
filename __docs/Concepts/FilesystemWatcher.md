@@ -311,8 +311,8 @@ changed):
   real change.
 - [Subprocess Serialization & Caching](SubprocessSerializationAndCaching.md) — the `BdClient` layer that
   owns the watch/revision signatures.
-- [bd CLI as Source of Truth](index.md) — the dolt-native source the watcher
-  observes rather than owns (see Concepts index until its page lands).
+- [bd CLI as Source of Truth](BdCliSourceOfTruth.md) — the dolt-native source the watcher
+  observes rather than owns.
 - [Features index](../Features/index.md) — Live Updates, Live Board.
 - [Flows index](../Flows/index.md) — Watcher Refresh Cycle, SSE Live Update,
   Board First Paint.

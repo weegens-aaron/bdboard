@@ -18,7 +18,7 @@ dolt lock" behavior.
 ## Why This Approach
 
 bdboard is a read-mostly **observer** (see [bd CLI as Source of
-Truth](index.md) — the Concepts index until its page lands): every
+Truth](BdCliSourceOfTruth.md)): every
 `/api/lanes`, `/api/counts`, bead-modal
 open, and live refresh is ultimately a `bd` subprocess. That framing creates
 four hard problems, and this concept exists to solve all four at once:
@@ -313,8 +313,8 @@ object and returns a sorted list of `{key, body}`:
   layer that owns `watch_targets` / `watch_signature` / `revision_signature`
   also lives on `BdClient`; a real change is what triggers the cache
   invalidation here.
-- **bd CLI as Source of Truth** ([Concepts index](index.md) until its page
-  lands) — the observer posture that makes *every* data access a serialized,
+- **bd CLI as Source of Truth** ([bd CLI as Source of Truth](BdCliSourceOfTruth.md)) — the
+  observer posture that makes *every* data access a serialized,
   cached subprocess in the first place.
 
 ## Conventions
@@ -385,8 +385,8 @@ object and returns a sorted list of `{key, body}`:
 ## Related
 
 - [Concepts index](index.md) — the other cross-cutting concepts.
-- [bd CLI as Source of Truth](index.md) — the observer posture that makes every
-  data access a serialized subprocess (see Concepts index until its page lands).
+- [bd CLI as Source of Truth](BdCliSourceOfTruth.md) — the observer posture that makes every
+  data access a serialized subprocess.
 - [Store Snapshot & Change Detection](StoreSnapshotChangeDetection.md) — the
   board-snapshot lifecycle over the uncached `list_*` reads, plus the
   post-watcher `invalidate_caches()` call.
