@@ -385,9 +385,8 @@ The revision signature is a content fingerprint, not bead data:
   Store caches the output of `bd list --json`; it never reads `.beads/` files
   directly (see Concepts index until its page lands).
 - **Subprocess Serialization & Caching**
-  ([Subprocess Serialization & Caching](index.md)) — the `BdClient` layer the
-  Store fetches through and whose detail caches it invalidates (see Concepts
-  index until its page lands).
+  ([Subprocess Serialization & Caching](SubprocessSerializationAndCaching.md)) — the `BdClient` layer the
+  Store fetches through and whose detail caches it invalidates.
 - **Derive Layer** ([Derive Layer](DeriveLayer.md)) — the pure functions that
   shape the Store snapshot into lanes/counts/history; the Store owns freshness,
   derive owns shaping.
@@ -452,8 +451,8 @@ The revision signature is a content fingerprint, not bead data:
 - [Filesystem Watcher](FilesystemWatcher.md) — the trigger that calls `refresh()`.
 - [bd CLI as Source of Truth](index.md) — the data source the Store caches (see
   Concepts index until its page lands).
-- [Subprocess Serialization & Caching](index.md) — the `BdClient` fetch + detail
-  caches the Store drives (see Concepts index until its page lands).
+- [Subprocess Serialization & Caching](SubprocessSerializationAndCaching.md) — the `BdClient` fetch + detail
+  caches the Store drives.
 - [Features index](../Features/index.md) — Live Board, History & Analytics, Live
   Updates, Bead Detail Modal.
 - [Flows index](../Flows/index.md) — Board First Paint, Watcher Refresh Cycle,

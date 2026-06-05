@@ -243,7 +243,7 @@ changed):
 - **SSE Event Bus** ([SSE Event Bus](SseEventBus.md)) — the bus the watcher
   broadcasts through when (and only when) the bead data changed.
 - **Subprocess Serialization & Caching**
-  ([Concepts index](index.md)) — the `BdClient` layer that owns
+  ([Subprocess Serialization & Caching](SubprocessSerializationAndCaching.md)) — the `BdClient` layer that owns
   `watch_targets` / `watch_signature` / `revision_signature` and the
   detail caches a real change invalidates.
 
@@ -309,8 +309,8 @@ changed):
   `refresh()` the scheduler drives and its revision-skip fast path.
 - [SSE Event Bus](SseEventBus.md) — the bus the watcher broadcasts through on a
   real change.
-- [Subprocess Serialization & Caching](index.md) — the `BdClient` layer that
-  owns the watch/revision signatures (see Concepts index until its page lands).
+- [Subprocess Serialization & Caching](SubprocessSerializationAndCaching.md) — the `BdClient` layer that
+  owns the watch/revision signatures.
 - [bd CLI as Source of Truth](index.md) — the dolt-native source the watcher
   observes rather than owns (see Concepts index until its page lands).
 - [Features index](../Features/index.md) — Live Updates, Live Board.
