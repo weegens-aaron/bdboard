@@ -245,6 +245,8 @@ sequenceDiagram
 
 - [Views index](index.md) — the three pages; Board (`/`) and History
   (`/history`) are this view's siblings (shared masthead, nav, and SSE wiring).
+- [History (/history)](HistoryView.md) — the sibling full-page view this one
+  mirrors in shell structure (cheap shell + single HTMX-hydrated region).
 - [Memory Curation](../Features/index.md) — the end-to-end feature this page is
   the surface for.
 - [Live Updates](../Features/index.md) — the cross-tab live refresh this page
