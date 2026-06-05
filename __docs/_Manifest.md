@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 11
-- **Remaining:** 28
+- **Done:** 12
+- **Remaining:** 27
 
 ### By band
 
@@ -16,7 +16,7 @@ Tracks every item to document. Each doc bead fills its template from
 | Features | 7 | 0 |
 | Flows | 5 | 0 |
 | Endpoints | 15 | 0 |
-| Views | 3 | 2 |
+| Views | 3 | 3 |
 | Concepts | 9 | 9 |
 
 ---
@@ -59,7 +59,7 @@ Tracks every item to document. Each doc bead fills its template from
 
 ## Views (070+)
 
-- [ ] 070 | View: Board -> [Board (/)](Views/BoardView.md)
+- [x] 070 | View: Board -> [Board (/)](Views/BoardView.md)
 - [x] 071 | View: History -> [History (/history)](Views/HistoryView.md)
 - [x] 072 | View: Memory -> [Memory (/memory)](Views/MemoryView.md)
 

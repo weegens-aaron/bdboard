@@ -290,6 +290,9 @@ sequenceDiagram
 
 - [Views index](index.md) — the three pages; Board (`/`) and Memory
   (`/memory`) are this view's siblings (shared masthead, nav, and SSE wiring).
+- [Board (/)](BoardView.md) — the live-now sibling; this History page is the
+  long-window retrospective that the board's short 12h/1d/3d closed window
+  hands off to.
 - [Memory (/memory)](MemoryView.md) — the sibling full-page view this one mirrors
   in shell structure (cheap shell + single HTMX-hydrated region).
 - [History & Analytics](../Features/index.md) — the end-to-end feature this page
