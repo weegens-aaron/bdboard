@@ -5,8 +5,8 @@
 > (`@app.get("/api/formulas/{name}/form")`). The path parameter is the formula
 > **name** (e.g. `flowdoc-html`, `code-health-audit`), NOT a bead id. This is
 > the **second read half** of [Formula Pour](../Features/index.md): the user
-> picks a formula from `GET /api/formulas` (the picker list — see the
-> [Endpoints index](index.md); its dedicated doc is item `058`, pending), and
+> picks a formula from [GET /api/formulas](GetApiFormulas.md) (the picker list — see the
+> [Endpoints index](index.md)), and
 > *that* selection fires this endpoint to render the variable form the user then
 > submits to [POST /api/formulas/{name}/pour](PostApiFormulaPour.md). It is a
 > pure read — it never mutates the board. Its one job is to turn a formula's
@@ -242,9 +242,8 @@ curl -i http://127.0.0.1:8000/api/formulas/does-not-exist/form
 ## Related
 
 - [Endpoints index](index.md) — every route bdboard exposes.
-- `GET /api/formulas` — the **first** read half of the pour flow: the picker
-  list whose `<select>` change fires *this* endpoint. (Listed in the
-  [Endpoints index](index.md); dedicated doc item `058` is pending.)
+- [GET /api/formulas](GetApiFormulas.md) — the **first** read half of the pour
+  flow: the picker list whose `<select>` change fires *this* endpoint.
 - [POST /api/formulas/{name}/pour](PostApiFormulaPour.md) — the **write** half:
   the form this endpoint renders submits there to materialize the bead tree.
 - [CSRF Protection](../Concepts/CsrfProtection.md) — why this read needs no

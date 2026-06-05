@@ -246,8 +246,8 @@ A successful call returns `200` with the `#formula-pour-result` HTML fragment
 ## Related
 
 - [Endpoints index](index.md) — every route bdboard exposes, including the two
-  read halves of the pour flow: `GET /api/formulas` (the picker list, doc item
-  `058` pending) and [GET /api/formulas/{name}/form](GetApiFormulaForm.md) (the
+  read halves of the pour flow: [GET /api/formulas](GetApiFormulas.md) (the
+  picker list) and [GET /api/formulas/{name}/form](GetApiFormulaForm.md) (the
   variable form whose submit fires this endpoint). It shares the exact CSRF +
   serialized-mutation + SSE-broadcast plumbing with
   [POST /api/bead/{id}/field](PostApiBeadField.md).
