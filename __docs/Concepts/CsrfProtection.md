@@ -208,7 +208,7 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
   guards with the same posture before any `bd mol pour`.
 - **Manual Field Editing** ([Features index](../Features/index.md)) — every
   field write is CSRF-checked before the registry whitelist runs.
-- **Field Edit Write Path** ([Flows index](../Flows/index.md)) — the flow whose
+- **Field Edit Write Path** ([Field Edit Write Path](../Flows/FieldEditWritePath.md)) — the flow whose
   very first step is the CSRF guard.
 - **Formula Pour Pipeline** ([Flows index](../Flows/index.md)) — the pour flow
   fronted by the same check.
@@ -266,8 +266,8 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
   (`bus.broadcast("beads_changed")`) once this CSRF check passes.
 - [Features index](../Features/index.md) — Memory Curation, Formula Pour,
   Manual Field Editing.
-- [Flows index](../Flows/index.md) — Field Edit Write Path, Formula Pour
-  Pipeline.
+- [Flows index](../Flows/index.md) — [Field Edit Write Path](../Flows/FieldEditWritePath.md),
+  [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md).
 - [Endpoints index](../Endpoints/index.md) — POST /api/memory, DELETE
 /api/memory/{key}, POST /api/formulas/{name}/pour.
 - [POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md) — the field-write

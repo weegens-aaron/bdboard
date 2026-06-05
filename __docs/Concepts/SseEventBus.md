@@ -342,7 +342,8 @@ flowchart TD
   its optimistic broadcast.
 - [Features index](../Features/index.md) — Live Updates, Memory Curation,
   Formula Pour, Manual Field Editing.
-- [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle.
+- [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle,
+  [Field Edit Write Path](../Flows/FieldEditWritePath.md).
 - [Endpoints index](../Endpoints/index.md) — [GET /api/events](../Endpoints/GetApiEvents.md), plus the four
   write endpoints that broadcast, including
   [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md).

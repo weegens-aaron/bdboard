@@ -245,7 +245,7 @@ A successful call returns `200` with the re-rendered `#field-row-priority`
   this write.
 - [Feature: Manual Field Editing](../Features/index.md) — the feature this
   endpoint implements.
-- [Flow: Field Edit Write Path](../Flows/index.md) — the end-to-end validate →
-  write → re-render flow.
+- [Flow: Field Edit Write Path](../Flows/FieldEditWritePath.md) — the end-to-end
+  validate → write → re-render flow.
 - [Back to docs index](../index.md)
 ```

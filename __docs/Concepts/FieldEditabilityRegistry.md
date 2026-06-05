@@ -192,7 +192,7 @@ value on stdin so a huge body never blows the shell-arg length limit.
 
 - **Manual Field Editing** ([Features index](../Features/index.md)) — the
   feature whose entire editability surface this registry defines.
-- **Field Edit Write Path** ([Flows index](../Flows/index.md)) — the flow that
+- **Field Edit Write Path** ([Field Edit Write Path](../Flows/FieldEditWritePath.md)) — the flow that
   validates a submitted edit against the registry and the status gate before
   shelling `bd update`.
 - **POST /api/bead/{id}/field** ([POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md)) — the
@@ -242,7 +242,8 @@ value on stdin so a huge body never blows the shell-arg length limit.
 - [Concepts index](index.md) — the other cross-cutting concepts.
 - [CSRF Protection](CsrfProtection.md) — the write-path guard that runs first.
 - [Features index](../Features/index.md) — Manual Field Editing, Bead Detail Modal.
-- [Flows index](../Flows/index.md) — Field Edit Write Path.
+- [Field Edit Write Path](../Flows/FieldEditWritePath.md) — the end-to-end
+  validate → write → re-render flow this registry gates.
 - [Endpoints index](../Endpoints/index.md) — POST /api/bead/{id}/field
   ([direct](../Endpoints/PostApiBeadField.md)).
 - [Back to docs index](../index.md)

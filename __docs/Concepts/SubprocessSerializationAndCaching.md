@@ -396,8 +396,8 @@ object and returns a sorted list of `{key, body}`:
   caches are invalidated.
 - [Features index](../Features/index.md) — Bead Detail Modal, Memory Curation,
   Formula Pour, Manual Field Editing, History & Analytics.
-- [Flows index](../Flows/index.md) — Field Edit Write Path, Formula Pour
-  Pipeline.
+- [Flows index](../Flows/index.md) — [Field Edit Write Path](../Flows/FieldEditWritePath.md),
+  [Formula Pour Pipeline](../Flows/FormulaPourPipeline.md).
 - [Endpoints index](../Endpoints/index.md) — GET /api/bead/{id}, GET/POST
   /api/memory, DELETE /api/memory/{key}.
 - [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md) — the
