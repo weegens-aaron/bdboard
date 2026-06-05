@@ -3,7 +3,7 @@
 > [!NOTE]
 > The route is registered as `GET /api/memory`
 > (`@app.get("/api/memory", response_class=HTMLResponse)`). This is the
-> **read half** of [Memory Curation](../Features/index.md): it lists (or
+> **read half** of [Memory Curation](../Features/MemoryCuration.md): it lists (or
 > searches) the `bd` memories that are injected at `bd prime` and returns the
 > re-rendered `partials/memory_list.html` fragment for an HTMX swap of
 > `#memory-list`. It is the non-mutating sibling of the upsert path
@@ -238,7 +238,7 @@ curl -i "http://127.0.0.1:8000/api/memory"
 - [Memory (/memory)](../Views/MemoryView.md) — the page surface whose search
   strip and list region issue this `GET` (on `load`, on debounced search, and
   on SSE refresh).
-- [Feature: Memory Curation](../Features/index.md) — the feature this endpoint's
+- [Feature: Memory Curation](../Features/MemoryCuration.md) — the feature this endpoint's
   read half implements.
 - [Subprocess Serialization & Caching](../Concepts/SubprocessSerializationAndCaching.md)
   — the semaphore + TTL cache + in-flight dedup behind `BdClient.memories`.

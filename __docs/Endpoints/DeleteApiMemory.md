@@ -6,7 +6,7 @@
 > deliberate: memory keys can contain slashes (e.g. `flowdoc/pour-gate`), so the
 > key must be captured as a whole path segment rather than a single
 > non-slash token. This is the **forget half** of
-> [Memory Curation](../Features/index.md): it deletes ONE `bd` memory via
+> [Memory Curation](../Features/MemoryCuration.md): it deletes ONE `bd` memory via
 > `bd forget` and returns the re-rendered memory list for an HTMX swap. It is the
 > destructive sibling of the upsert path [POST /api/memory](PostApiMemory.md).
 
@@ -205,7 +205,7 @@ curl -i -X DELETE "http://127.0.0.1:8000/api/memory/does-not-exist" \
   serialized `bd`-mutation write path; same `_check_csrf` + gate + broadcast idiom.
 - [Memory (/memory)](../Views/MemoryView.md) — the page surface whose
   confirm-before-forget dialog fires this DELETE.
-- [Feature: Memory Curation](../Features/index.md) — the feature this endpoint
+- [Feature: Memory Curation](../Features/MemoryCuration.md) — the feature this endpoint
   implements.
 - [CSRF Protection](../Concepts/CsrfProtection.md) — the token guard fronting
   this destructive write.

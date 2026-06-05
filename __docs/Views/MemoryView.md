@@ -249,8 +249,8 @@ sequenceDiagram
   shares shell structure with (cheap shell + HTMX-hydrated regions).
 - [History (/history)](HistoryView.md) — the sibling full-page view this one
   mirrors in shell structure (cheap shell + single HTMX-hydrated region).
-- [Memory Curation](../Features/index.md) — the end-to-end feature this page is
-  the surface for.
+- [Memory Curation](../Features/MemoryCuration.md) — the end-to-end feature
+  this page is the surface for.
 - [Live Updates](../Features/LiveUpdates.md) — the cross-tab live refresh this
   page participates in.
 - [Endpoints index](../Endpoints/index.md) — GET /api/memory, POST /api/memory,

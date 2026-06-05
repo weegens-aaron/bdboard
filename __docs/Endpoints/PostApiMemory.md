@@ -3,7 +3,7 @@
 > [!NOTE]
 > The route is registered as `POST /api/memory`
 > (`@app.post("/api/memory", response_class=HTMLResponse)`). This is the
-> **upsert (remember) half** of [Memory Curation](../Features/index.md): it
+> **upsert (remember) half** of [Memory Curation](../Features/MemoryCuration.md): it
 > creates *or* replaces ONE `bd` memory via `bd remember <body> --key <key>`,
 > broadcasts an SSE `beads_changed`, then returns the re-rendered memory list
 > for an HTMX swap. It is the constructive sibling of the destructive path
@@ -234,7 +234,7 @@ curl -i -X POST "http://127.0.0.1:8000/api/memory" \
   serialized `bd`-mutation write path; same `_check_csrf` + gate + broadcast idiom.
 - [Memory (/memory)](../Views/MemoryView.md) — the page surface whose
   create/edit `<dialog>` fires this POST.
-- [Feature: Memory Curation](../Features/index.md) — the feature this endpoint
+- [Feature: Memory Curation](../Features/MemoryCuration.md) — the feature this endpoint
   implements.
 - [CSRF Protection](../Concepts/CsrfProtection.md) — the token guard fronting
   this write (and why this path accepts a form fallback in addition to the header).
