@@ -262,6 +262,8 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
 - [Concepts index](index.md) — the other cross-cutting concepts.
 - [Field Editability Registry](FieldEditabilityRegistry.md) — the write-path
   guard that runs immediately after this CSRF check.
+- [SSE Event Bus](SseEventBus.md) — the broadcast each guarded write path fires
+  (`bus.broadcast("beads_changed")`) once this CSRF check passes.
 - [Features index](../Features/index.md) — Memory Curation, Formula Pour,
   Manual Field Editing.
 - [Flows index](../Flows/index.md) — Field Edit Write Path, Formula Pour
