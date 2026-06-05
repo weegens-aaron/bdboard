@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 0
-- **Remaining:** 39
+- **Done:** 1
+- **Remaining:** 38
 
 ### By band
 
@@ -17,7 +17,7 @@ Tracks every item to document. Each doc bead fills its template from
 | Flows | 5 | 0 |
 | Endpoints | 15 | 0 |
 | Views | 3 | 0 |
-| Concepts | 9 | 0 |
+| Concepts | 9 | 1 |
 
 ---
 
@@ -73,4 +73,4 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 085 | Concept: SSE Event Bus -> [SSE Event Bus](Concepts/SseEventBus.md)
 - [ ] 086 | Concept: CSRF Protection -> [CSRF Protection](Concepts/CsrfProtection.md)
 - [ ] 087 | Concept: Field Editability Registry -> [Field Editability Registry](Concepts/FieldEditabilityRegistry.md)
-- [ ] 088 | Concept: Epic Lane Sequencing -> [Epic Lane Sequencing](Concepts/EpicLaneSequencing.md)
+- [x] 088 | Concept: Epic Lane Sequencing -> [Epic Lane Sequencing](Concepts/EpicLaneSequencing.md)
