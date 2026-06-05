@@ -8,8 +8,7 @@
 > non-slash token. This is the **forget half** of
 > [Memory Curation](../Features/index.md): it deletes ONE `bd` memory via
 > `bd forget` and returns the re-rendered memory list for an HTMX swap. It is the
-> destructive sibling of the upsert path POST /api/memory (see the
-> [Endpoints index](index.md)).
+> destructive sibling of the upsert path [POST /api/memory](PostApiMemory.md).
 
 ## Overview
 
@@ -196,10 +195,10 @@ curl -i -X DELETE "http://127.0.0.1:8000/api/memory/does-not-exist" \
 ## Related
 
 - [Endpoints index](index.md) — every route bdboard exposes.
-- [POST /api/memory](index.md) — the upsert sibling (see the Endpoints index
-  until its own doc lands); shares the exact CSRF + serialized-mutation +
-  SSE-broadcast plumbing and returns the same `memory_list.html` partial (the
-  create path *does* accept a form CSRF fallback; this delete path does not).
+- [POST /api/memory](PostApiMemory.md) — the upsert sibling; shares the exact
+  CSRF + serialized-mutation + SSE-broadcast plumbing and returns the same
+  `memory_list.html` partial (the create path *does* accept a form CSRF
+  fallback; this delete path does not).
 - [GET /api/memory](index.md) — the read half that renders the list this
   endpoint mutates (see the Endpoints index until its own doc lands); it's what
   other tabs re-fetch on the `beads_changed` SSE.
