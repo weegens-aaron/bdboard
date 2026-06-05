@@ -196,8 +196,8 @@ to sequence on.
   top strip is this sequenced epic list.
 - **Board (/)** ([Views index](../Views/index.md)) — the view that renders the
   `epic-strip` loop in `partials/lanes.html`.
-- **Derive Layer** ([Concepts index](index.md)) — `epic_lane` is one of the
-  pure derivations this concept belongs to.
+- **Derive Layer** ([Derive Layer](DeriveLayer.md)) — `epic_lane` is one of
+  the pure derivations this concept belongs to.
 
 ## Conventions
 
@@ -239,8 +239,9 @@ to sequence on.
 
 ## Related
 
-- [Concepts index](index.md) — Derive Layer and the other cross-cutting
-  concepts.
+- [Derive Layer](DeriveLayer.md) — the pure view-shaping layer `epic_lane`
+  belongs to.
+- [Concepts index](index.md) — the other cross-cutting concepts.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes (the caller).
 - [Flows index](../Flows/index.md) — Board First Paint.
 - [Features index](../Features/index.md) — Live Board.
