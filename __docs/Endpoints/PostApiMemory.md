@@ -227,10 +227,9 @@ curl -i -X POST "http://127.0.0.1:8000/api/memory" \
   (forget); shares the exact CSRF + serialized-mutation + SSE-broadcast plumbing
   and returns the same `memory_list.html` partial (that delete path accepts the
   header CSRF only; this create path *also* accepts a form-field fallback).
-- [GET /api/memory](index.md) — the read half that renders the list this
-  endpoint mutates (see the Endpoints index until its own doc lands); it's what
-  other tabs re-fetch on the `beads_changed` SSE, and what the active search box
-  drives.
+- [GET /api/memory](GetApiMemory.md) — the read half that renders the list this
+  endpoint mutates; it's what other tabs re-fetch on the `beads_changed` SSE,
+  and what the active search box drives.
 - [POST /api/bead/{id}/field](PostApiBeadField.md) — the other CSRF-guarded,
   serialized `bd`-mutation write path; same `_check_csrf` + gate + broadcast idiom.
 - [Memory (/memory)](../Views/MemoryView.md) — the page surface whose

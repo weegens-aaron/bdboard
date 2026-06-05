@@ -199,9 +199,8 @@ curl -i -X DELETE "http://127.0.0.1:8000/api/memory/does-not-exist" \
   CSRF + serialized-mutation + SSE-broadcast plumbing and returns the same
   `memory_list.html` partial (the create path *does* accept a form CSRF
   fallback; this delete path does not).
-- [GET /api/memory](index.md) — the read half that renders the list this
-  endpoint mutates (see the Endpoints index until its own doc lands); it's what
-  other tabs re-fetch on the `beads_changed` SSE.
+- [GET /api/memory](GetApiMemory.md) — the read half that renders the list this
+  endpoint mutates; it's what other tabs re-fetch on the `beads_changed` SSE.
 - [POST /api/bead/{id}/field](PostApiBeadField.md) — the other CSRF-guarded,
   serialized `bd`-mutation write path; same `_check_csrf` + gate + broadcast idiom.
 - [Memory (/memory)](../Views/MemoryView.md) — the page surface whose
