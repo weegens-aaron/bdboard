@@ -23,7 +23,7 @@ via `await request.form()` (each declared formula variable arrives as a
 `var_<name>` field) plus the CSRF token via FastAPI `Form(alias="csrf_token")`.
 HTMX submits the `<form>` rendered by `partials/formula_form.html`, so the wire
 contract is single-sourced with the variable form returned by
-[GET /api/formulas/{name}/form](index.md) (item `059`, not yet written).
+[GET /api/formulas/{name}/form](GetApiFormulaForm.md).
 
 ### Path/Query Params
 
@@ -246,9 +246,9 @@ A successful call returns `200` with the `#formula-pour-result` HTML fragment
 ## Related
 
 - [Endpoints index](index.md) — every route bdboard exposes, including the two
-  read halves of the pour flow: `GET /api/formulas` (the picker list) and
-  `GET /api/formulas/{name}/form` (the variable form whose submit fires this
-  endpoint) — both listed in the index, docs pending. It shares the exact CSRF +
+  read halves of the pour flow: `GET /api/formulas` (the picker list, doc item
+  `058` pending) and [GET /api/formulas/{name}/form](GetApiFormulaForm.md) (the
+  variable form whose submit fires this endpoint). It shares the exact CSRF +
   serialized-mutation + SSE-broadcast plumbing with
   [POST /api/bead/{id}/field](PostApiBeadField.md).
 - [GET /api/bead/{id}/raw](GetApiBeadRaw.md) — a sibling read endpoint; the

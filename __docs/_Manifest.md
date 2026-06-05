@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 17
-- **Remaining:** 22
+- **Done:** 18
+- **Remaining:** 21
 
 ### By band
 
@@ -15,7 +15,7 @@ Tracks every item to document. Each doc bead fills its template from
 | --- | --- | --- |
 | Features | 7 | 0 |
 | Flows | 5 | 0 |
-| Endpoints | 15 | 5 |
+| Endpoints | 15 | 6 |
 | Views | 3 | 3 |
 | Concepts | 9 | 9 |
 
@@ -50,7 +50,7 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 056 | Endpoint: POST /api/memory -> [POST /api/memory](Endpoints/PostApiMemory.md)
 - [ ] 057 | Endpoint: DELETE /api/memory/{key} -> [DELETE /api/memory/{key}](Endpoints/DeleteApiMemory.md)
 - [ ] 058 | Endpoint: GET /api/formulas -> [GET /api/formulas](Endpoints/GetApiFormulas.md)
-- [ ] 059 | Endpoint: GET /api/formulas/{name}/form -> [GET /api/formulas/{name}/form](Endpoints/GetApiFormulaForm.md)
+- [x] 059 | Endpoint: GET /api/formulas/{name}/form -> [GET /api/formulas/{name}/form](Endpoints/GetApiFormulaForm.md)
 - [x] 060 | Endpoint: POST /api/formulas/{name}/pour -> [POST /api/formulas/{name}/pour](Endpoints/PostApiFormulaPour.md)
 - [x] 061 | Endpoint: GET /api/bead/{id} -> [GET /api/bead/{id}](Endpoints/GetApiBead.md)
 - [x] 062 | Endpoint: GET /api/bead/{id}/audit -> [GET /api/bead/{id}/audit](Endpoints/GetApiBeadAudit.md)
