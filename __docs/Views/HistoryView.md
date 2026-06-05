@@ -190,7 +190,7 @@ sequenceDiagram
 
 | Endpoint | Used for | -> Endpoint doc |
 | --- | --- | --- |
-| `GET /api/history` | Initial region load, every range/Custom/pager/page-size change, and SSE-driven re-fetch of the whole `#history-region` (+ the OOB masthead stats). | [GET /api/history](../Endpoints/index.md) |
+| `GET /api/history` | Initial region load, every range/Custom/pager/page-size change, and SSE-driven re-fetch of the whole `#history-region` (+ the OOB masthead stats). | [GET /api/history](../Endpoints/GetApiHistory.md) |
 | `GET /api/bead/{id}` | Opening the shared bead detail modal when a closed-bead card is clicked. | [GET /api/bead/{id}](../Endpoints/index.md) |
 | `GET /api/events` | The shared SSE subscription (in `base.html`) that fires `refresh from:body` so the history view stays live across tabs. | [GET /api/events](../Endpoints/index.md) |
 
@@ -299,6 +299,8 @@ sequenceDiagram
   is the surface for.
 - [Live Updates](../Features/index.md) — the cross-tab live refresh this page
   participates in via `refresh from:body`.
+- [GET /api/history](../Endpoints/GetApiHistory.md) — the region endpoint this
+  page lazy-loads, paginates, range-filters, and SSE-refreshes from.
 - [Endpoints index](../Endpoints/index.md) — GET /api/history, GET /api/bead/{id},
   GET /api/events.
 - [bd CLI as Source of Truth](../Concepts/BdCliSourceOfTruth.md) — why this page

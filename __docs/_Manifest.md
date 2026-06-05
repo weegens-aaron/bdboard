@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 22
-- **Remaining:** 17
+- **Done:** 23
+- **Remaining:** 16
 
 ### By band
 
@@ -15,7 +15,7 @@ Tracks every item to document. Each doc bead fills its template from
 | --- | --- | --- |
 | Features | 7 | 0 |
 | Flows | 5 | 0 |
-| Endpoints | 15 | 10 |
+| Endpoints | 15 | 11 |
 | Views | 3 | 3 |
 | Concepts | 9 | 9 |
 
@@ -45,7 +45,7 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 051 | Endpoint: GET /api/lanes -> [GET /api/lanes](Endpoints/GetApiLanes.md)
 - [ ] 052 | Endpoint: GET /api/lanes/closed -> [GET /api/lanes/closed](Endpoints/GetApiLanesClosed.md)
 - [ ] 053 | Endpoint: GET /api/counts -> [GET /api/counts](Endpoints/GetApiCounts.md)
-- [ ] 054 | Endpoint: GET /api/history -> [GET /api/history](Endpoints/GetApiHistory.md)
+- [x] 054 | Endpoint: GET /api/history -> [GET /api/history](Endpoints/GetApiHistory.md)
 - [x] 055 | Endpoint: GET /api/memory -> [GET /api/memory](Endpoints/GetApiMemory.md)
 - [x] 056 | Endpoint: POST /api/memory -> [POST /api/memory](Endpoints/PostApiMemory.md)
 - [x] 057 | Endpoint: DELETE /api/memory/{key} -> [DELETE /api/memory/{key}](Endpoints/DeleteApiMemory.md)
