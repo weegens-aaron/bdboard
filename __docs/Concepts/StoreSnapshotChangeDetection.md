@@ -361,7 +361,7 @@ The revision signature is a content fingerprint, not bead data:
 
 - **Live Board** ([Features index](../Features/index.md)) — `/api/lanes` and
   `/api/counts` read `snapshot_active()` / `snapshot()` instead of shelling out.
-- **History & Analytics** ([Features index](../Features/index.md)) — the History
+- **History & Analytics** ([History & Analytics](../Features/HistoryAnalytics.md)) — the History
   page reads `snapshot_history(closed_after=cutoff)` through the window-aware
   cache.
 - **Live Updates** ([Live Updates](../Features/LiveUpdates.md)) — `refresh()`'s
@@ -453,7 +453,7 @@ The revision signature is a content fingerprint, not bead data:
   Concepts index until its page lands).
 - [Subprocess Serialization & Caching](SubprocessSerializationAndCaching.md) — the `BdClient` fetch + detail
   caches the Store drives.
-- [Features index](../Features/index.md) — Live Board, History & Analytics, Live
+- [Features index](../Features/index.md) — Live Board, [History & Analytics](../Features/HistoryAnalytics.md), Live
   Updates, Bead Detail Modal.
 - [Board First Paint](../Flows/BoardFirstPaint.md),
   [Watcher Refresh Cycle](../Flows/WatcherRefreshCycle.md),

@@ -6,14 +6,14 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 33
-- **Remaining:** 6
+- **Done:** 34
+- **Remaining:** 5
 
 ### By band
 
 | Band | Total | Done |
 | --- | --- | --- |
-| Features | 7 | 1 |
+| Features | 7 | 2 |
 | Flows | 5 | 5 |
 | Endpoints | 15 | 15 |
 | Views | 3 | 3 |
@@ -28,7 +28,7 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 003 | Feature: Manual Field Editing -> [Manual Field Editing](Features/ManualFieldEditing.md)
 - [ ] 004 | Feature: Memory Curation -> [Memory Curation](Features/MemoryCuration.md)
 - [ ] 005 | Feature: Formula Pour -> [Formula Pour](Features/FormulaPour.md)
-- [ ] 006 | Feature: History & Analytics -> [History & Analytics](Features/HistoryAnalytics.md)
+- [x] 006 | Feature: History & Analytics -> [History & Analytics](Features/HistoryAnalytics.md)
 - [x] 007 | Feature: Live Updates -> [Live Updates](Features/LiveUpdates.md)
 
 ## Flows (010+)

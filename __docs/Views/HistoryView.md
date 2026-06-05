@@ -295,8 +295,8 @@ sequenceDiagram
   hands off to.
 - [Memory (/memory)](MemoryView.md) — the sibling full-page view this one mirrors
   in shell structure (cheap shell + single HTMX-hydrated region).
-- [History & Analytics](../Features/index.md) — the end-to-end feature this page
-  is the surface for.
+- [History & Analytics](../Features/HistoryAnalytics.md) — the end-to-end
+  feature this page is the surface for.
 - [Live Updates](../Features/LiveUpdates.md) — the cross-tab live refresh this
   page participates in via `refresh from:body`.
 - [GET /api/history](../Endpoints/GetApiHistory.md) — the region endpoint this

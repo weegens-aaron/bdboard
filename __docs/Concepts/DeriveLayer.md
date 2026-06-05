@@ -257,7 +257,7 @@ off-by-one.
   calls `status_timeline` over the already-fetched history payload.
 - **[Board First Paint](../Flows/BoardFirstPaint.md)** — the first paint
   builds the strip and lanes from these derivations.
-- **History & Analytics** ([Features index](../Features/index.md)) — the
+- **History & Analytics** ([History & Analytics](../Features/HistoryAnalytics.md)) — the
   feature whose charts/KPIs are the `history.py` series.
 - **Board (/)** & **History (/history)** ([Views index](../Views/index.md)) —
   the views that render the derived shapes.
@@ -323,6 +323,6 @@ off-by-one.
 - [Endpoints index](../Endpoints/index.md) — the routes that call this layer.
 - [Board First Paint](../Flows/BoardFirstPaint.md) — the flow that calls
   `epic_lane`, `lanes`, `activity`, and `counts` during initial page load.
-- [Features index](../Features/index.md) — History & Analytics, Live Board.
+- [Features index](../Features/index.md) — [History & Analytics](../Features/HistoryAnalytics.md), Live Board.
 - [Views index](../Views/index.md) — Board (/) and History (/history).
 - [Back to docs index](../index.md)

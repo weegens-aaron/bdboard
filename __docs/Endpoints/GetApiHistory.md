@@ -291,6 +291,9 @@ curl -i "http://127.0.0.1:8000/api/history?range=bogus"
 
 ## Related
 
+- [History & Analytics](../Features/HistoryAnalytics.md) — the end-to-end
+  feature this endpoint is the data half of; documents the KPIs, chart, list,
+  and derive pipeline.
 - [Endpoints index](index.md) — every route bdboard exposes.
 - [History (/history)](../Views/HistoryView.md) — the page surface whose
   `#history-region` lazy-loads, paginates, range-filters, and SSE-refreshes from
