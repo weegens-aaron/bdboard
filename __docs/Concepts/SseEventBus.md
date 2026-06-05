@@ -344,7 +344,8 @@ flowchart TD
   Formula Pour, Manual Field Editing.
 - [Flows index](../Flows/index.md) — SSE Live Update, Watcher Refresh Cycle.
 - [Endpoints index](../Endpoints/index.md) — GET /api/events, plus the four
-  write endpoints that broadcast.
+  write endpoints that broadcast, including
+  [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md).
 - [Memory (/memory)](../Views/MemoryView.md) — the view whose list re-fetches on
   every `beads_changed` (`refresh from:body`) and whose writes broadcast.
 - [Back to docs index](../index.md)

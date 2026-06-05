@@ -331,6 +331,8 @@ sequenceDiagram
   surface for.
 - [Formula Pour](../Features/index.md) — the pour-onto-board feature behind the
   "+ Pour Formula" dialog.
+- [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md) — the
+  write endpoint the "+ Pour Formula" dialog submits to.
 - [Live Updates](../Features/index.md) — the cross-tab live refresh this page
   participates in via `refresh from:body`.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes, GET /api/lanes/closed,

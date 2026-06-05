@@ -215,7 +215,7 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
 - **POST /api/bead/{id}/field** ([POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md)),
   **POST /api/memory** / **DELETE /api/memory/{key}**
   ([Endpoints index](../Endpoints/index.md)),
-  **POST /api/formulas/{name}/pour** ([Endpoints index](../Endpoints/index.md))
+  **POST /api/formulas/{name}/pour** ([POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md))
   — the four endpoints that call `_check_csrf`.
 - **Field Editability Registry** ([Field Editability Registry](FieldEditabilityRegistry.md))
   — the field-write guard that runs immediately *after* this CSRF check passes.
@@ -272,6 +272,8 @@ the `hx-headers` carrier (a `DELETE` has no body), so `api_memory_delete` calls
 /api/memory/{key}, POST /api/formulas/{name}/pour.
 - [POST /api/bead/{id}/field](../Endpoints/PostApiBeadField.md) — the field-write
 endpoint guarded by this CSRF check.
+- [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md) — the
+  pour write path fronted by this CSRF check.
 - [Memory (/memory)](../Views/MemoryView.md) — the view whose create/forget
   writes are fronted by this CSRF guard.
 - [Back to docs index](../index.md)

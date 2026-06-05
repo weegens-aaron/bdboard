@@ -363,7 +363,8 @@ view depends on it. The most direct consumers:
 - [Flows index](../Flows/index.md) — Board First Paint, Field Edit Write Path,
   Formula Pour Pipeline.
 - [Endpoints index](../Endpoints/index.md) — GET /api/lanes, GET /api/bead/{id},
-  GET/POST /api/memory, POST /api/bead/{id}/field, POST /api/formulas/{name}/pour.
+  GET/POST /api/memory, POST /api/bead/{id}/field,
+  [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md).
 - [Views index](../Views/index.md) — Board, History, Memory.
 - [Memory (/memory)](../Views/MemoryView.md) — the page that shells
   `bd memories`/`remember`/`forget` through this CLI-only posture.

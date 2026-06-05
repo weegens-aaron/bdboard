@@ -400,6 +400,9 @@ object and returns a sorted list of `{key, body}`:
   Pipeline.
 - [Endpoints index](../Endpoints/index.md) — GET /api/bead/{id}, GET/POST
   /api/memory, DELETE /api/memory/{key}.
+- [POST /api/formulas/{name}/pour](../Endpoints/PostApiFormulaPour.md) — the
+  pour + rename writes serialized on the same `_subprocess_gate` this concept
+  governs.
 - [GET /api/bead/{id}/audit](../Endpoints/GetApiBeadAudit.md) — served by the
   cached `BdClient.history` read this concept governs (gate + `_history_cache`
   TTL + in-flight dedup).
