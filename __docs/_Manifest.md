@@ -6,8 +6,8 @@ Tracks every item to document. Each doc bead fills its template from
 ## Progress
 
 - **Total:** 39
-- **Done:** 2
-- **Remaining:** 37
+- **Done:** 3
+- **Remaining:** 36
 
 ### By band
 
@@ -17,7 +17,7 @@ Tracks every item to document. Each doc bead fills its template from
 | Flows | 5 | 0 |
 | Endpoints | 15 | 0 |
 | Views | 3 | 0 |
-| Concepts | 9 | 2 |
+| Concepts | 9 | 3 |
 
 ---
 
@@ -71,6 +71,6 @@ Tracks every item to document. Each doc bead fills its template from
 - [ ] 083 | Concept: Store Snapshot & Change Detection -> [Store Snapshot & Change Detection](Concepts/StoreSnapshotChangeDetection.md)
 - [ ] 084 | Concept: Derive Layer -> [Derive Layer](Concepts/DeriveLayer.md)
 - [ ] 085 | Concept: SSE Event Bus -> [SSE Event Bus](Concepts/SseEventBus.md)
-- [ ] 086 | Concept: CSRF Protection -> [CSRF Protection](Concepts/CsrfProtection.md)
+- [x] 086 | Concept: CSRF Protection -> [CSRF Protection](Concepts/CsrfProtection.md)
 - [x] 087 | Concept: Field Editability Registry -> [Field Editability Registry](Concepts/FieldEditabilityRegistry.md)
 - [x] 088 | Concept: Epic Lane Sequencing -> [Epic Lane Sequencing](Concepts/EpicLaneSequencing.md)

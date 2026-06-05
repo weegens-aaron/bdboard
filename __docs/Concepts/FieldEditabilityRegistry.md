@@ -199,8 +199,8 @@ value on stdin so a huge body never blows the shell-arg length limit.
   endpoint that re-checks `_field_spec` + `_bead_is_editable` server-side.
 - **Bead Detail Modal** ([Features index](../Features/index.md)) — the modal
   whose `_ordered_fields` rows carry the registry-sourced edit hints.
-- **CSRF Protection** ([Concepts index](index.md)) — the guard that fronts every
-  field write before the registry check runs.
+- **CSRF Protection** ([CSRF Protection](CsrfProtection.md)) — the guard that
+  fronts every field write before the registry check runs.
 
 ## Conventions
 
@@ -240,7 +240,7 @@ value on stdin so a huge body never blows the shell-arg length limit.
 ## Related
 
 - [Concepts index](index.md) — the other cross-cutting concepts.
-- [CSRF Protection](index.md) — the write-path guard that runs first (Concepts index).
+- [CSRF Protection](CsrfProtection.md) — the write-path guard that runs first.
 - [Features index](../Features/index.md) — Manual Field Editing, Bead Detail Modal.
 - [Flows index](../Flows/index.md) — Field Edit Write Path.
 - [Endpoints index](../Endpoints/index.md) — POST /api/bead/{id}/field.
