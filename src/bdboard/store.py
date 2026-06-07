@@ -60,12 +60,34 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from bdboard.bd import BdClient
 
 log = logging.getLogger(__name__)
+
+# How many CONSECUTIVE refresh failures we tolerate before declaring the board
+# stale in the UI. A single transient `bd list` hiccup must NOT flash the
+# banner (it would be noise on every dolt write storm), so the threshold is
+# >1: the board only admits staleness once failures are clearly *sustained*
+# (bdboard-75rq). The serve-stale-on-failure behaviour itself is unchanged —
+# this only governs when the operator-facing banner appears.
+STALE_FAILURE_THRESHOLD = 3
+
+
+@dataclass
+class StalenessState:
+    """Snapshot of the Store's refresh health for the UI stale banner.
+
+    Pure value object so the route can render a banner without reaching into
+    Store internals. ``stale`` is the single boolean the template branches on;
+    the rest is context for the banner copy ("last updated HH:MM").
+    """
+
+    stale: bool
+    consecutive_failures: int
+    last_success: datetime | None
 
 
 @dataclass
@@ -96,6 +118,44 @@ class Store:
         # exactly one bd list call — not N parallel ones piling up against
         # bd's dolt lock.
         self._refresh_lock = asyncio.Lock()
+        # Refresh-health bookkeeping for the UI stale banner (bdboard-75rq).
+        # `refresh()` already serves stale-on-failure silently; these track
+        # how LONG it has been failing so the board can SURFACE a sustained
+        # outage instead of only logging it. A single transient failure
+        # increments the counter but stays below STALE_FAILURE_THRESHOLD, so
+        # it never flashes the banner. Any successful sync (a real refetch, a
+        # revision-unchanged skip, or a lazy load) resets the counter and
+        # stamps `_last_success` — the "last updated HH:MM" the banner shows.
+        self._consecutive_failures: int = 0
+        self._last_success: datetime | None = None
+
+    def _mark_refresh_success(self) -> None:
+        """Record that the cache is confirmed current as of now.
+
+        Called on any path that proves we are in sync with bd — a successful
+        refetch, a revision-unchanged skip, or a lazy snapshot load. Clears
+        the consecutive-failure streak so a recovered hiccup drops the banner.
+        """
+        self._consecutive_failures = 0
+        self._last_success = datetime.now(UTC)
+
+    def _mark_refresh_failure(self) -> None:
+        """Record that a refresh failed and the cache is now (more) stale."""
+        self._consecutive_failures += 1
+
+    def staleness(self) -> StalenessState:
+        """Report refresh health for the UI stale banner.
+
+        Sync (no I/O): just reads the failure counter the refresh path
+        maintains. ``stale`` is True only once failures are SUSTAINED
+        (>= STALE_FAILURE_THRESHOLD consecutive), so a single transient
+        ``bd list`` failure never trips the banner (bdboard-75rq).
+        """
+        return StalenessState(
+            stale=self._consecutive_failures >= STALE_FAILURE_THRESHOLD,
+            consecutive_failures=self._consecutive_failures,
+            last_success=self._last_success,
+        )
 
     async def snapshot_active(self) -> list[dict[str, Any]]:
         """Return active issues only. Fast path for initial paint (~5KB).
@@ -193,11 +253,13 @@ class Store:
                 fresh = await self.bd.list_active()
             except Exception:
                 log.exception("store: bd list_active failed; active cache stays empty")
+                self._mark_refresh_failure()
                 return
             self._active_snap = _Snapshot(
                 beads=fresh,
                 by_id={b["id"]: b for b in fresh if isinstance(b.get("id"), str)},
             )
+            self._mark_refresh_success()
 
     async def _load_closed(self) -> None:
         """Load closed issues into cache. Called on first snapshot_closed()."""
@@ -208,11 +270,13 @@ class Store:
                 fresh = await self.bd.list_closed()
             except Exception:
                 log.exception("store: bd list_closed failed; closed cache stays empty")
+                self._mark_refresh_failure()
                 return
             self._closed_snap = _Snapshot(
                 beads=fresh,
                 by_id={b["id"]: b for b in fresh if isinstance(b.get("id"), str)},
             )
+            self._mark_refresh_success()
 
     async def _load_history(self, closed_after: datetime | None = None) -> None:
         """Load history-closed issues into cache, bounded by ``closed_after``.
@@ -264,6 +328,9 @@ class Store:
                 # Watcher fired but the committed dolt state is byte-identical
                 # to our last refresh — this is our own read echoing back, or
                 # unrelated FS churn. Skip the subprocess; nothing changed.
+                # We DID confirm we are in sync, so this counts as a healthy
+                # refresh for the stale-banner bookkeeping (bdboard-75rq).
+                self._mark_refresh_success()
                 return False
             try:
                 fresh_active = await self.bd.list_active()
@@ -272,7 +339,11 @@ class Store:
                 # We're noisy here on purpose: an empty dashboard with no
                 # explanation is worse than a log line the operator can
                 # grep for. Cache is preserved by NOT mutating snapshots.
+                # We also COUNT the failure so a SUSTAINED outage can raise a
+                # UI stale banner (bdboard-75rq) — a single hiccup stays below
+                # threshold and is invisible, matching the serve-stale intent.
                 log.exception("store: bd list failed; keeping previous snapshot")
+                self._mark_refresh_failure()
                 return False
 
             prev_active = self._active_snap.beads if self._active_snap else None
@@ -286,7 +357,9 @@ class Store:
                 # internal write, or memory-only `bd remember`). No
                 # broadcast needed. Still record the revision so the next
                 # identical-state event can take the cheap skip path above.
+                # This is a healthy sync for the stale-banner bookkeeping.
                 self._last_revision = revision
+                self._mark_refresh_success()
                 return False
 
             if active_changed:
@@ -327,6 +400,7 @@ class Store:
             # output instead of serving cached pre-mutation values.
             self.bd.invalidate_caches()
             self._last_revision = revision
+            self._mark_refresh_success()
             return True
 
     def bead(self, bead_id: str) -> dict[str, Any] | None:

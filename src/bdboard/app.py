@@ -580,6 +580,11 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
         "partials/closed_lane.html",
         {
             "closed": closed_beads,
+            # The Closed lane only shows closures inside the board's recent-
+            # activity window; without this label a user can't tell "no old
+            # closures" from "old closures hidden" (bdboard-75rq). Surface the
+            # active window + a link to the uncapped History page.
+            "closed_window_days": derive.BOARD_CLOSED_WINDOW_DAYS,
         },
     )
 
@@ -1353,6 +1358,36 @@ async def api_counts(request: Request) -> HTMLResponse:
         request,
         "partials/counts.html",
         {"counts": derive.counts(await store.snapshot())},
+    )
+
+
+@app.get("/api/staleness", response_class=HTMLResponse)
+async def api_staleness(request: Request) -> HTMLResponse:
+    """Render the stale-data banner (HTMX poll target).
+
+    The board serves the last-good snapshot when ``bd list`` fails, which
+    previously left a SUSTAINED outage invisible (a log line only). A frozen
+    board polls this cheap, no-I/O endpoint; once refreshes have failed
+    STALE_FAILURE_THRESHOLD times in a row the banner renders, otherwise the
+    region collapses to nothing (bdboard-75rq).
+
+    A single transient failure stays below threshold so the banner never
+    flashes. The ``last_success`` stamp is pre-formatted to local HH:MM here
+    (no template-side date filter exists) for the "last updated" copy.
+    """
+    state = store.staleness()
+    last_success_label = (
+        state.last_success.astimezone().strftime("%H:%M")
+        if state.last_success is not None
+        else None
+    )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/stale_banner.html",
+        {
+            "staleness": state,
+            "last_success_label": last_success_label,
+        },
     )
 
 

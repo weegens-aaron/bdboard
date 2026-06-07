@@ -208,7 +208,18 @@
     <link rel="stylesheet" href="/static/styles.css?v={{ asset_v }}" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
-  <body>
+body>
+    {# Stale-data banner region (bdboard-75rq). A sustained `bd list` refresh
+       failure freezes the board on the last-good snapshot; this region polls
+       the cheap /api/staleness endpoint so a SUSTAINED outage surfaces in the
+       UI instead of only a log line. Polled on an interval (a frozen board
+       gets no SSE events, so it can't rely on `refresh from:body` alone) and
+       also re-checked on every SSE `refresh` so it clears the instant a real
+       refresh succeeds. Renders nothing on a healthy board. #}
+    <div class="stale-region"
+         hx-get="/api/staleness"
+         hx-trigger="load, every 30s, refresh from:body"
+         hx-swap="innerHTML"></div>
     {% block body %}{% endblock %}
     {% block footer %}
     <footer class="footer">

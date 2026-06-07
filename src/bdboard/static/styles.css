@@ -3020,3 +3020,63 @@ pre { margin: 0; }
     background-image: none;
   }
 }
+
+/* ============================================================
+   Closed-lane window note (bdboard-75rq). The board's Closed lane is
+   bounded by BOARD_CLOSED_WINDOW_DAYS, so an empty lane is ambiguous:
+   "nothing closed" vs "older closures hidden". This sub-label states the
+   active window and links to the uncapped History page. Sits directly under
+   the lane title, muted so it reads as chrome, not a card.
+   ============================================================ */
+.lane-window-note {
+  margin: 0 0 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+.lane-window-link {
+  /* --info reads AA on both paper themes; underline gives a non-colour cue. */
+  color: var(--info);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.lane-window-link:hover { text-decoration: none; }
+.lane-window-link:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   Stale-data banner (bdboard-75rq). A SUSTAINED bd-list refresh failure
+   freezes the board on the last-good snapshot; this page-level advisory
+   surfaces that outage (previously a log line only). Amber, not red: the
+   data is stale, not wrong. Mirrors the proven AA combo used by the memory
+   dialog warning (--ink on --spark-10 with a --spark-100 accent rule).
+   ============================================================ */
+.stale-region:empty { display: none; }
+.stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 16px;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--spark-10);
+  border-bottom: 2px solid var(--spark-100);
+}
+.stale-banner-icon {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  /* CSS-drawn warning triangle so the cue isn't colour-only AND carries no
+     emoji (project rule). The fill uses --warning-text for an amber glyph. */
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 11px solid var(--warning-text);
+}
+.stale-banner-text { font-weight: 600; }

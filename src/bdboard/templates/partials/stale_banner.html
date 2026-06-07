@@ -1,0 +1,24 @@
+{# Stale-data banner (bdboard-75rq).
+
+   A SUSTAINED `bd list` refresh failure leaves the board frozen on the last
+   good snapshot. Previously that only emitted a log line, so a user staring
+   at the board had no way to know the data had stopped updating. This banner
+   surfaces that state in the UI after N consecutive refresh failures (see
+   STALE_FAILURE_THRESHOLD) — a single transient hiccup stays below threshold
+   and never renders, so the banner doesn't flash on routine dolt write churn.
+
+   Rendered empty (no element) when healthy, so the polling region collapses
+   to nothing on a happy board. `role=status` + aria-live=polite announces
+   the staleness to assistive tech without stealing focus. #}
+{% if staleness.stale %}
+<div class="stale-banner" role="status" aria-live="polite">
+  <span class="stale-banner-icon" aria-hidden="true"></span>
+  <span class="stale-banner-text">
+    Data may be stale &mdash; the board hasn&rsquo;t refreshed in
+    {{ staleness.consecutive_failures }} attempts.
+    {% if last_success_label %}
+    Last updated {{ last_success_label }}.
+    {% endif %}
+  </span>
+</div>
+{% endif %}
