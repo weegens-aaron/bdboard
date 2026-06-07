@@ -16,6 +16,8 @@ small stat cells, each showing an uppercase status **label** (`<dt>`) above a
 large numeric **value** (`<dd>`):
 
 - **OPEN** — total active (open) beads.
+- **IN_PROGRESS** — beads currently being worked. bdboard is a general-purpose
+  multi-WIP board, so this can be any number (0, 1, or many).
 - **BLOCKED** — beads with an unmet blocking dependency.
 - **DEFERRED** — beads parked/deferred.
 - **CLOSED** — beads in the board's closed window.
@@ -26,9 +28,10 @@ never jitters as numbers change. Cells whose value is `0` are de-emphasized
 column so the layout stays stable, but they recede visually. Cells are separated
 by hairline vertical rules (`border-left`), the first cell having none.
 
-Note: **`in_progress` is intentionally omitted.** bdboard is a single-flight
-workflow tool — only one bead is in progress at a time, so a perpetual `0`/`1`
-stat is noise. The In Progress swim lane already surfaces that one active bead.
+Note: **`in_progress` is a first-class fixed cell.** bdboard is a
+general-purpose multi-WIP board (the lanes render N>1 cleanly), so the cell is
+always present whether the count is 0, 1, or many — it matches the skeleton so
+the masthead never grows a cell on hydration.
 
 ## Where the data comes from
 
@@ -36,8 +39,8 @@ stat is noise. The In Progress swim lane already surfaces that one active bead.
   It renders `partials/counts.html` with a single context value, `counts`.
 - **Derive layer:** `derive.counts(beads)` in `src/bdboard/derive/lanes.py`
   (~389) is a **pure** function. It tallies beads by lowercased status, then
-  builds an ordered dict over the fixed `["open", "blocked", "deferred",
-  "closed"]` set (including zeros). Any *non-standard* status that actually has
+  builds an ordered dict over the fixed `["open", "in_progress", "blocked",
+  "deferred", "closed"]` set (including zeros). Any *non-standard* status that actually has
   beads is appended at the end (so unexpected statuses still surface rather than
   vanishing), but standard zero-count statuses are always present for layout
   stability.
@@ -51,7 +54,7 @@ stat is noise. The In Progress swim lane already surfaces that one active bead.
     `counts-cell` per status and adding `counts-cell-zero` when `n == 0`.
   - `partials/counts_skeleton.html` — the load placeholder: mirrors the real
     structure with shimmer spans so the masthead reserves layout space (no
-    reflow) while data hydrates. It takes a `cells` param (defaults to **4** to
+    reflow) while data hydrates. It takes a `cells` param (defaults to **5** to
     match the board) so the History strip can reserve **6** columns from the
     same DRY partial.
 
@@ -92,8 +95,10 @@ The strip is **read-only** — it reflects state, it never mutates beads.
   mutes both label and value (`src/bdboard/static/styles.css` ~474–479) without
   removing the cell — layout stability over noise reduction.
   (Covered by `tests/test_derive_counts.py::test_counts_returns_fixed_status_set_even_when_empty`.)
-- **`in_progress` is never shown.** Excluded by design (single-flight workflow).
-  (Covered by `test_counts_excludes_in_progress`.)
+- **`in_progress` is a fixed cell.** Always present (0, 1, or many) as a
+  first-class multi-WIP KPI, matching the skeleton so the masthead never grows a
+  cell on hydration.
+  (Covered by `test_counts_includes_in_progress_as_fixed_cell`.)
 - **Stable order regardless of data.** The fixed `status_order` is honored even
   when only some statuses have beads.
   (Covered by `test_counts_preserves_status_order_with_mixed_data`.)

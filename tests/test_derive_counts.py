@@ -1,8 +1,9 @@
 """Test that status counts always render all statuses to prevent layout jitter.
 
-Note: in_progress is intentionally excluded from masthead counts. bdboard is a
-single-flight workflow tool — only one item is in-progress at a time, so
-displaying 0 or 1 is noise. The In Progress swim lane already surfaces active work.
+in_progress is a first-class fixed masthead KPI: bdboard is a general-purpose
+multi-WIP board, so any number of beads may be in progress concurrently. The
+cell is always present (0, 1, or many) and matches the skeleton so the masthead
+never reflows on hydration.
 """
 
 from bdboard.derive import counts
@@ -12,27 +13,27 @@ def test_counts_returns_fixed_status_set_even_when_empty():
     """Empty bead list should still return all standard statuses with 0 counts."""
     result = counts([])
 
-    # Fixed status order (in_progress intentionally omitted)
-    expected_keys = ["open", "blocked", "deferred", "closed"]
+    # Fixed status order (in_progress is a first-class fixed cell)
+    expected_keys = ["open", "in_progress", "blocked", "deferred", "closed"]
     assert list(result.keys()) == expected_keys
 
     # All values should be 0
     assert all(v == 0 for v in result.values())
 
 
-def test_counts_excludes_in_progress():
-    """in_progress should not appear in standard status keys.
+def test_counts_includes_in_progress_as_fixed_cell():
+    """in_progress is a fixed cell, present even when zero (no hydration jitter)."""
+    # Zero in_progress: cell still present.
+    result = counts([{"status": "open"}])
+    assert "in_progress" in result
+    assert result["in_progress"] == 0
 
-    Single-flight workflow: showing 0 or 1 is noise.
-    """
-    beads = [{"status": "in_progress"}]
+    # Many in_progress: multi-WIP is first-class.
+    beads = [{"status": "in_progress"} for _ in range(3)]
     result = counts(beads)
-
-    # in_progress is counted but appears as a 'custom' status at the end
-    # (since it exists in the data but isn't in the standard order)
-    assert list(result.keys())[:4] == ["open", "blocked", "deferred", "closed"]
-    # The in_progress bead is still counted, but as a non-standard status
-    assert result.get("in_progress") == 1
+    assert result["in_progress"] == 3
+    # Order is stable and in_progress is in the fixed set (not appended).
+    assert list(result.keys()) == ["open", "in_progress", "blocked", "deferred", "closed"]
 
 
 def test_counts_preserves_status_order_with_mixed_data():
@@ -45,12 +46,13 @@ def test_counts_preserves_status_order_with_mixed_data():
     ]
     result = counts(beads)
 
-    # Order should be stable (in_progress intentionally omitted)
-    expected_keys = ["open", "blocked", "deferred", "closed"]
+    # Order should be stable (in_progress is a fixed cell)
+    expected_keys = ["open", "in_progress", "blocked", "deferred", "closed"]
     assert list(result.keys()) == expected_keys
 
     # Verify counts
     assert result["open"] == 2
+    assert result["in_progress"] == 0  # Zero, but still present
     assert result["blocked"] == 1
     assert result["deferred"] == 0  # Zero, but still present
     assert result["closed"] == 1
@@ -65,13 +67,13 @@ def test_counts_includes_custom_statuses_at_end():
     ]
     result = counts(beads)
 
-    # Standard statuses come first (4 now, not 5)
+    # Standard statuses come first (5 fixed cells)
     keys = list(result.keys())
-    assert keys[:4] == ["open", "blocked", "deferred", "closed"]
+    assert keys[:5] == ["open", "in_progress", "blocked", "deferred", "closed"]
 
     # Custom statuses at the end
-    assert "custom_status" in keys[4:]
-    assert "another_custom" in keys[4:]
+    assert "custom_status" in keys[5:]
+    assert "another_custom" in keys[5:]
 
     # Verify counts
     assert result["open"] == 1

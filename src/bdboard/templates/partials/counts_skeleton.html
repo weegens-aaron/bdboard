@@ -4,14 +4,14 @@
    feedback. aria-hidden + role=presentation: it's a visual placeholder, not
    content for AT.
 
-   `cells` lets callers reserve the right number of stat columns so the strip
-   doesn't reflow when real data lands: the board's masthead counts has 4
-   (open, blocked, deferred, closed — in_progress intentionally omitted as
-   single-flight noise), the History masthead stats strip (#history-stats)
-   has up to 6. Defaults to 4 so existing includes keep their behaviour
-   (DRY — one skeleton, two hosts). #}
+   `   `cells` lets callers reserve the right number of stat columns so the strip
+   doesn't reflow when real data lands: the board's masthead counts has 5
+   (open, in_progress, blocked, deferred, closed — in_progress is a
+   first-class multi-WIP KPI), the History masthead stats strip
+   (#history-stats) has up to 6. Defaults to 5 so the board include keeps the
+   default behaviour (DRY — one skeleton, two hosts). #}
 <dl class="counts counts-skeleton" aria-hidden="true">
-  {% for _ in range(cells | default(4)) %}
+  {% for _ in range(cells | default(5)) %}
   <div class="counts-cell">
     <dt class="counts-label"><span class="skeleton skeleton-text skeleton-label"></span></dt>
     <dd class="counts-value"><span class="skeleton skeleton-text skeleton-num"></span></dd>

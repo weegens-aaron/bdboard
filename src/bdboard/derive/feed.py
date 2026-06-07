@@ -64,15 +64,17 @@ def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
 
     Always returns a fixed set of statuses in a stable order to prevent
     layout jitter when counts reach zero. Zero-value counts are included
-    to maintain consistent header geometry.
-
-    Note: in_progress is intentionally omitted. bdboard is a single-flight
-    workflow tool — only one item is in-progress at a time, so displaying
-    0 or 1 is noise that clutters the header. The In Progress swim lane
-    already surfaces the one active bead.
+    to maintain consistent header geometry — including `in_progress`, which
+    is a first-class KPI: bdboard is a general-purpose multi-WIP board, so
+    any number of beads may be in progress concurrently (the lanes render
+    N>1 cleanly). The cell must be present whether the count is 0, 1, or
+    many, and must match the skeleton so the masthead never reflows on
+    hydration.
     """
-    # Fixed status order for stable header layout
-    status_order = ["open", "blocked", "deferred", "closed"]
+    # Fixed status order for stable header layout. `in_progress` sits in
+    # lifecycle order between open and blocked so the skeleton reserves the
+    # same cell count (5) — no 5th-cell jitter when live counts hydrate.
+    status_order = ["open", "in_progress", "blocked", "deferred", "closed"]
 
     # Count actual beads by status, skipping bd-internal machinery statuses
     # (e.g. `hooked`) so the masthead never shows a count without a matching
