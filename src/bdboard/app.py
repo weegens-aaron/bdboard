@@ -709,13 +709,17 @@ async def api_lanes(request: Request) -> HTMLResponse:
     after SSE refresh when the full snapshot is available.
     """
     beads = await store.snapshot_active()
-    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads))
+    # Pass the cached id universe (active + already-loaded closed) so the
+    # graph-hygiene classifier can tell a dangling edge from an edge whose
+    # target is merely closed-and-unfetched (audit FB-6 / bdboard-dzu2).
+    known_ids = store.cached_known_ids()
+    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads), known_ids)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/lanes.html",
         {
             "epic_lane": epic_lane,
-            "lanes": derive.lanes(beads),
+            "lanes": derive.lanes(beads, known_ids),
             "activity": derive.activity(beads),
         },
     )

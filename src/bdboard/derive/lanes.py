@@ -322,7 +322,10 @@ def _topo_component_order(
     return [by_id[n] for n in ordered_ids]
 
 
-def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def epic_lane(
+    beads: list[dict[str, Any]],
+    known_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
     """Build the horizontal epic strip data.
 
     Rules:
@@ -330,7 +333,12 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     - Closed epics omitted
     - Wired epics are sequenced predecessor→successor left-to-right
     - Unwired epics appended after wired chains in stable order
+
+    Each emitted epic also carries the graph-hygiene badge fields (audit FB-6);
+    see :func:`bdboard.derive.hygiene.with_badges` for ``known_ids`` semantics.
     """
+    from bdboard.derive import hygiene
+
     active_epics = [
         b for b in beads if _is_epic(b) and not _is_closed((b.get("status") or "").lower())
     ]
@@ -340,6 +348,10 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Build by_id from all beads (not just active epics) so closed dependencies
     # can be correctly identified when checking _has_unmet_blocking_dep.
     by_id = {b.get("id"): b for b in beads if b.get("id")}
+    # Cycle membership spans the FULL bead set (a deadlock can cross epics),
+    # so an epic on a blocking cycle earns the badge even when its cycle
+    # partner isn't an epic.
+    cycle_ids = hygiene.cycle_member_ids(beads)
     # Index children across ALL beads so a `waits-for` fanout edge can resolve
     # against its spawner's children (the children may be any type, not just
     # epics).
@@ -429,7 +441,7 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             status_key = raw_status
         icon, label = _STATUS_META.get(status_key, ("?", status_key.replace("_", " ").title()))
-        enriched = dict(b)
+        enriched = hygiene.with_badges(b, present=by_id, cycle_ids=cycle_ids, known_ids=known_ids)
         enriched["status_key"] = status_key
         enriched["status_icon"] = icon
         enriched["status_label"] = label
@@ -437,7 +449,10 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+def lanes(
+    beads: list[dict[str, Any]],
+    known_ids: set[str] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
     """Bucket non-epic beads into swim lanes.
 
     Open lanes sorted by priority asc (P0 first) then updated_at desc.
@@ -445,7 +460,13 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     set is bounded by the board's date window at FETCH time (see
     BOARD_CLOSED_WINDOW_DAYS / bd.list_closed), not by a static count here —
     so the header CLOSED KPI and the lane count agree (bdboard-p8v).
+
+    Every active-lane card is decorated with graph-hygiene badge fields (audit
+    FB-6); see :func:`bdboard.derive.hygiene.with_badges` for ``known_ids``.
+    Closed cards are left unbadged — hygiene concerns *actionable* work.
     """
+    from bdboard.derive import hygiene
+
     # Exclude epics (they live in the strip), molecule wrappers (the
     # redundant formula-pour grouping node — Option A), AND hidden-status
     # beads (bd-internal machinery like `hooked`). The wrapper / hooked bead
@@ -494,85 +515,16 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     for k in ("deferred", "pinned", "gate", "ready", "in_progress", "blocked"):
         buckets[k].sort(key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at"))))
     buckets["closed"].sort(key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at")))
+
+    # Graft graph-hygiene badges onto the ACTIVE lane cards (not Closed).
+    # Cycle membership and target resolution span the FULL bead set so a
+    # cross-epic deadlock flags its members and an edge to an epic isn't
+    # mistaken for a dangling one.
+    cycle_ids = hygiene.cycle_member_ids(beads)
+    present_all = {b.get("id"): b for b in beads if b.get("id")}
+    for k in ("deferred", "pinned", "gate", "ready", "in_progress", "blocked"):
+        buckets[k] = [
+            hygiene.with_badges(b, present=present_all, cycle_ids=cycle_ids, known_ids=known_ids)
+            for b in buckets[k]
+        ]
     return buckets
-
-
-def activity(beads: list[dict[str, Any]], limit: int = 25) -> list[dict[str, Any]]:
-    """Build an activity feed from updated_at / closed_at / created_at.
-
-    We don't have a real audit feed across all beads — bd doesn't expose one
-    — so we synthesize 'current state as event': each bead becomes one entry
-    using its most recent timestamp, with a verb inferred from current status.
-    """
-    items: list[dict[str, Any]] = []
-    for b in beads:
-        ts_str = b.get("closed_at") or b.get("updated_at") or b.get("created_at")
-        if not ts_str:
-            continue
-        status = (b.get("status") or "").lower()
-        if status in CLOSED_STATUSES:
-            verb = "closed"
-        elif status == "in_progress":
-            verb = "in progress"
-        elif status == "blocked":
-            verb = "blocked"
-        elif ts_str == b.get("created_at"):
-            verb = "created"
-        else:
-            verb = "updated"
-        items.append(
-            {
-                "id": b.get("id"),
-                "title": b.get("title"),
-                "actor": b.get("assignee") or b.get("created_by") or "—",
-                "verb": verb,
-                "ts": ts_str,
-                "ts_epoch": _epoch(ts_str),
-                "priority": b.get("priority"),
-            }
-        )
-    items.sort(key=lambda x: -x["ts_epoch"])
-    return items[:limit]
-
-
-def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
-    """Top-of-page counts shown in the masthead.
-
-    Always returns a fixed set of statuses in a stable order to prevent
-    layout jitter when counts reach zero. Zero-value counts are included
-    to maintain consistent header geometry.
-
-    Note: in_progress is intentionally omitted. bdboard is a single-flight
-    workflow tool — only one item is in-progress at a time, so displaying
-    0 or 1 is noise that clutters the header. The In Progress swim lane
-    already surfaces the one active bead.
-    """
-    # Fixed status order for stable header layout
-    status_order = ["open", "blocked", "deferred", "closed"]
-
-    # Count actual beads by status, skipping bd-internal machinery statuses
-    # (e.g. `hooked`) so the masthead never shows a count without a matching
-    # lane — those beads are hidden from the board entirely (bdboard-m5bm).
-    # Non-closed gates are counted under a synthetic `gate` key (not their raw
-    # `open` status) so the masthead KPI matches the gate lane and a pending
-    # wait is never tallied as actionable Open work (audit FB-3).
-    by_status: dict[str, int] = defaultdict(int)
-    for b in beads:
-        status = (b.get("status") or "unknown").lower()
-        if status in HIDDEN_BOARD_STATUSES:
-            continue
-        if _is_gate(b) and status not in CLOSED_STATUSES:
-            by_status["gate"] += 1
-            continue
-        by_status[status] += 1
-
-    # Build ordered dict with all statuses, including zeros
-    result = {status: by_status.get(status, 0) for status in status_order}
-
-    # Include any non-standard statuses that actually exist (e.g. `pinned`,
-    # which has its own lane). Hidden statuses were already filtered above.
-    for status, count in by_status.items():
-        if status not in result and count > 0:
-            result[status] = count
-
-    return result

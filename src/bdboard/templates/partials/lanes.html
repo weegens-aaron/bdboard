@@ -22,6 +22,7 @@
           <span class="epic-status-text">{{ e.status_label }}</span>
         </span>
         {% if e.assignee %}<span class="bead-assignee">{{ e.assignee }}</span>{% endif %}
+        {% with b = e %}{% include "partials/bead_hygiene_badges.html" %}{% endwith %}
       </div>
     </li>
     {% else %}

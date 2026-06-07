@@ -32,6 +32,7 @@
     {% else %}
     {% if b.issue_type %}{% with type_value = b.issue_type %}{% include "partials/bead_type_badge.html" %}{% endwith %}{% endif %}
     {% if b.dependency_count %}<span class="bead-dep">&#9939; {{ b.dependency_count }}</span>{% endif %}
+    {% include "partials/bead_hygiene_badges.html" %}
     {% endif %}
   </div>
 </li>

@@ -8,7 +8,9 @@ re-exporting every symbol (including the underscore-prefixed helpers the
 test suite imports directly) from the focused submodules:
 
 - :mod:`bdboard.derive.timeutil` — timestamp parsing / humanization
-- :mod:`bdboard.derive.lanes`    — epic_lane / lanes / activity / counts
+- :mod:`bdboard.derive.lanes`    — epic_lane / lanes
+- :mod:`bdboard.derive.feed`     — activity / counts (masthead + feed)
+- :mod:`bdboard.derive.hygiene`  — cycle / dangling-edge / incomplete badges
 - :mod:`bdboard.derive.history`  — history_window / throughput / created /
                                    lead_time_stats / status_timeline
 
@@ -18,6 +20,7 @@ over the snapshot list with no I/O.
 
 from __future__ import annotations
 
+from bdboard.derive.feed import activity, counts
 from bdboard.derive.gates import (
     gate_condition,
     is_gate,
@@ -45,6 +48,13 @@ from bdboard.derive.history import (
     status_timeline,
     throughput,
 )
+from bdboard.derive.hygiene import (
+    REQUIRED_SECTIONS,
+    blocked_reason,
+    cycle_member_ids,
+    incomplete_sections,
+    with_badges,
+)
 from bdboard.derive.lanes import (
     _STATUS_META,
     BOARD_CLOSED_WINDOW_DAYS,
@@ -64,8 +74,6 @@ from bdboard.derive.lanes import (
     _stable_key,
     _topo_component_order,
     _waits_for_unmet,
-    activity,
-    counts,
     epic_lane,
     get_dependency_list,
     get_dependency_target_id,
@@ -107,6 +115,12 @@ __all__ = [
     "lanes",
     "activity",
     "counts",
+    # graph-hygiene derivations (audit FB-6)
+    "cycle_member_ids",
+    "blocked_reason",
+    "incomplete_sections",
+    "with_badges",
+    "REQUIRED_SECTIONS",
     # history derivations
     "history_window",
     "throughput",

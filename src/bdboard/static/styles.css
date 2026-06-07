@@ -842,6 +842,49 @@ pre { margin: 0; }
 .type-gate .bead-type-glyph      { color: var(--warning-text); }
 .type-molecule .bead-type-glyph  { color: var(--violet); }
 
+/* ── Graph-hygiene badges (audit FB-6 / bdboard-dzu2) ──────────────────────
+   Three filled pill chips that surface otherwise-invisible graph defects on a
+   bead card / epic chip: a blocking-dependency DEADLOCK (cycle), a DANGLING
+   DEP (a blocks edge whose target isn't in the board), and an INCOMPLETE
+   template (missing required sections for the bead's type). Each pairs a glyph
+   with a VISIBLE text label so meaning never rides on colour alone (WCAG
+   1.4.1). The bg/fg pairs reuse the status tokens already proven AA (4.5:1)
+   in both themes by test_bead_status_contrast, so the badge text clears AA
+   wherever the status badges do. */
+.bead-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.bead-badge .badge-glyph {
+  font-weight: 700;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.badge-cycle {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  border: 1px solid var(--status-blocked-border);
+}
+.badge-dangling {
+  background: var(--status-deferred-bg);
+  color: var(--status-deferred-fg);
+  border: 1px solid var(--status-deferred-border);
+}
+.badge-incomplete {
+  background: var(--status-unknown-bg);
+  color: var(--status-unknown-fg);
+  border: 1px solid var(--status-unknown-border);
+}
+
 /* ============================================================
    Memory view — browse + search bd memories.
    The list region is a vertical stack of memory cards, swapped

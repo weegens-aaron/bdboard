@@ -178,6 +178,26 @@ class Store:
             await self._load_closed()
         return self._closed_snap.beads if self._closed_snap else []
 
+    def cached_known_ids(self) -> set[str]:
+        """Return ids known from the ALREADY-CACHED active + closed snapshots.
+
+        Sync, no I/O: reads only whatever caches are warm, so the fast active-
+        only paint path can pass this to derive.lanes without triggering the
+        heavy closed fetch. The graph-hygiene classifier uses it to tell a
+        structural orphan edge (target genuinely unknown) from one whose
+        target is merely closed-and-unfetched (known here once the closed lane
+        has loaded). Before the closed cache warms, a blocked-by-closed bead
+        may transiently read as a dangling edge; it self-corrects on the next
+        refresh once closed ids are cached — mirroring the existing
+        blocked-by-closed approximation on this path (bdboard-0yy).
+        """
+        ids: set[str] = set()
+        if self._active_snap is not None:
+            ids |= set(self._active_snap.by_id)
+        if self._closed_snap is not None:
+            ids |= set(self._closed_snap.by_id)
+        return ids
+
     async def snapshot(self) -> list[dict[str, Any]]:
         """Return all issues (active + closed). For full-data needs.
 
