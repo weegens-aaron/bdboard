@@ -62,17 +62,23 @@ notes/analysis/bdboard-coverage/
 `Gap count` = actionable gaps recorded in that section (cross-ref/disproven rows
 noted in parentheses). The prioritized, deduped breakdown lives in `GAPS.md`.
 
-| #   | Capability area      | Available? | Reflected? | Top gap sev | Gap count | One-line headline |
-| --- | -------------------- | ---------- | ---------- | ----------- | --------- | ----------------- |
-| 1   | Anatomy of a bead    | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 2   | Dependency graph     | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 3   | Status lifecycle     | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 4   | Memories & recall    | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 5   | Formulas & molecules | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 6   | Gates & coordination | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 7   | Swarms               | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 8   | Data layer (Dolt)    | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
-| 9   | Quality & hygiene    | _TODO_     | _TODO_     | _Px_        | _N_       | _TODO_            |
+| #   | Capability area      | Available? | Reflected? | Top gap sev | Gap count   | One-line headline |
+| --- | -------------------- | ---------- | ---------- | ----------- | ----------- | ----------------- |
+| 1   | Anatomy of a bead    | Full       | Partial    | **P1**      | 8           | every field surfaced (no drops, raw-JSON escape hatch), but all 9 types + `event` render as identical grey text — the glyph system is unreflected |
+| 2   | Dependency graph     | Full       | Partial    | **P0**      | 5           | direction correct (`bdboard-fjk` resolved), but `waits-for` isn't gated in lanes → blocked-shown-as-ready; no DAG view |
+| 3   | Status lifecycle     | Full       | Partial    | **P1**      | 6           | 5 lanes + multi-WIP render fine; `pinned`/`hooked` fall through `else` and show as Deferred |
+| 4   | Memories & recall    | Full       | Full       | P3          | 5 (+1 n/a)  | highest-fidelity surface (3/4 verbs; recall covered by full-body cards); wing/scope/BM25 refuted as not-bd |
+| 5   | Formulas & molecules | Full       | Partial    | P2          | 5 (+2 n/a)  | solid pour write-surface (3 CLI gotchas worked around); vapor poured as persistent (warning swallowed); no molecule rollup |
+| 6   | Gates & coordination | Full       | None       | **P0**      | 7           | zero gate awareness; an open gate is shown as claimable READY work; `waits-for` false-ready |
+| 7   | Swarms               | Full       | None       | **P1**      | 9           | zero swarm awareness; swarm molecule hidden; concurrency renders but coordination is invisible |
+| 8   | Data layer (Dolt)    | Full       | Partial    | P2          | 7           | faithful local-Dolt reader (JSONL-as-souvenir honored); total blind spot on sync/movement; `live · push` pill confusable |
+| 9   | Quality & hygiene    | Full       | None       | P2          | 6 (+1 disp) | no graph-hygiene signals; cycle detection computed then discarded; lint/orphan/stale never reach the UI |
+
+> **Top-line:** 2 P0s (both from the single `waits-for`-not-gated code site,
+> `lanes.py:126`/`:236` — areas 2 & 6), 4 P1s (flat type rendering, gate-as-ready,
+> `pinned`/`hooked`-as-deferred, swarm molecule hidden). Field-*content* fidelity
+> is excellent; *coordination & movement* fidelity is the weak axis. The deduped,
+> ranked inventory + ready-to-pour FB-N shortlist live in [`GAPS.md`](./GAPS.md).
 
 ## Severity rubric (reframed for a DISPLAY tool)
 
