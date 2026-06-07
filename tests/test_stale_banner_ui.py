@@ -101,3 +101,13 @@ def test_base_html_polls_staleness_endpoint() -> None:
     # recovery. The interval is what catches a frozen board (no SSE events).
     assert "every 30s" in _BASE_HTML
     assert "refresh from:body" in _BASE_HTML
+
+
+def test_base_html_has_well_formed_body_tag() -> None:
+    # Regression guard: the stale-region insert once clobbered ` <body>` into
+    # a bare `body>`, which renders literal "body>" text atop every page.
+    assert "<body>" in _BASE_HTML
+    assert "</body>" in _BASE_HTML
+    # A bare `body>` (no opening `<`) must never reappear at the tag site.
+    assert "\n  </head>\n  <body>\n" in _BASE_HTML
+    assert "</head>\nbody>" not in _BASE_HTML
