@@ -455,6 +455,72 @@ def test_pour_surfaces_bd_stderr_on_failure() -> None:
     assert "tasks can only block" in body
 
 
+def test_pour_surfaces_wisp_notice_for_vapor_formula() -> None:
+    """bdboard-6nl8: when bd flags a poured formula as vapor-phase (ephemeral),
+    the result partial surfaces a 'recommends wisp' notice — AND the pour
+    acknowledgement itself is never lost."""
+    _stub_list_formulas([{"name": "demo", "source": "/x"}])
+    _stub_read_vars([])
+    pour_calls = _stub_pour(
+        {
+            "new_epic_id": "bd-x-mol-z",
+            "created": 3,
+            "id_mapping": {
+                "demo": "bd-x-mol-z",
+                "demo.a": "bd-x-mol-a",
+                "demo.b": "bd-x-mol-b",
+            },
+            "_wisp_warning": 'Formula "demo" recommends vapor phase (ephemeral)',
+        }
+    )
+    rename_calls = _stub_rename()
+    broadcasts = _stub_broadcast()
+
+    status, body = _call_pour(
+        "demo",
+        {"csrf_token": app_module._CSRF_TOKEN},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+
+    assert status == 200
+    # The wisp notice is present.
+    assert "wisp" in body.lower()
+    assert "ephemeral" in body.lower()
+    # The atomic pour result is NOT lost — the acknowledgement still renders.
+    assert "Poured" in body
+    assert "beads_changed" in broadcasts
+    # The synthetic key never leaked into the rename argv (title is clean).
+    assert rename_calls == [("bd-x-mol-z", "demo z")]
+    assert pour_calls == [("demo", {})]
+
+
+def test_pour_normal_pour_has_no_wisp_notice() -> None:
+    """A normal (liquid) pour — no _wisp_warning — renders no wisp notice;
+    behaviour is unchanged."""
+    _stub_list_formulas([{"name": "demo", "source": "/x"}])
+    _stub_read_vars([])
+    _stub_pour(
+        {
+            "new_epic_id": "bd-x-mol-z",
+            "created": 2,
+            "id_mapping": {"demo": "bd-x-mol-z", "demo.a": "bd-x-mol-a"},
+        }
+    )
+    _stub_rename()
+    _stub_broadcast()
+
+    status, body = _call_pour(
+        "demo",
+        {"csrf_token": app_module._CSRF_TOKEN},
+        csrf_header=app_module._CSRF_TOKEN,
+    )
+
+    assert status == 200
+    assert "Poured" in body
+    assert "recommends" not in body.lower()
+    assert "formula-pour-warning" not in body
+
+
 def test_pour_soft_warns_when_rename_fails() -> None:
     _stub_list_formulas([{"name": "demo", "source": "/x"}])
     _stub_read_vars([])

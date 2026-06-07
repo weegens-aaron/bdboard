@@ -1126,6 +1126,12 @@ async def api_formula_pour(
             f'<p class="formula-error" role="alert">Pour failed: {err}</p>',
             status_code=500,
         )
+    # bd warns on stderr (exit 0) when a phase:"vapor" formula — authored as
+    # ephemeral (wisp) — is poured as persistent, git-synced beads. pour_formula
+    # captures that warning under a synthetic key; pop it off bd's payload here
+    # so it doesn't leak into _pour_counts, and surface a wisp notice below. The
+    # pour itself succeeded, so this NEVER swallows the result (bdboard-6nl8).
+    wisp_warning = result.pop("_wisp_warning", "")
     # Rename the grouping node to '<formula> <id>' so repeat pours are
     # distinguishable. Best-effort: a rename failure must NOT lose the (atomic,
     # successful) pour — the beads are already on the board, just under the bare
@@ -1168,6 +1174,7 @@ async def api_formula_pour(
             "created": visible_count,
             "rename_warning": rename_warning,
             "fully_materialized": fully_materialized,
+            "wisp_warning": wisp_warning,
         },
     )
 

@@ -846,6 +846,13 @@ class BdClient:
         After a successful pour we invalidate caches so follow-up reads (the
         rename, the list refresh) see post-pour state.
 
+        On success we ALSO capture bd's stderr (not just on the failure path):
+        ``bd mol pour`` exits 0 but warns on stderr when a ``phase: "vapor"``
+        formula — one the author marked ephemeral (wisp) — is poured as a
+        persistent, git-synced tree. When that warning is present we attach it
+        to the returned dict under ``_wisp_warning`` so the route can surface a
+        "this recommends wisp — poured as persistent" notice (bdboard-6nl8).
+
         Raises RuntimeError (bd's stderr) on failure or malformed JSON.
 
         Subprocess cleanup mirrors _run_json: we MUST call communicate() on
@@ -882,6 +889,14 @@ class BdClient:
             if proc.returncode != 0:
                 err_text = stderr.decode(errors="replace").strip()
                 raise RuntimeError(err_text or f"bd mol pour failed (exit {proc.returncode}).")
+            # bd prints a vapor-phase recommendation on stderr with EXIT 0 when a
+            # formula authored as ephemeral (phase: "vapor") is poured as a
+            # persistent, git-synced tree. We read stderr on the SUCCESS path too
+            # (it was previously consumed only on non-zero exit) so we can surface
+            # the author's "this should be a wisp" intent instead of silently
+            # honoring it. The pour itself still succeeded — this is a notice, not
+            # an error.
+            warn_text = stderr.decode(errors="replace").strip()
             try:
                 result = json.loads(stdout)
             except json.JSONDecodeError as err:
@@ -891,6 +906,12 @@ class BdClient:
             raise RuntimeError(
                 f"bd mol pour returned non-object ({type(result).__name__}); expected JSON object"
             )
+        # Attach the vapor-phase recommendation (if bd emitted one) under a
+        # synthetic underscore key so it rides alongside bd's own payload without
+        # clobbering it. Matched on the STABLE phrase bd prints — "recommends
+        # vapor phase" — so a future emoji/wording tweak won't silently drop it.
+        if "recommends vapor phase" in warn_text.lower():
+            result["_wisp_warning"] = warn_text
         return result
 
     async def rename_bead(self, bead_id: str, title: str) -> None:

@@ -6,7 +6,12 @@
    `created` here is the VISIBLE count (bd's raw count minus the one hidden
    molecule wrapper) so it matches what shows on the board.
    `fully_materialized` is False when bd reported more nodes than it actually
-   mapped to real ids — a partial pour we must NOT dress up as a clean win. #}
+   mapped to real ids — a partial pour we must NOT dress up as a clean win.
+
+   `wisp_warning` is set when bd warned (on stderr, exit 0) that this formula
+   was authored phase:"vapor" (ephemeral) but was poured as persistent,
+   git-synced beads. It is rendered as an ADDITIONAL notice below the result so
+   the atomic pour acknowledgement is never lost (bdboard-6nl8). #}
 {% if fully_materialized %}
 <p class="formula-pour-ok" role="status">
   ✓ Poured <strong>{{ name }}</strong> — {{ created }}
@@ -19,5 +24,12 @@
   formula’s steps did not land. Check the formula’s top-level
   <code>pour: true</code> and the server log, then remove the incomplete
   epic before retrying.{{ rename_warning }}
+</p>
+{% endif %}
+{% if wisp_warning %}
+<p class="formula-pour-warning" role="status">
+  ⚠ This formula recommends <strong>wisp</strong> (ephemeral) — it was poured as
+  persistent, git-synced beads. If these were meant to be throwaway, remove the
+  poured epic and instantiate it with <code>bd mol wisp</code> instead.
 </p>
 {% endif %}

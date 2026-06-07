@@ -1453,6 +1453,19 @@ pre { margin: 0; }
   padding: 10px 12px;
   margin: 0;
 }
+/* Vapor-phase notice: a formula authored as ephemeral (wisp) that was poured
+   as persistent beads. Advisory amber, NOT a hard error — the pour succeeded.
+   Sits below the pour-ok/partial result as an additional line (bdboard-6nl8). */
+.formula-pour-warning {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--warning-text);
+  background: var(--paper-2);
+  border-left: 3px solid var(--warning-text);
+  border-radius: 0 4px 4px 0;
+  padding: 10px 12px;
+  margin: 8px 0 0;
+}
 
 /* ============================================================
    Activity — the right-most swim lane. Same .lane / .lane-list
