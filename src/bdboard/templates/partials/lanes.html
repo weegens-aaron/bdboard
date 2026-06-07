@@ -1,4 +1,4 @@
-{% set lane_titles = {"deferred": "Deferred", "pinned": "Pinned", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
+{% set lane_titles = {"deferred": "Deferred", "pinned": "Pinned", "gate": "Gates (waiting)", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
 
 <section class="epic-lane" aria-label="Epic lane">
   <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
@@ -32,11 +32,13 @@
 
 <div class="lanes">
   {# Active lanes: rendered immediately from active-only snapshot. The Pinned
-     lane (infra / never-auto-close beads) only appears when it has cards, so
-     the common all-empty case doesn't carry a permanent dead column — and the
-     masthead `pinned` count, which is likewise only emitted when >0, stays in
-     agreement with the lane (bdboard-m5bm). #}
-  {% for key in ((['pinned'] if lanes['pinned'] else []) + ['deferred', 'blocked', 'ready', 'in_progress']) %}
+     lane (infra / never-auto-close beads) and the Gate lane (pending async-
+     coordination waits) only appear when they have cards, so the common
+     all-empty case doesn't carry a permanent dead column — and their masthead
+     counts, which are likewise only emitted when >0, stay in agreement with
+     the lane (bdboard-m5bm). The Gate lane frames an open gate as a WAIT, not
+     claimable READY work (audit FB-3). #}
+  {% for key in ((['pinned'] if lanes['pinned'] else []) + (['gate'] if lanes['gate'] else []) + ['deferred', 'blocked', 'ready', 'in_progress']) %}
   <div class="lane lane-{{ key }}">
     <h2 class="lane-title">
       <span class="lane-name">{{ lane_titles[key] }}</span>

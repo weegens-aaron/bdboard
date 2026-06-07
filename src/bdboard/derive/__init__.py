@@ -18,6 +18,7 @@ over the snapshot list with no I/O.
 
 from __future__ import annotations
 
+from bdboard.derive.gates import gate_condition, is_gate
 from bdboard.derive.history import (
     DEFAULT_HISTORY_RANGE,
     HISTORY_PAGE_SIZE,
@@ -49,6 +50,7 @@ from bdboard.derive.lanes import (
     _has_unmet_blocking_dep,
     _is_closed,
     _is_epic,
+    _is_gate,
     _is_hidden_status,
     _is_molecule,
     _stable_key,
@@ -86,6 +88,9 @@ __all__ = [
     "get_dependency_list",
     "get_dependency_type",
     "get_dependency_target_id",
+    # gate derivations
+    "is_gate",
+    "gate_condition",
     # lane derivations
     "epic_lane",
     "lanes",
@@ -107,6 +112,7 @@ __all__ = [
     "_day_bucket",
     "_is_epic",
     "_is_molecule",
+    "_is_gate",
     "_is_hidden_status",
     "_is_closed",
     "_has_unmet_blocking_dep",

@@ -7,6 +7,13 @@ Lane assignment rules:
     - In-Progress : status == 'in_progress'
     - Blocked     : status == 'blocked' OR (status == 'open' AND has unmet
                     blocking dependency)
+    - Gate        : issue_type == 'gate' AND not closed. A gate is a *pending
+                    wait*, not claimable work. Its `blocks` edge points
+                    OUTWARD to the target it gates, so the gate carries no
+                    unmet blocker of its own and would otherwise land in
+                    READY as actionable work (audit FB-3). Special-cased into
+                    its own lane so it reads as a wait condition, never a task
+                    to pick up. The gate→target `blocks` edge is untouched.
     - Ready       : status == 'open' AND no unmet blocking dependencies
     - Pinned      : status == 'pinned' (infra / never-auto-close). Given its
                     OWN lane so it reads as a deliberate operational-axis
@@ -35,7 +42,7 @@ from bdboard.derive.timeutil import _epoch
 
 # Lane keys are stable identifiers used in template selectors.
 # Order here is informational only — the template controls render order.
-LANES = ("deferred", "pinned", "ready", "in_progress", "blocked", "closed")
+LANES = ("deferred", "pinned", "gate", "ready", "in_progress", "blocked", "closed")
 
 # Statuses that represent closed/completed work
 CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
@@ -114,6 +121,20 @@ def get_dependency_target_id(dep: dict) -> str | None:
 
 def _is_epic(bead: dict[str, Any]) -> bool:
     return (bead.get("issue_type") or "").lower() == "epic"
+
+
+def _is_gate(bead: dict[str, Any]) -> bool:
+    """True for an async-coordination gate bead (``issue_type == 'gate'``).
+
+    A gate makes its target wait on an external/async condition; it is a
+    *pending wait*, not claimable work. Because its `blocks` edge points
+    outward to the target, it has no unmet blocker of its own and would fall
+    into the READY lane under generic bucketing — the canonical FB-3 P1. The
+    lane derivation special-cases it into the `gate` lane instead. Mirrors
+    `bdboard.derive.gates.is_gate`; kept local so `lanes` has no cross-import
+    cost on the hot path.
+    """
+    return (bead.get("issue_type") or "").lower() == "gate"
 
 
 def _is_molecule(bead: dict[str, Any]) -> bool:
@@ -362,6 +383,17 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         if _is_closed(status):
             buckets["closed"].append(b)
             continue
+        # Gate beads are a *pending wait*, never claimable work. A gate's
+        # `blocks` edge points OUTWARD to its target, so it has no unmet
+        # blocker of its own and would otherwise satisfy "open + no blocker"
+        # and land in READY (audit FB-3, the canonical P1). Route any
+        # non-closed gate into its own lane so it reads as a wait, not a task
+        # to pick up. Checked before status bucketing so an open/blocked/
+        # deferred gate is uniformly framed as a wait. The gate→target edge
+        # itself is untouched.
+        if _is_gate(b):
+            buckets["gate"].append(b)
+            continue
         if status == "in_progress":
             buckets["in_progress"].append(b)
         elif status == "blocked":
@@ -378,7 +410,7 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         else:
             buckets["deferred"].append(b)
 
-    for k in ("deferred", "pinned", "ready", "in_progress", "blocked"):
+    for k in ("deferred", "pinned", "gate", "ready", "in_progress", "blocked"):
         buckets[k].sort(key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at"))))
     buckets["closed"].sort(key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at")))
     return buckets
@@ -440,10 +472,16 @@ def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
     # Count actual beads by status, skipping bd-internal machinery statuses
     # (e.g. `hooked`) so the masthead never shows a count without a matching
     # lane — those beads are hidden from the board entirely (bdboard-m5bm).
+    # Non-closed gates are counted under a synthetic `gate` key (not their raw
+    # `open` status) so the masthead KPI matches the gate lane and a pending
+    # wait is never tallied as actionable Open work (audit FB-3).
     by_status: dict[str, int] = defaultdict(int)
     for b in beads:
         status = (b.get("status") or "unknown").lower()
         if status in HIDDEN_BOARD_STATUSES:
+            continue
+        if _is_gate(b) and status not in CLOSED_STATUSES:
+            by_status["gate"] += 1
             continue
         by_status[status] += 1
 

@@ -75,6 +75,32 @@
       <div class="field-para">{{ f.val }}</div>
     {% elif f.kind == "json" %}
       <pre class="field-json">{{ f.val | tojson(indent=2) }}</pre>
+    {% elif f.kind == "gate" %}
+      {# Interpreted gate await condition: a labelled WAIT, not raw scalars.
+         Renders a PR/run link (gh:pr/gh:run), an auto-resolve deadline
+         (timer), or a manual-only flag (human/bead). See derive.gate_condition. #}
+      <div class="gate-condition">
+        <div class="gate-condition-head">
+          <span class="gate-await-badge gate-await-{{ f.val.await_type | replace(':', '-') }}">{{ f.val.await_type }}</span>
+          <span class="gate-condition-summary">{{ f.val.summary }}</span>
+          {% if f.val.manual_only %}<span class="gate-manual-flag" title="Resolve with bd gate resolve">manual only</span>{% endif %}
+        </div>
+        {% if f.val.link %}
+        <a class="gate-condition-link" href="{{ f.val.link }}" target="_blank" rel="noopener noreferrer">
+          {{ f.val.link_text or f.val.link }} ↗
+        </a>
+        {% elif f.val.link_text %}
+        <span class="gate-condition-ref">{{ f.val.link_text }}</span>
+        {% endif %}
+        {% if f.val.deadline %}
+        <div class="gate-condition-deadline">
+          <span class="gate-deadline-label">deadline</span>
+          <time datetime="{{ f.val.deadline }}">{{ f.val.deadline }}</time>
+          {% if f.val.until %}<span class="gate-deadline-until">({{ f.val.until }})</span>{% endif %}
+        </div>
+        {% endif %}
+        {% if f.val.note %}<p class="gate-condition-note muted">{{ f.val.note }}</p>{% endif %}
+      </div>
     {% else %}
       {{ f.val }}
     {% endif %}

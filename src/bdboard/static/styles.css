@@ -741,6 +741,12 @@ pre { margin: 0; }
    visually distinct from the muted-grey Deferred lane (bdboard-m5bm). */
 .lane-pinned    .lane-title { color: var(--accent-2); }
 .lane-pinned    .bead-card  { border-left: 3px solid var(--accent-2); }
+/* Gate lane: async-coordination WAITS (gate beads). Violet accent + matching
+   card left-rule frame an open gate as a pending wait, visually distinct from
+   the amber Pinned lane and the red Blocked lane. A gate is NOT claimable
+   READY work — it waits on a PR/run/timer/manual condition (audit FB-3). */
+.lane-gate      .lane-title { color: var(--violet); }
+.lane-gate      .bead-card  { border-left: 3px solid var(--violet); }
 .lane-activity  .lane-title { color: var(--violet); }
 
 /* ============================================================
@@ -1675,6 +1681,82 @@ pre { margin: 0; }
   overflow-x: auto;
   white-space: pre-wrap;
 }
+
+/* Gate await condition (modal `gate` field kind). Renders a gate's WAIT as a
+   labelled condition — a PR/run link, a timer deadline, or a manual-only flag
+   — instead of raw await_type/await_id scalars (audit FB-3). Violet rule ties
+   it to the Gate lane. Colours come from theme vars so dark mode just works. */
+.gate-condition {
+  border-left: 3px solid var(--violet);
+  background: var(--paper-2);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gate-condition-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.gate-await-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--paper-3);
+  color: var(--violet);
+  border: 1px solid var(--violet);
+}
+.gate-condition-summary {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.gate-manual-flag {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--status-deferred-bg);
+  color: var(--status-deferred-fg);
+  border: 1px solid var(--status-deferred-border);
+}
+.gate-condition-link {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--brand-blue-d);
+  text-decoration: underline;
+  width: fit-content;
+}
+.gate-condition-link:hover { text-decoration: none; }
+.gate-condition-ref {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.gate-condition-deadline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.gate-deadline-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.gate-deadline-until { color: var(--violet); font-weight: 600; }
+.gate-condition-note { margin: 0; font-size: 12px; }
 
 /* Field renderers — chips for labels, dep-list for deps, para for prose. */
 .chip-list {

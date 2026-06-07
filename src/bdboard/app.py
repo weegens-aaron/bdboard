@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import os
+import re
 import secrets
+import subprocess
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -180,6 +183,48 @@ _ACTOR = os.environ.get("BDBOARD_ACTOR") or None
 
 bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE)
 store = Store(bd)
+
+
+# git remote → https repo base URL, e.g.
+#   git@github.com:owner/repo.git              -> https://github.com/owner/repo
+#   https://github.com/owner/repo.git          -> https://github.com/owner/repo
+#   https://gec.../owner/repo                  -> https://gec.../owner/repo
+# Host-agnostic so an enterprise GitHub host (gecgithub01.walmart.com) builds
+# correct gate links too. Matches scheme://host/owner/repo OR scp-like
+# user@host:owner/repo; the trailing .git is stripped.
+_REMOTE_RE = re.compile(
+    r"^(?:(?:https?|ssh)://)?(?:[^@/]+@)?(?P<host>[^/:]+)[/:](?P<path>.+?)(?:\.git)?/?$"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _repo_base_url() -> str | None:
+    """Resolve the workspace's git ``origin`` as an https repo base URL.
+
+    Used to turn a ``gh:pr`` / ``gh:run`` gate's await-id into a clickable PR
+    / Actions-run link in the bead modal. Returns ``None`` when there's no
+    git remote (or git isn't available), so the gate condition degrades to
+    plain text rather than a broken link. Cached for the process lifetime
+    (the remote URL doesn't change under a running board) so it costs one
+    subprocess at most.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(_WORKSPACE), "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    remote = out.stdout.strip()
+    m = _REMOTE_RE.match(remote)
+    if not m:
+        return None
+    return f"https://{m.group('host')}/{m.group('path')}"
 
 
 def _validate_or_warn() -> str | None:
@@ -1262,6 +1307,15 @@ async def api_bead(request: Request, bead_id: str) -> HTMLResponse:
             ),
             status_code=404,
         )
+    # Gate beads: interpret the raw await_type/await_id/timeout fields into a
+    # single labelled condition row (a PR/run link, a timer deadline, or a
+    # manual-only flag) so the modal frames the gate as the pending WAIT it is
+    # — not as undifferentiated key:value scalars (audit FB-3). The raw fields
+    # are still rendered too (the anatomy invariant: bdboard drops no bd
+    # field); this just adds an interpreted row above them.
+    cond = derive.gate_condition(bead, repo_url=_repo_base_url())
+    if cond is not None:
+        bead = {**bead, "gate_condition": cond}
     return TEMPLATES.TemplateResponse(
         request,
         "partials/bead_modal.html",
@@ -1371,6 +1425,10 @@ _FIELD_ORDER = [
     "notes",
     # ─ state & meta ─
     "issue_type",
+    # gate await condition (synthetic, interpreted): only present on gate
+    # beads. Sits next to issue_type so a gate's WAIT condition reads right
+    # after its type. See derive.gate_condition / api_bead.
+    "gate_condition",
     "status",
     "priority",
     "assignee",
@@ -1562,6 +1620,12 @@ def _bead_is_editable(bead: dict[str, Any]) -> bool:
 def _classify_field(key: str, val: Any) -> str:
     """Pick a render kind for a (key, value) pair. The template uses this
     to choose between chips / deps-list / paragraph / scalar / json."""
+    # The synthetic gate-condition row carries its own interpreted shape
+    # (summary + optional link / deadline / manual-only flag) and renders via
+    # a dedicated `gate` kind, never as raw json. Checked first so a dict
+    # value isn't swallowed by the generic json branch below.
+    if key == "gate_condition" and isinstance(val, dict):
+        return "gate"
     if val is None or val == [] or val == {} or val == "":
         return "empty"
     if key in _KIND_CHIPS and isinstance(val, list):
