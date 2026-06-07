@@ -1,4 +1,4 @@
-{% set lane_titles = {"deferred": "Deferred", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
+{% set lane_titles = {"deferred": "Deferred", "pinned": "Pinned", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
 
 <section class="epic-lane" aria-label="Epic lane">
   <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
@@ -31,8 +31,12 @@
 </section>
 
 <div class="lanes">
-  {# Active lanes: rendered immediately from active-only snapshot #}
-  {% for key in ["deferred", "blocked", "ready", "in_progress"] %}
+  {# Active lanes: rendered immediately from active-only snapshot. The Pinned
+     lane (infra / never-auto-close beads) only appears when it has cards, so
+     the common all-empty case doesn't carry a permanent dead column — and the
+     masthead `pinned` count, which is likewise only emitted when >0, stays in
+     agreement with the lane (bdboard-m5bm). #}
+  {% for key in ((['pinned'] if lanes['pinned'] else []) + ['deferred', 'blocked', 'ready', 'in_progress']) %}
   <div class="lane lane-{{ key }}">
     <h2 class="lane-title">
       <span class="lane-name">{{ lane_titles[key] }}</span>

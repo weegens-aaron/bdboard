@@ -8,11 +8,21 @@ Lane assignment rules:
     - Blocked     : status == 'blocked' OR (status == 'open' AND has unmet
                     blocking dependency)
     - Ready       : status == 'open' AND no unmet blocking dependencies
-    - Deferred    : everything else open-ish
+    - Pinned      : status == 'pinned' (infra / never-auto-close). Given its
+                    OWN lane so it reads as a deliberate operational-axis
+                    state, not as intentionally-parked Deferred work.
+    - Deferred    : everything else open-ish (the catch-all for genuinely
+                    unknown statuses)
     - Closed      : status in {closed, resolved, done}. Bounded by the
                     board's date window (see BOARD_CLOSED_WINDOW_DAYS) at
                     fetch time and sorted by closed_at desc so the most
                     recent wins are most visible.
+
+Hidden statuses:
+    - hooked : bd-internal molecule/formula machinery, not a human-facing
+               work state. Hidden from the lanes (like molecule wrappers)
+               AND from the masthead counts so the board never shows a
+               count without a matching lane (bdboard-m5bm).
 """
 
 from __future__ import annotations
@@ -25,10 +35,18 @@ from bdboard.derive.timeutil import _epoch
 
 # Lane keys are stable identifiers used in template selectors.
 # Order here is informational only — the template controls render order.
-LANES = ("deferred", "ready", "in_progress", "blocked", "closed")
+LANES = ("deferred", "pinned", "ready", "in_progress", "blocked", "closed")
 
 # Statuses that represent closed/completed work
 CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
+
+# Statuses that are bd-internal machinery, not human-facing work states.
+# `hooked` is the molecule/formula lifecycle marker bd manages on its own;
+# surfacing it as a board card (or a masthead count) misrepresents it as
+# parked work. We suppress it from BOTH the lanes and counts so the two stay
+# in agreement — no count without a lane (bdboard-m5bm). Mirrors the way the
+# redundant `molecule` formula-pour wrapper is hidden (see _is_molecule).
+HIDDEN_BOARD_STATUSES = frozenset(["hooked"])
 
 # The board is a *recent-activity* surface. Its time-filter strip caps at
 # 12h / 1d / 3d (see templates/base.html BOARD_TIME_WINDOWS), so the closed
@@ -115,6 +133,16 @@ def _is_molecule(bead: dict[str, Any]) -> bool:
 
 def _is_closed(status: str) -> bool:
     return status in CLOSED_STATUSES
+
+
+def _is_hidden_status(bead: dict[str, Any]) -> bool:
+    """True for beads whose status is bd-internal machinery (e.g. `hooked`).
+
+    These are suppressed from the board entirely — no lane card and no
+    masthead count — so they're never misread as parked work. See
+    HIDDEN_BOARD_STATUSES.
+    """
+    return (bead.get("status") or "").lower() in HIDDEN_BOARD_STATUSES
 
 
 def _has_unmet_blocking_dep(bead: dict[str, Any], by_id: dict[str, dict]) -> bool:
@@ -320,10 +348,13 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     BOARD_CLOSED_WINDOW_DAYS / bd.list_closed), not by a static count here —
     so the header CLOSED KPI and the lane count agree (bdboard-p8v).
     """
-    # Exclude epics (they live in the strip) AND molecule wrappers (the
-    # redundant formula-pour grouping node — Option A). The
-    # wrapper still parents the tree in bd; it just doesn't earn a card here.
-    non_epics = [b for b in beads if not _is_epic(b) and not _is_molecule(b)]
+    # Exclude epics (they live in the strip), molecule wrappers (the
+    # redundant formula-pour grouping node — Option A), AND hidden-status
+    # beads (bd-internal machinery like `hooked`). The wrapper / hooked bead
+    # still exists in bd; it just doesn't earn a card here (bdboard-m5bm).
+    non_epics = [
+        b for b in beads if not _is_epic(b) and not _is_molecule(b) and not _is_hidden_status(b)
+    ]
     by_id = {b.get("id"): b for b in non_epics if b.get("id")}
     buckets: dict[str, list[dict[str, Any]]] = {k: [] for k in LANES}
     for b in non_epics:
@@ -340,10 +371,14 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
                 buckets["blocked"].append(b)
             else:
                 buckets["ready"].append(b)
+        elif status == "pinned":
+            # Infra / never-auto-close. Its own lane keeps it visually
+            # distinct from intentionally-parked Deferred work.
+            buckets["pinned"].append(b)
         else:
             buckets["deferred"].append(b)
 
-    for k in ("deferred", "ready", "in_progress", "blocked"):
+    for k in ("deferred", "pinned", "ready", "in_progress", "blocked"):
         buckets[k].sort(key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at"))))
     buckets["closed"].sort(key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at")))
     return buckets
@@ -402,15 +437,21 @@ def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
     # Fixed status order for stable header layout
     status_order = ["open", "blocked", "deferred", "closed"]
 
-    # Count actual beads by status
+    # Count actual beads by status, skipping bd-internal machinery statuses
+    # (e.g. `hooked`) so the masthead never shows a count without a matching
+    # lane — those beads are hidden from the board entirely (bdboard-m5bm).
     by_status: dict[str, int] = defaultdict(int)
     for b in beads:
-        by_status[(b.get("status") or "unknown").lower()] += 1
+        status = (b.get("status") or "unknown").lower()
+        if status in HIDDEN_BOARD_STATUSES:
+            continue
+        by_status[status] += 1
 
     # Build ordered dict with all statuses, including zeros
     result = {status: by_status.get(status, 0) for status in status_order}
 
-    # Include any non-standard statuses that actually exist
+    # Include any non-standard statuses that actually exist (e.g. `pinned`,
+    # which has its own lane). Hidden statuses were already filtered above.
     for status, count in by_status.items():
         if status not in result and count > 0:
             result[status] = count
