@@ -47,6 +47,19 @@ LANES = ("deferred", "pinned", "gate", "ready", "in_progress", "blocked", "close
 # Statuses that represent closed/completed work
 CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
 
+# bd recognizes TWO blocking edge types, not one (field guide ch2 §2.4 /
+# ch6 §VI). `blocks`/`blocked-by` is the direct edge: the waiter is blocked
+# while its single target is open. `waits-for` is the FANOUT gate: the waiter
+# is blocked while the SPAWNER it points at has open children (default
+# `all-children` aggregation), and is *vacuously satisfied* (genuinely ready)
+# when the spawner is childless or all its children are closed. Both must gate
+# lane derivation or bdboard shows a bd-blocked bead as actionable READY work
+# (blocked-shown-as-ready P0; same class as the reversed-dep bdboard-fjk).
+# `waits-for` is kept SEPARATE from this set because it resolves against the
+# spawner's children, not the edge target itself (see _waits_for_unmet).
+DIRECT_BLOCKING_DEP_TYPES = frozenset(["blocks", "blocked-by", "blocked_by"])
+WAITS_FOR_DEP_TYPE = "waits-for"
+
 # Statuses that are bd-internal machinery, not human-facing work states.
 # `hooked` is the molecule/formula lifecycle marker bd manages on its own;
 # surfacing it as a board card (or a masthead count) misrepresents it as
@@ -166,21 +179,74 @@ def _is_hidden_status(bead: dict[str, Any]) -> bool:
     return (bead.get("status") or "").lower() in HIDDEN_BOARD_STATUSES
 
 
-def _has_unmet_blocking_dep(bead: dict[str, Any], by_id: dict[str, dict]) -> bool:
-    """A bead is functionally blocked if any of its `blocks` / `blocked-by`
-    dependency targets are not yet closed."""
+def _children_by_parent(beads: list[dict[str, Any]]) -> dict[str, list[dict]]:
+    """Index beads by their `parent` id so a spawner's children are O(1).
+
+    A `waits-for` fanout edge resolves against the SPAWNER's children, not the
+    spawner itself (see _waits_for_unmet). bd records the child->parent link on
+    each child's `parent` field (verified: `bd show --json` carries
+    `"parent": "<id>"`). We invert that into parent->children once per
+    derivation pass so the readiness check stays linear.
+    """
+    index: dict[str, list[dict]] = defaultdict(list)
+    for b in beads:
+        parent_id = b.get("parent")
+        if parent_id:
+            index[parent_id].append(b)
+    return index
+
+
+def _waits_for_unmet(
+    spawner_id: str | None,
+    children_by_parent: dict[str, list[dict]] | None,
+) -> bool:
+    """True if a `waits-for` fanout edge is unmet (waiter is functionally blocked).
+
+    Semantics (field guide ch6 §VI, default `all-children` aggregation): the
+    waiter is blocked while the spawner it points at has any OPEN (non-closed)
+    child. A childless spawner — or one whose children are all closed — is
+    *vacuously satisfied*, so the waiter stays genuinely Ready (matching bd's
+    `bd ready`). bd does not surface the all-children/any-children mode
+    (audit D3), so we honor the conservative default: any open child blocks.
+    """
+    if not spawner_id or children_by_parent is None:
+        # No spawner id, or no index available to resolve children against:
+        # we can't prove an open child exists, so treat as vacuously satisfied
+        # rather than inventing a phantom blocker.
+        return False
+    for child in children_by_parent.get(spawner_id, ()):  # childless -> vacuous
+        if not _is_closed((child.get("status") or "").lower()):
+            return True
+    return False
+
+
+def _has_unmet_blocking_dep(
+    bead: dict[str, Any],
+    by_id: dict[str, dict],
+    children_by_parent: dict[str, list[dict]] | None = None,
+) -> bool:
+    """A bead is functionally blocked if it has an unmet blocking edge.
+
+    Two blocking edge types gate (field guide ch2 §2.4 / ch6 §VI):
+      - `blocks`/`blocked-by`: the single target is not yet closed.
+      - `waits-for`: the target SPAWNER has an open child (vacuous-satisfy when
+        childless — see _waits_for_unmet). Requires `children_by_parent`; when
+        absent the waits-for edge degrades to vacuously satisfied.
+    """
     deps = get_dependency_list(bead)
     for d in deps:
         dep_type = get_dependency_type(d)
-        if dep_type not in ("blocks", "blocked-by", "blocked_by"):
-            continue
         target_id = get_dependency_target_id(d)
-        target = by_id.get(target_id)
-        if target is None:
-            # unknown target — treat as unmet, conservative
-            return True
-        if not _is_closed(target.get("status", "")):
-            return True
+        if dep_type in DIRECT_BLOCKING_DEP_TYPES:
+            target = by_id.get(target_id)
+            if target is None:
+                # unknown target — treat as unmet, conservative
+                return True
+            if not _is_closed(target.get("status", "")):
+                return True
+        elif dep_type == WAITS_FOR_DEP_TYPE:
+            if _waits_for_unmet(target_id, children_by_parent):
+                return True
     return False
 
 
@@ -188,7 +254,11 @@ def _stable_key(bead: dict[str, Any]) -> tuple[float, str]:
     return (_epoch(bead.get("created_at")), bead.get("id") or "")
 
 
-def _epic_lane_rank(bead: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> int:
+def _epic_lane_rank(
+    bead: dict[str, Any],
+    by_id: dict[str, dict[str, Any]],
+    children_by_parent: dict[str, list[dict]] | None = None,
+) -> int:
     """Priority rank for which epic should lead the strip.
 
     Lower is better:
@@ -202,7 +272,7 @@ def _epic_lane_rank(bead: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> i
     if status == "in_progress":
         return 0
     if status == "open":
-        return 2 if _has_unmet_blocking_dep(bead, by_id) else 1
+        return 2 if _has_unmet_blocking_dep(bead, by_id, children_by_parent) else 1
     if status == "blocked":
         return 2
     if status == "deferred":
@@ -270,6 +340,10 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Build by_id from all beads (not just active epics) so closed dependencies
     # can be correctly identified when checking _has_unmet_blocking_dep.
     by_id = {b.get("id"): b for b in beads if b.get("id")}
+    # Index children across ALL beads so a `waits-for` fanout edge can resolve
+    # against its spawner's children (the children may be any type, not just
+    # epics).
+    children_by_parent = _children_by_parent(beads)
     # Build dependency graph structures only for active epics.
     active_ids = {b.get("id") for b in active_epics if b.get("id")}
     succ: dict[str, set[str]] = {bid: set() for bid in active_ids}
@@ -282,7 +356,10 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         for dep in dep_list:
             dep_type = get_dependency_type(dep)
-            if dep_type not in ("blocks", "blocked-by", "blocked_by"):
+            # Both blocking edge types sequence the strip predecessor->successor
+            # so a waiter renders after the spawner it depends on. `waits-for`
+            # points at the spawner just like `blocks` points at the blocker.
+            if dep_type not in DIRECT_BLOCKING_DEP_TYPES and dep_type != WAITS_FOR_DEP_TYPE:
                 continue
             predecessor_id = get_dependency_target_id(dep)
             # Only wire up dependencies between active epics. We keep by_id
@@ -337,7 +414,7 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if ordered:
         anchor = min(
             ordered,
-            key=lambda b: (_epic_lane_rank(b, by_id), *_stable_key(b)),
+            key=lambda b: (_epic_lane_rank(b, by_id, children_by_parent), *_stable_key(b)),
         )
         ordered = [anchor] + [b for b in ordered if b is not anchor]
 
@@ -347,7 +424,7 @@ def epic_lane(beads: list[dict[str, Any]]) -> list[dict[str, Any]]:
         # Derive effective status: if status is open (not yet started) but has
         # unmet blocking dependencies, display as blocked. Don't override
         # in_progress — if work is already underway, show it as such.
-        if raw_status == "open" and _has_unmet_blocking_dep(b, by_id):
+        if raw_status == "open" and _has_unmet_blocking_dep(b, by_id, children_by_parent):
             status_key = "blocked"
         else:
             status_key = raw_status
@@ -377,6 +454,10 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         b for b in beads if not _is_epic(b) and not _is_molecule(b) and not _is_hidden_status(b)
     ]
     by_id = {b.get("id"): b for b in non_epics if b.get("id")}
+    # Index children across ALL beads (epics included) so a `waits-for` fanout
+    # edge resolves against its spawner's children even when the spawner is an
+    # epic (which is excluded from the non_epics card set above).
+    children_by_parent = _children_by_parent(beads)
     buckets: dict[str, list[dict[str, Any]]] = {k: [] for k in LANES}
     for b in non_epics:
         status = (b.get("status") or "").lower()
@@ -399,7 +480,7 @@ def lanes(beads: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         elif status == "blocked":
             buckets["blocked"].append(b)
         elif status == "open":
-            if _has_unmet_blocking_dep(b, by_id):
+            if _has_unmet_blocking_dep(b, by_id, children_by_parent):
                 buckets["blocked"].append(b)
             else:
                 buckets["ready"].append(b)
