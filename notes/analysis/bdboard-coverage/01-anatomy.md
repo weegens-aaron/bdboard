@@ -70,22 +70,22 @@ fetched with `bd show <id> --long --json` (`bd.py:518,532` — `show_long`), i.e
 the **full** field set, and `_ordered_fields()` (`app.py:1569-1588`) renders
 **every** non-hidden key: known keys in a curated order (`_FIELD_ORDER`
 `app.py:1314-1349`), then *"Anything not listed is appended alphabetically so we
-never silently hide new bd fields"* (`app.py:1311-1312`). Only `_type` is hidden
-(`_HIDDEN` `app.py:1351`). The modal grid loops these rows
-(`bead_modal.html:30-34` → `field_row.html`), and a **raw JSON escape hatch**
-(`/api/bead/{id}/raw`, `app.py:1258-1260`; `bead_modal.html:18`; catalog
+never silently hide new bd fields"* (`app.py:1312-1313`). Only `_type` is hidden
+(`_HIDDEN` `app.py:1350`). The modal grid loops these rows
+(`bead_modal.html:28-29` → `field_row.html`), and a **raw JSON escape hatch**
+(`/api/bead/{id}/raw`, `app.py:1258-1260`; `bead_modal.html:13`; catalog
 `bead-raw.md`) dumps *every field bd knows about*. So at the **field-presence**
 level, coverage is effectively total — a new bd field shows up automatically.
 
-**Render-kind dispatch** lives in `_classify_field` (`app.py:1521-1531`) and is
+**Render-kind dispatch** lives in `_classify_field` (`app.py:1515-1531`) and is
 rendered by `field_row.html` branching on `f.kind`:
 
-- `chips` — `labels`/`tags` (`_KIND_CHIPS` `app.py:1357`) → chip list.
-- `deps` — `deps`/`dependencies`/`dependents` (`_KIND_DEPS` `app.py:1358`) →
+- `chips` — `labels`/`tags` (`_KIND_CHIPS` `app.py:1356`) → chip list.
+- `deps` — `deps`/`dependencies`/`dependents` (`_KIND_DEPS` `app.py:1357`) →
   dependency rows with `dep_label` (see area 2).
-- `comments` — `comments` (`_KIND_COMMENTS` `app.py:1359`) → comment cards.
+- `comments` — `comments` (`_KIND_COMMENTS` `app.py:1358`) → comment cards.
 - `markdown` — **only** `description`, `notes`, `close_reason`,
-  `acceptance_criteria` (`_KIND_MARKDOWN` `app.py:1361`) → rendered via `md`.
+  `acceptance_criteria` (`_KIND_MARKDOWN` `app.py:1362`) → rendered via `md`.
 - `json` — dicts/lists (e.g. `metadata`) → `<pre>`.
 - `scalar`/`empty` — everything else → bare text / `—`.
 
@@ -95,17 +95,17 @@ class="field-key">{{ f.key }}</dt>` — i.e. `acceptance_criteria`, `issue_type`
 
 **Type (`issue_type`) is surfaced as plain text only:**
 
-- **Card** — `bead_card.html:36` `<span class="bead-type">{{ b.issue_type }}</span>`,
-  styled by a single `.bead-type` rule (`styles.css:800-806`: uppercase, grey).
+- **Card** — `bead_card.html:33` `<span class="bead-type">{{ b.issue_type }}</span>`,
+  styled by a single `.bead-type` rule (`styles.css:800-805`: uppercase, grey).
   There are **no** `.type-task`/`.type-bug`/… classes and **no glyphs** anywhere.
 - **Modal** — `issue_type` is a `_SHORT_META_FIELDS` scalar row
-  (`app.py:1366-1389`) → plain text in the compact grid.
+  (`app.py:1366-1384`) → plain text in the compact grid.
 - **Edit** — inline-editable via a `<select>` whose options come from
   `_ISSUE_TYPE_OPTIONS = ("bug","feature","task","epic","chore","decision")`
-  (`app.py:1444`) — **6 of the 9** built-in types.
+  (`app.py:1441`) — **6 of the 9** built-in types.
 
 **Priority** is the one field with rich visual treatment: a `P{n}` badge with
-per-level color (`bead_priority_badge.html`; `bead_card.html:21-23`;
+per-level color (`bead_priority_badge.html`; `bead_card.html:21`;
 `.bead-priority.p0..p4` `styles.css:776-780`).
 
 **Inline editing** (catalog `bead-inline-edit.md`) is registry-gated
@@ -113,7 +113,7 @@ per-level color (`bead_priority_badge.html`; `bead_card.html:21-23`;
 `acceptance_criteria`, `design`, `priority`, `assignee`, `issue_type`,
 `external_ref`, `estimate`, `notes` (append-only). Everything else is read-only
 by default (`_READONLY_SPEC` `app.py:1479`), and editing is locked entirely once
-a bead is `in_progress`/closed (`_bead_is_editable` `app.py:1503-1511`).
+a bead is `in_progress`/closed (`_bead_is_editable` `app.py:1503-1512`).
 
 ### 2.1 Field-by-field coverage (AVAILABLE → REFLECTED)
 
@@ -173,9 +173,9 @@ dropdown can't even name `spike`/`story`/`milestone`/`event`.
 
 | #   | Gap (one line) | Severity | Recommended follow-up (one line) |
 | --- | -------------- | -------- | -------------------------------- |
-| 1   | No per-type visual treatment: all 9 types + `event` render as identical uppercase grey text (`bead_card.html:36`, `.bead-type` `styles.css:800-806`; modal scalar row) — the guide's glyph system (●▲■○◆◇↗▸◎) is wholly unreflected, so a `milestone`/coordination bead is indistinguishable from a `chore` at a glance. | P1 | File a bead: add a per-type glyph/badge (map `issue_type`→glyph+color) on the card and in the modal header. |
-| 2   | `issue_type` inline-edit dropdown is lossy: `_ISSUE_TYPE_OPTIONS` (`app.py:1444`) lists only 6 of 9 built-in types — `spike`, `story`, `milestone` (and `event`, custom types) cannot be selected, so editing a spike/story/milestone silently can't preserve its type. | P2 | File a bead: source the enum from `bd types` (or add the 3 missing built-ins) so the dropdown is non-lossy. |
-| 3   | `design` renders as unformatted plain text: it IS markdown-bearing (registry `editor="md"` `app.py:1451`) and IS emitted by `bd show --long` (verified), but it's absent from `_FIELD_ORDER` (sorts to the alphabetical tail) AND `_KIND_MARKDOWN` (`app.py:1361`), so ADR/design rationale loses all formatting and ordering. | P2 | File a bead: add `design` to `_FIELD_ORDER` (content group) and `_KIND_MARKDOWN`. |
+| 1   | No per-type visual treatment: all 9 types + `event` render as identical uppercase grey text (`bead_card.html:33`, `.bead-type` `styles.css:800-806`; modal scalar row) — the guide's glyph system (●▲■○◆◇↗▸◎) is wholly unreflected, so a `milestone`/coordination bead is indistinguishable from a `chore` at a glance. | P1 | File a bead: add a per-type glyph/badge (map `issue_type`→glyph+color) on the card and in the modal header. |
+| 2   | `issue_type` inline-edit dropdown is lossy: `_ISSUE_TYPE_OPTIONS` (`app.py:1441`) lists only 6 of 9 built-in types — `spike`, `story`, `milestone` (and `event`, custom types) cannot be selected, so editing a spike/story/milestone silently can't preserve its type. | P2 | File a bead: source the enum from `bd types` (or add the 3 missing built-ins) so the dropdown is non-lossy. |
+| 3   | `design` renders as unformatted plain text: it IS markdown-bearing (registry `editor="md"` `app.py:1451`) and IS emitted by `bd show --long` (verified), but it's absent from `_FIELD_ORDER` (sorts to the alphabetical tail) AND `_KIND_MARKDOWN` (`app.py:1362`), so ADR/design rationale loses all formatting and ordering. | P2 | File a bead: add `design` to `_FIELD_ORDER` (content group) and `_KIND_MARKDOWN`. |
 | 4   | Field labels are raw bd keys: `field_row.html` `<dt>{{ f.key }}</dt>` shows `acceptance_criteria`/`issue_type`/`external_ref`/`created_at` verbatim (snake_case), inconsistent with the guide's field names and bdboard's friendly lane titles. | P3 | File a bead: add a key→humanized-label map for the modal `<dt>`. |
 | 5   | Magic labels not decoded: bd's special labels (`dim:val` state, `gt:slot` gate slot, `provides:X`, `export:X`, `template`) render as undifferentiated chips (`_KIND_CHIPS`, `field_row.html` chips branch) — a gate-slot or state label looks like a freeform tag. | P2 | Cross-ref area 6 (gates); consider styling/decoding magic-label chips distinctly. |
 | 6   | `estimate` shown unit-less: rendered as a bare integer scalar, but the guide defines it as **minutes** — "60" is ambiguous (minutes? hours? points?). | P3 | File a bead: append a "min" unit (or humanize to h/m) in the estimate row. |
