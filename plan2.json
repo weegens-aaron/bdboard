@@ -1,0 +1,160 @@
+{
+  "nodes": [
+    {
+      "key": "epic_remediate",
+      "type": "epic",
+      "title": "Remediate bdboard display-fidelity gaps (from the capability audit)",
+      "priority": 1,
+      "labels": ["audit", "remediation", "display-fidelity"],
+      "description": "Umbrella for the prioritized follow-up work from the bdboard display-fidelity audit. Source: notes/analysis/bdboard-coverage/GAPS.md (synthesis bead bdboard-bk1r, audit epic bdboard-gnhi). These 14 children (FB-1..FB-14) are the ready-to-pour shortlist from 'Prioritized top-gaps shortlist -> recommended follow-up beads', ordered by severity then value. P3/P4 items were deliberately NOT filed (narrow-window, fall out of the FBs, deliberate boundaries, or disproven). Multi-in_progress / general-purpose use is the INTENDED design and is explicitly NOT a gap.",
+      "acceptance": "Success Criteria:\n- The 2 P0/P1 readiness-misrepresentation fixes (FB-1, FB-3) land so no blocked/gate bead is shown as actionable READY work.\n- The board's type/lane signal is legible (FB-2, FB-4) and coordination subsystems (gates/swarms) are no longer invisible (FB-5, FB-9, FB-10).\n- Cheap already-held-data enrichments ship (FB-6 cycle badge, FB-7 in_progress KPI).\n- Each child closes against its own acceptance criteria; none re-litigates multi-WIP as a defect."
+    },
+    {
+      "key": "fb1",
+      "type": "bug",
+      "title": "Treat waits-for as a blocking edge in lane derivation (blocked-shown-as-ready)",
+      "priority": 1,
+      "labels": ["lanes", "dependency-graph"],
+      "description": "_has_unmet_blocking_dep (lanes.py:126) and the epic-strip blocker check (lanes.py:236) gate only on (\"blocks\",\"blocked-by\",\"blocked_by\"). waits-for is one of bd's two blocking edge types (field guide ch2 2.4 / ch6 VI), so a bead gated solely by an unmet waits-for fanout edge is computed ready and rendered in the READY lane while bd excludes it from bd ready -- a blocked-shown-as-ready P0 (same class as bdboard-fjk). Add 'waits-for' to the blocker set, honoring vacuous-satisfy (a childless spawner means the waiter is genuinely ready). [FB-1, closes dep-graph#1 + gates#1, 2x P0 at one code site]",
+      "acceptance": "- a bead gated by an unmet waits-for edge lanes as Blocked, not Ready\n- a waits-for bead whose spawner has no open children stays Ready (vacuous-satisfy)\n- the _dep_label mapping is unaffected (no reversal regression)\n- fixture test covers both the gated and vacuous cases"
+    },
+    {
+      "key": "fb2",
+      "type": "task",
+      "title": "Render a per-type glyph/badge instead of flat grey issue_type text",
+      "priority": 1,
+      "labels": ["ui", "anatomy"],
+      "description": "All 9 bead types + event render as identical uppercase grey .bead-type text (bead_card.html:33, styles.css:800-805; modal scalar row). The field guide glyph system (task glyph, bug, feature, chore, epic, decision, spike, story, milestone) is wholly unreflected, so a milestone/gate/coordination bead is indistinguishable from a chore at a glance (memory bdboard-anatomy-type-flat). Map issue_type -> glyph + color on the card and in the modal header. [FB-2, root of gate (area 6) and mol-type (area 5) legibility gaps]",
+      "acceptance": "- each built-in type renders a distinct glyph + color on the card\n- the modal header shows the type glyph\n- an unknown/custom type falls back to the current grey text (no crash)"
+    },
+    {
+      "key": "fb3",
+      "type": "task",
+      "title": "Special-case issue_type=gate so an open gate is shown as a wait, not ready work",
+      "priority": 1,
+      "labels": ["gates", "ui"],
+      "description": "gate beads flow through generic bucketing; an open ad-hoc gate has no unmet blocker of its own (its blocks edge points outward) so it lands in the READY lane as claimable work (lanes.py:314-345) -- the rubric's canonical P1. Also surface the await condition: await_type/await_id render only as raw alphabetical scalar rows (app.py:1580-1588) -- never a PR/run link, timer deadline, or manual-only bead-gate flag. Special-case issue_type=gate (own treatment/badge, framed as a pending wait) and parse await_type/await_id into a labeled gate-condition row. [FB-3]",
+      "acceptance": "- an open gate is not presented as claimable READY work\n- gh:pr/gh:run await_id render as links; timer shows a deadline; bead gate flagged manual-only\n- the gate->target blocks edge (already correct) is unchanged"
+    },
+    {
+      "key": "fb4",
+      "type": "task",
+      "title": "Handle pinned/hooked statuses explicitly instead of dumping them in Deferred",
+      "priority": 1,
+      "labels": ["lanes", "status"],
+      "description": "pinned and hooked have no lane branch and fall through the else catch-all (lanes.py:341-342), so never-auto-close infra (pinned) and molecule/formula machinery (hooked) are shown as intentionally-parked Deferred work; the masthead also shows a pinned/hooked count with no matching lane. Add explicit handling (own lane or distinct card badge; consider hiding hooked like molecule wrappers). [FB-4, closes status#1 + status#2, same else hole]",
+      "acceptance": "- a pinned bead is visually distinct from a deferred bead\n- a hooked bead is handled explicitly (badge or hidden), not shown as Deferred\n- masthead counts and lanes agree (no count without a lane)"
+    },
+    {
+      "key": "fb5",
+      "type": "task",
+      "title": "Split mol_type=swarm from formula-pour wrappers so running swarms are visible",
+      "priority": 2,
+      "labels": ["swarms", "lanes"],
+      "description": "The type-only _is_molecule filter (lanes.py:101-113,326) hides ALL molecule beads to suppress the redundant formula-pour grouping wrapper -- but it also hides mol_type=swarm molecules, the only object carrying a swarm's existence, coordinator/assignee, and bd swarm list rollup. A running swarm is invisible on the board (reachable only by direct modal URL). Detect mol_type=swarm and surface it (own strip/badge) while still hiding pour wrappers. [FB-5, do NOT un-hide pour wrappers (Option A stays)]",
+      "acceptance": "- a mol_type=swarm molecule earns a card/badge with its coordinator\n- formula-pour grouping wrappers remain hidden (no regression to Option A)\n- a non-swarm molecule wrapper is unchanged"
+    },
+    {
+      "key": "fb6",
+      "type": "task",
+      "title": "Surface cycle / dangling-edge / incomplete-template badges in the lanes",
+      "priority": 2,
+      "labels": ["lanes", "quality-hygiene"],
+      "description": "bdboard surfaces zero graph-hygiene signals. (1) A dependency cycle is already detected in _topo_component_order (lanes.py:196) then silently discarded (:201) -- a deadlocked pair shows as ordinary Blocked; keep the result and badge affected beads (nearly free). (2) A structural orphan edge (blocks target absent from the snapshot) is masked as plain Blocked via the conservative target-is-None branch (lanes.py:130-132); distinguish blocked-by-missing from blocked-by-open. (3) No bd lint signal -- a bug missing ## Steps to Reproduce renders identically to a complete one; derive per-type required-section completeness and badge incomplete beads. [FB-6, coordinate with FB-1 on the lanes.py hot spot]",
+      "acceptance": "- beads in a cycle carry a cycle/deadlocked badge (reuse the existing detection)\n- a bead blocked by a missing/unknown target is visually distinct from blocked-by-open\n- incomplete-template beads show an indicator (per-type required sections)"
+    },
+    {
+      "key": "fb7",
+      "type": "task",
+      "title": "Make in_progress a fixed masthead KPI and drop the single-flight framing",
+      "priority": 2,
+      "labels": ["ui", "status"],
+      "description": "counts() docstring (lanes.py:390-399) and counts_skeleton.html assert 'bdboard is a single-flight workflow tool -- only one item is in-progress at a time' and omit the in_progress cell; real counts() re-adds it via the catch-all when >0, so the masthead grows a 5th cell on hydration (layout jitter) and the framing contradicts bdboard's general-purpose multi-WIP mission (proven: lanes render N>1 cleanly). Make in_progress a first-class fixed cell matching the skeleton; remove the single-flight prose. [FB-7, closes status#3 + swarms#7]",
+      "acceptance": "- in_progress is a fixed masthead cell present in both skeleton and live counts\n- no layout jitter on hydration\n- the single-flight docstring/comment is removed"
+    },
+    {
+      "key": "fb8",
+      "type": "task",
+      "title": "Show Dolt sync state (ahead/behind/no-remote) and relabel the live pill",
+      "priority": 2,
+      "labels": ["data-layer", "ui"],
+      "description": "bdboard reads local Dolt and never calls bd dolt status/remote, so unpushed-local-writes (ahead of origin) and unpulled-remote-writes (behind origin) are invisible -- a teammate's bd dolt push leaves your board silently stale-vs-origin. The masthead 'live . push' pill (base.html:543) reflects only the SSE socket and is confusable with bd dolt push. Add a sync badge shelling bd dolt status / bd dolt remote list, and relabel the pill (e.g. 'live . updates'). [FB-8]",
+      "acceptance": "- a sync badge shows unpushed/behind/no-remote state\n- shelling bd dolt status soft-fails (no 500) when no remote is configured\n- the live pill no longer reads as a Dolt-sync indicator"
+    },
+    {
+      "key": "fb9",
+      "type": "task",
+      "title": "Add a gates/coordination panel (bd gate list) and a merge-slot mutex affordance",
+      "priority": 2,
+      "labels": ["gates", "ui"],
+      "description": "bdboard never calls bd gate list/check or bd merge-slot check, so there is no gate overview, no pending-gate count, and merge-slots are indistinguishable from regular work (gt:slot only a modal chip; metadata.holder/waiters dumped as raw JSON, field_row.html:71). Add a gates/coordination panel shelling bd gate list --json (optional gate check / merge-slot check), and detect gt:slot to render an available/held-by-X + waiter-queue mutex affordance. [FB-9]",
+      "acceptance": "- a gates panel lists open gates with their await condition\n- a merge-slot renders held/available + the waiter queue (not raw JSON)\n- bd verb failures degrade gracefully (inline message, not 500)"
+    },
+    {
+      "key": "fb10",
+      "type": "task",
+      "title": "Add an epic->children rollup backed by bd mol progress / bd swarm status + validate waves",
+      "priority": 2,
+      "labels": ["formulas", "swarms", "ui"],
+      "description": "Poured molecule children scatter across status lanes with no grouping/progress rollup back to the parent epic (formulas#2), and bd swarm's computed state -- progress %, Completed/Active/Ready/Blocked, coordinator, and the swarm validate WAVE model (parallel groups, max parallelism, worker-sessions) -- has no representation (swarms#2/#3). Add an epic-strip rollup (count/progress) backed by bd mol progress <id> --json, and a swarm view shelling bd swarm status/validate. [FB-10, merges formulas#2 + swarms#2/#3]",
+      "acceptance": "- the epic strip shows a child count/progress rollup\n- a swarm surfaces progress % and Completed/Active/Ready/Blocked\n- waves (Wave N, max parallelism) are legible for a swarmable epic"
+    },
+    {
+      "key": "fb11",
+      "type": "bug",
+      "title": "Capture pour stderr on success and warn when a vapor-phase formula is poured as persistent",
+      "priority": 2,
+      "labels": ["formulas"],
+      "description": "pour_formula reads stderr only on non-zero exit (bd.py:825-827); bd mol pour prints the 'you poured a vapor-phase formula' warning on stderr with exit 0, so bdboard silently creates persistent, git-synced beads the formula author meant to be ephemeral (wisp). This is the one genuine write-surface misrepresentation in the pour flow. Capture pour stderr even on success and surface a 'this formula recommends wisp (ephemeral) -- poured as persistent' notice. [FB-11]",
+      "acceptance": "- a vapor-phase pour surfaces the recommend-wisp warning in formula_pour_result.html\n- a normal (liquid) pour is unchanged\n- the atomic pour result is never lost on a warning"
+    },
+    {
+      "key": "fb12",
+      "type": "task",
+      "title": "Label the closed-window and surface sustained refresh-failure staleness",
+      "priority": 2,
+      "labels": ["data-layer", "ui"],
+      "description": "The Closed lane and CLOSED KPI only show closures within BOARD_CLOSED_WINDOW_DAYS=3 (lanes.py:40, bd.py:298-304) with no affordance, so a user cannot tell 'no old closures' from 'old closures hidden'. And a sustained bd list failure freezes the board on the previous snapshot (store.py serve-stale-on-failure) with only a log line -- no UI banner. Label the Closed lane with its window (+ a 'see History for older' link), and show a 'data stale -- last updated HH:MM' banner after N consecutive refresh failures. [FB-12, closes data-layer#2 + #3]",
+      "acceptance": "- the Closed lane states its active window and links to the uncapped History\n- a sustained refresh failure surfaces a stale banner (not just a log line)\n- a transient single failure does not flash the banner"
+    },
+    {
+      "key": "fb13",
+      "type": "task",
+      "title": "Add a viewer for the swarm interaction log (.beads/interactions.jsonl)",
+      "priority": 2,
+      "labels": ["swarms", "ui"],
+      "description": "The modal Audit trail/Lifecycle views are built entirely from bd history <id> (per-bead Dolt snapshots) and never read .beads/interactions.jsonl, so the cross-run llm_call/tool_call/label reward trail (the SFT/RL 'why did the agent do that' signal) is absent. Add an interaction-log viewer (separate from the per-bead history). [FB-13]",
+      "acceptance": "- the interaction log is readable in the UI (filter by kind: llm_call/tool_call/label)\n- the existing per-bead bd history audit is unchanged\n- a missing interactions.jsonl degrades gracefully"
+    },
+    {
+      "key": "fb14",
+      "type": "task",
+      "title": "Render design as markdown + ordered, de-lossify the type dropdown, decode magic labels",
+      "priority": 2,
+      "labels": ["anatomy", "ui"],
+      "description": "Three anatomy field-render nits: (1) design is markdown-bearing (registry editor=md) and emitted by bd show --long, but absent from _FIELD_ORDER (sorts to the alphabetical tail) and _KIND_MARKDOWN (app.py:1362), so ADR rationale loses formatting -- add it to both. (2) The issue_type inline-edit dropdown _ISSUE_TYPE_OPTIONS (app.py:1441) lists only 6 of 9 types, so editing a spike/story/milestone cannot preserve its type -- source from bd types or add the missing built-ins. (3) Magic labels (dim:val, gt:slot, provides:X, export:X, template) render as undifferentiated chips -- style/decode them distinctly. [FB-14]",
+      "acceptance": "- design renders as markdown in the content group order\n- the type dropdown can select every built-in type (non-lossy)\n- magic labels are visually distinct from freeform tags"
+    }
+  ],
+  "edges": [
+    {"from_key": "fb1", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb2", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb3", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb4", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb5", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb6", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb7", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb8", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb9", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb10", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb11", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb12", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb13", "to_key": "epic_remediate", "type": "parent-child"},
+    {"from_key": "fb14", "to_key": "epic_remediate", "type": "parent-child"},
+
+    {"from_key": "fb6", "to_key": "fb1", "type": "related"},
+    {"from_key": "fb3", "to_key": "fb2", "type": "related"},
+    {"from_key": "fb9", "to_key": "fb3", "type": "related"},
+    {"from_key": "fb10", "to_key": "fb5", "type": "related"}
+  ]
+}
