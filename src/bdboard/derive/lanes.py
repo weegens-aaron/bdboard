@@ -18,6 +18,13 @@ Lane assignment rules:
     - Pinned      : status == 'pinned' (infra / never-auto-close). Given its
                     OWN lane so it reads as a deliberate operational-axis
                     state, not as intentionally-parked Deferred work.
+    - Swarm       : a `mol_type=swarm` molecule (not closed). A swarm has no
+                    STORED status — bd computes it live from the children — so
+                    it is special-cased into its own lane (audit FB-5) instead
+                    of falling through to Deferred. It is the only object
+                    carrying a running swarm's existence + coordinator handle.
+                    Formula-pour grouping wrappers (also `molecule`-typed but
+                    WITHOUT `mol_type=swarm`) stay hidden — Option A unchanged.
     - Deferred    : everything else open-ish (the catch-all for genuinely
                     unknown statuses)
     - Closed      : status in {closed, resolved, done}. Bounded by the
@@ -42,7 +49,16 @@ from bdboard.derive.timeutil import _epoch
 
 # Lane keys are stable identifiers used in template selectors.
 # Order here is informational only — the template controls render order.
-LANES = ("deferred", "pinned", "gate", "ready", "in_progress", "blocked", "closed")
+LANES = (
+    "deferred",
+    "pinned",
+    "gate",
+    "swarm",
+    "ready",
+    "in_progress",
+    "blocked",
+    "closed",
+)
 
 # Statuses that represent closed/completed work
 CLOSED_STATUSES = frozenset(["closed", "resolved", "done"])
@@ -163,6 +179,26 @@ def _is_molecule(bead: dict[str, Any]) -> bool:
     display decision under docs/design/.
     """
     return (bead.get("issue_type") or "").lower() == "molecule"
+
+
+def _is_swarm_molecule(bead: dict[str, Any]) -> bool:
+    """True for a SWARM molecule (``issue_type == 'molecule'`` AND ``mol_type == 'swarm'``).
+
+    `bd swarm create <epic>` mints a `molecule`-typed bead with
+    `mol_type=swarm`, linked to the epic by a `relates-to` edge, carrying the
+    coordinator as its `assignee` (field guide ch7 §I). Unlike a formula-pour
+    grouping wrapper, this molecule is the ONLY object that carries a running
+    swarm's existence, its coordinator handle, and the `bd swarm list` rollup.
+
+    The type-only `_is_molecule` filter would sweep it up with the redundant
+    pour wrapper and hide it (audit FB-5), making a live swarm invisible on the
+    board — reachable only by direct modal URL. This predicate splits the two
+    so swarm molecules can be surfaced (their own lane) while pour wrappers
+    stay hidden (Option A unchanged). A swarm molecule is necessarily also a
+    molecule, so callers that hide pour wrappers must check
+    ``_is_molecule(b) and not _is_swarm_molecule(b)``.
+    """
+    return _is_molecule(bead) and (bead.get("mol_type") or "").lower() == "swarm"
 
 
 def _is_closed(status: str) -> bool:
@@ -467,12 +503,20 @@ def lanes(
     """
     from bdboard.derive import hygiene
 
-    # Exclude epics (they live in the strip), molecule wrappers (the
-    # redundant formula-pour grouping node — Option A), AND hidden-status
-    # beads (bd-internal machinery like `hooked`). The wrapper / hooked bead
-    # still exists in bd; it just doesn't earn a card here (bdboard-m5bm).
+    # Exclude epics (they live in the strip), formula-pour molecule WRAPPERS
+    # (the redundant grouping node — Option A), AND hidden-status beads
+    # (bd-internal machinery like `hooked`). A SWARM molecule
+    # (`mol_type=swarm`) is deliberately KEPT: it is the only object carrying a
+    # running swarm's existence + coordinator, so it earns its own lane below
+    # (audit FB-5) rather than being swept up with pour wrappers. The hidden
+    # wrapper / hooked bead still exists in bd; it just doesn't earn a card
+    # here (bdboard-m5bm).
     non_epics = [
-        b for b in beads if not _is_epic(b) and not _is_molecule(b) and not _is_hidden_status(b)
+        b
+        for b in beads
+        if not _is_epic(b)
+        and not (_is_molecule(b) and not _is_swarm_molecule(b))
+        and not _is_hidden_status(b)
     ]
     by_id = {b.get("id"): b for b in non_epics if b.get("id")}
     # Index children across ALL beads (epics included) so a `waits-for` fanout
@@ -484,6 +528,14 @@ def lanes(
         status = (b.get("status") or "").lower()
         if _is_closed(status):
             buckets["closed"].append(b)
+            continue
+        # Swarm molecules (mol_type=swarm) have no STORED status — bd computes
+        # their state live from the children (field guide ch7 §I), so generic
+        # status bucketing would dump them into Deferred. Route any non-closed
+        # swarm molecule into its own lane so a running swarm is visible with
+        # its coordinator handle (audit FB-5), checked before status bucketing.
+        if _is_swarm_molecule(b):
+            buckets["swarm"].append(b)
             continue
         # Gate beads are a *pending wait*, never claimable work. A gate's
         # `blocks` edge points OUTWARD to its target, so it has no unmet
@@ -512,8 +564,16 @@ def lanes(
         else:
             buckets["deferred"].append(b)
 
-    for k in ("deferred", "pinned", "gate", "ready", "in_progress", "blocked"):
-        buckets[k].sort(key=lambda x: (x.get("priority", 99), -_epoch(x.get("updated_at"))))
+    for k in ("deferred", "pinned", "gate", "swarm", "ready", "in_progress", "blocked"):
+        # `priority` may be absent OR explicitly None (swarm molecules carry no
+        # priority). Coerce None→99 WITHOUT `or` so a real P0 (priority 0)
+        # isn't mis-sorted to the bottom.
+        buckets[k].sort(
+            key=lambda x: (
+                x["priority"] if x.get("priority") is not None else 99,
+                -_epoch(x.get("updated_at")),
+            )
+        )
     buckets["closed"].sort(key=lambda x: -_epoch(x.get("closed_at") or x.get("updated_at")))
 
     # Graft graph-hygiene badges onto the ACTIVE lane cards (not Closed).
@@ -522,9 +582,15 @@ def lanes(
     # mistaken for a dangling one.
     cycle_ids = hygiene.cycle_member_ids(beads)
     present_all = {b.get("id"): b for b in beads if b.get("id")}
-    for k in ("deferred", "pinned", "gate", "ready", "in_progress", "blocked"):
+    for k in ("deferred", "pinned", "gate", "swarm", "ready", "in_progress", "blocked"):
         buckets[k] = [
             hygiene.with_badges(b, present=present_all, cycle_ids=cycle_ids, known_ids=known_ids)
             for b in buckets[k]
         ]
+    # Surface each swarm molecule's coordinator (stored as its `assignee`,
+    # field guide ch7 §I) as an explicit `coordinator` field so the swarm lane
+    # can badge it without overloading the generic assignee label. with_badges
+    # returns copies, so this never mutates the Store's cached snapshot.
+    for b in buckets["swarm"]:
+        b["coordinator"] = b.get("coordinator") or b.get("assignee")
     return buckets

@@ -111,6 +111,15 @@ trigger the SSE refresh above.)
   epic root step (which already surfaces in the epic strip), so the bare wrapper
   is redundant and is hidden from the swim lanes rather than rendered as a stray
   ready-lane card.
+- **Swarm molecules surface (audit FB-5).** The `_is_molecule` exclusion above
+  is split by `_is_swarm_molecule`: a `mol_type=swarm` molecule — the only object
+  carrying a running swarm's existence + coordinator handle (`bd swarm create`,
+  field guide ch7) — is NOT hidden. It earns its own **Swarms** lane (rendered
+  only when non-empty, like Pinned/Gate) with a coordinator chip (the molecule's
+  `assignee`). Formula-pour wrappers (also `molecule`-typed but WITHOUT
+  `mol_type=swarm`) stay hidden — Option A is unchanged. A swarm has no stored
+  status (bd computes it live from the children), so it is routed to the Swarms
+  lane before status bucketing rather than falling through to Deferred.
 - **Empty lanes stay visible.** The four open lanes are always rendered (the
   template loops a fixed key list), so an empty lane shows its title + a `(empty)`
   muted row rather than collapsing. The epic strip shows `(no active epics)` and
