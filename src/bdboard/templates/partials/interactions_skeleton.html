@@ -1,0 +1,16 @@
+{# Interactions region skeleton. Reserves the kind-filter chip row and a few
+   entry rows with shimmer blocks so the page paints instantly and hydrates
+   from /api/interactions without a layout jump.
+
+   Mirrors partials/interactions.html's actual body layout (a chip toolbar
+   then a vertical list) so the swap is shift-free. Decorative only —
+   aria-hidden so AT waits for the real data; the parent #interactions-region
+   carries aria-busy and the hydrated partial clears it. #}
+<div class="interactions-skeleton" aria-hidden="true">
+  <div class="skeleton skeleton-block skeleton-range"></div>
+  <ul class="interactions-list-skeleton">
+    {% for _ in range(6) %}
+    <li class="skeleton skeleton-block skeleton-row"></li>
+    {% endfor %}
+  </ul>
+</div>

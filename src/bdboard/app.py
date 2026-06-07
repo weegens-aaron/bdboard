@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from watchfiles import awatch
 
-from bdboard import derive, md
+from bdboard import derive, interactions, md
 from bdboard.bd import BdClient
 from bdboard.events import EventBus
 from bdboard.store import Store
@@ -526,6 +526,82 @@ async def page_history(request: Request) -> HTMLResponse:
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
             "active": "history",
+        },
+    )
+
+
+@app.get("/interactions", response_class=HTMLResponse)
+async def page_interactions(request: Request) -> HTMLResponse:
+    """Full-page swarm interaction-log view, symmetric with `/history`.
+
+    This reads the CROSS-RUN audit trail (``.beads/interactions.jsonl``: the
+    llm_call/tool_call/label reward entries the SFT/RL pipeline cares about) —
+    deliberately SEPARATE from the per-bead ``bd history`` Audit/Lifecycle
+    modal, which is left untouched (bead bdboard-bghy acceptance). Extends
+    base.html and renders the masthead + the #interactions-region swap target;
+    that region is filled by an HTMX `load` fetch to /api/interactions and
+    re-fetched on `refresh from:body` (the existing SSE pipeline), so this
+    route stays trivially cheap and never blocks on a bd subprocess. We surface
+    the workspace validation error here for parity with the other pages.
+    """
+    err = _validate_or_warn()
+    if err:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            {"error": err, "workspace": str(_WORKSPACE)},
+            status_code=500,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "interactions.html",
+        {
+            "workspace": _WORKSPACE.name,
+            "workspace_path": str(_WORKSPACE),
+            "active": "interactions",
+        },
+    )
+
+
+@app.get("/api/interactions", response_class=HTMLResponse)
+async def api_interactions(request: Request, kind: str = "") -> HTMLResponse:
+    """Render the interaction-log list region (HTMX swap target).
+
+    Reads ``.beads/interactions.jsonl`` newest-first, optionally filtered by
+    ``kind`` (llm_call / tool_call / label / field_change / any future kind),
+    and clamps to the most recent ``DEFAULT_LIMIT`` entries so an unbounded
+    append-only log can't bloat the DOM. Kind chips + their counts are derived
+    from the FULL log (not the filtered slice) so the chip row is stable as you
+    switch filters.
+
+    Graceful degradation: a missing file yields an empty list and an explicit
+    "no log yet" empty state (``log_exists=False``); a present-but-filtered-
+    empty result shows a "nothing of this kind" message instead. Reading is
+    fault-tolerant (bad lines skipped) so this never 500s the partial swap.
+    """
+    beads_dir = bd.beads_dir
+    log_exists = interactions.log_path(beads_dir).exists()
+    all_entries = interactions.read_interactions(beads_dir)
+    counts = interactions.kind_counts(all_entries)
+    selected = (kind or "").strip().lower()
+    filtered = interactions.filter_by_kind(all_entries, selected)
+    total_filtered = len(filtered)
+    limit = interactions.DEFAULT_LIMIT
+    truncated = total_filtered > limit
+    items = filtered[:limit]
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/interactions.html",
+        {
+            "items": items,
+            "counts": counts,
+            "total": len(all_entries),
+            "total_filtered": total_filtered,
+            "shown": len(items),
+            "truncated": truncated,
+            "limit": limit,
+            "selected": selected or "all",
+            "log_exists": log_exists,
         },
     )
 
