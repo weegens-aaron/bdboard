@@ -47,6 +47,8 @@ REMEMBER_TIMEOUT_S = 10.0  # writes may be slower (dolt commit)
 FORGET_TIMEOUT_S = 10.0
 UPDATE_TIMEOUT_S = 10.0  # field edits: dolt commit, possibly long markdown
 FORMULA_LIST_TIMEOUT_S = 8.0
+GATE_LIST_TIMEOUT_S = 8.0
+MERGE_SLOT_TIMEOUT_S = 8.0
 POUR_TIMEOUT_S = 30.0  # pour cooks inline + materializes a whole formula tree
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
@@ -372,6 +374,61 @@ class BdClient:
                 f"({type(closed).__name__}); expected JSON array"
             )
         return closed
+
+    # ----- gates & merge-slot: coordination overview (uncached, on-demand) -----
+
+    async def list_gates(self) -> list[dict[str, Any]]:
+        """List OPEN async-coordination gates via ``bd gate list --json``.
+
+        A *gate* is a bead (``issue_type == "gate"``) that makes another bead
+        WAIT on an external/async condition (a PR merge, a GitHub Actions run,
+        a timer, a cross-rig bead, or a manual resolve). ``bd gate list``
+        without ``--all`` returns only the OPEN (pending) gates — exactly the
+        "Open Gates (N)" set the coordination panel surfaces.
+
+        bd emits a JSON ``null`` (not ``[]``) when there are zero open gates,
+        so we normalise ``null`` -> empty list rather than treating it as a
+        malformed payload. Any other non-list shape is a genuine error.
+
+        Raises RuntimeError on subprocess failure or a malformed (non-null,
+        non-list) payload so the route can degrade to a friendly inline
+        message instead of 500-ing the partial swap.
+        """
+        value = await self._run_json(["gate", "list"], timeout=GATE_LIST_TIMEOUT_S)
+        if value is None:
+            # bd serialises an empty open-gate set as JSON null, not [].
+            return []
+        if not isinstance(value, list):
+            raise RuntimeError(
+                f"bd gate list returned non-list ({type(value).__name__}); expected JSON array"
+            )
+        return value
+
+    async def merge_slot_check(self) -> dict[str, Any]:
+        """Check this rig's merge-slot availability via ``bd merge-slot check``.
+
+        A merge-slot is bd's exclusive-access primitive: a single ``gt:slot``
+        bead (``<prefix>-merge-slot``) that serialises conflict resolution.
+        ``bd merge-slot check --json`` reports availability, e.g.::
+
+            {"available": false, "error": "not found", "id": "x-merge-slot"}
+            {"available": true,  "id": "x-merge-slot"}
+            {"available": false, "holder": "agent-7", "id": "x-merge-slot"}
+
+        A missing slot is a NORMAL state (most rigs never create one), reported
+        by bd as ``{"available": false, "error": "not found"}`` with exit 0 —
+        NOT a subprocess failure. We return whatever dict bd emits and let the
+        caller decide how to frame it. A non-dict payload is a genuine error.
+
+        Raises RuntimeError on subprocess failure or a non-dict payload.
+        """
+        value = await self._run_json(["merge-slot", "check"], timeout=MERGE_SLOT_TIMEOUT_S)
+        if not isinstance(value, dict):
+            raise RuntimeError(
+                f"bd merge-slot check returned non-object "
+                f"({type(value).__name__}); expected JSON object"
+            )
+        return value
 
     # ----- memories: browse + search (cached, in-flight deduped) -----
 

@@ -52,6 +52,14 @@
       <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
     </div>
   </div>
+  {# Coordination panel: open gates + merge-slot mutexes. Hydrates via HTMX
+     on load (and on SSE `refresh`) so it stays cheap on first paint and live
+     with the rest of the board. Renders nothing when there is no
+     coordination state, so a board that never uses gates/slots is unchanged
+     (audit FB-9). #}
+  <div class="coordination-region"
+       id="coordination"
+       hx-get="/api/gates" hx-trigger="load, refresh from:body" hx-swap="innerHTML"></div>
   {# Lanes region: render an instant skeleton, then hydrate
      from /api/lanes on `load`. Previously `/` blocked on store.snapshot()
      + per-epic `bd show` subprocess calls before returning ANY HTML,

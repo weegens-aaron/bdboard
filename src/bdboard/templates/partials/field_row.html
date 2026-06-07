@@ -101,6 +101,34 @@
         {% endif %}
         {% if f.val.note %}<p class="gate-condition-note muted">{{ f.val.note }}</p>{% endif %}
       </div>
+    {% elif f.kind == "merge_slot" %}
+      {# Interpreted merge-slot mutex: a held/available state + the
+         priority-ordered waiter queue, NOT a raw metadata.holder/waiters JSON
+         blob (audit FB-9). See derive.merge_slot_view. #}
+      <div class="merge-slot {% if f.val.held %}merge-slot-held{% else %}merge-slot-available{% endif %}">
+        <div class="merge-slot-head">
+          <span class="merge-slot-state-badge merge-slot-state-{{ f.val.state }}">
+            {% if f.val.held %}held{% else %}available{% endif %}
+          </span>
+          {% if f.val.held %}
+            <span class="merge-slot-holder">
+              held by <strong>{{ f.val.holder or "unknown" }}</strong>
+            </span>
+          {% else %}
+            <span class="merge-slot-holder muted">no holder — free to acquire</span>
+          {% endif %}
+        </div>
+        {% if f.val.waiters %}
+        <div class="merge-slot-queue">
+          <span class="merge-slot-queue-label">waiting ({{ f.val.waiter_count }})</span>
+          <ol class="merge-slot-waiters">
+            {% for w in f.val.waiters %}<li class="merge-slot-waiter">{{ w }}</li>{% endfor %}
+          </ol>
+        </div>
+        {% else %}
+        <p class="merge-slot-queue-empty muted">No waiters queued.</p>
+        {% endif %}
+      </div>
     {% else %}
       {{ f.val }}
     {% endif %}

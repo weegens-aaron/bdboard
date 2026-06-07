@@ -584,6 +584,77 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/api/gates", response_class=HTMLResponse)
+async def api_gates(request: Request) -> HTMLResponse:
+    """Render the gates / coordination panel (HTMX swap target).
+
+    Surfaces the two coordination primitives bd exposes but bdboard previously
+    ignored (audit FB-9):
+      - Open async-coordination GATES via ``bd gate list --json``, each
+        interpreted into a labelled await condition (a PR/run link, a timer
+        deadline, or a manual-only flag) by :func:`derive.gate_condition` — so
+        the panel reads as 'Open Gates (N)' with conditions, not raw scalars.
+      - MERGE-SLOT mutexes (``gt:slot`` beads): held/available + the
+        priority-ordered waiter queue, via :func:`derive.merge_slot_view`.
+
+    Degrades gracefully (AC3): a ``bd gate list`` failure renders an inline
+    message for the gates section rather than 500-ing the whole partial, and
+    the merge-slot section is best-effort (a failed slot read is simply
+    omitted) — symmetric with /api/formulas and /api/memory.
+    """
+    repo_url = _repo_base_url()
+    gates: list[dict[str, Any]] = []
+    gates_error: str | None = None
+    try:
+        raw_gates = await bd.list_gates()
+    except RuntimeError as err:
+        log.warning("bd gate list failed: %s", err)
+        gates_error = "Couldn\u2019t load gates right now. Please try again in a moment."
+    else:
+        for g in raw_gates:
+            gates.append(
+                {
+                    "id": g.get("id"),
+                    "title": g.get("title"),
+                    "priority": g.get("priority"),
+                    "condition": derive.gate_condition(g, repo_url=repo_url),
+                }
+            )
+
+    # Merge-slots: detect gt:slot beads in the active snapshot (the label IS
+    # carried by `bd list`), then read each via show_long to recover the
+    # metadata.holder/waiters bd omits from the list payload. Best-effort: a
+    # failed slot read falls back to the list bead, never blocking the panel.
+    slots: list[dict[str, Any]] = []
+    try:
+        active = await store.snapshot_active()
+    except Exception as err:  # noqa: BLE001 - degrade, never 500 the panel
+        log.warning("snapshot_active failed for gates panel: %s", err)
+        active = []
+    for bead in active:
+        if not derive.is_merge_slot(bead):
+            continue
+        bead_id = bead.get("id")
+        full = None
+        if bead_id:
+            full, _err = await bd.show_long(bead_id)
+        source = full or bead
+        view = derive.merge_slot_view(source)
+        if view is not None:
+            view["title"] = source.get("title")
+            slots.append(view)
+
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/gates_panel.html",
+        {
+            "gates": gates,
+            "gates_error": gates_error,
+            "slots": slots,
+        },
+    )
+
+
 @app.get("/api/history", response_class=HTMLResponse)
 async def api_history(
     request: Request,
@@ -1316,6 +1387,15 @@ async def api_bead(request: Request, bead_id: str) -> HTMLResponse:
     cond = derive.gate_condition(bead, repo_url=_repo_base_url())
     if cond is not None:
         bead = {**bead, "gate_condition": cond}
+    # Merge-slot beads (label gt:slot): interpret status + metadata.holder/
+    # waiters into a held/available + waiter-queue mutex affordance so the
+    # modal frames the slot as the coordination primitive it is — not as a raw
+    # `metadata` JSON blob (audit FB-9 / field_row.html json dump). The raw
+    # metadata row is still rendered too (anatomy invariant: drop no field);
+    # this just adds an interpreted row above it.
+    slot = derive.merge_slot_view(bead)
+    if slot is not None:
+        bead = {**bead, "merge_slot": slot}
     return TEMPLATES.TemplateResponse(
         request,
         "partials/bead_modal.html",
@@ -1429,6 +1509,10 @@ _FIELD_ORDER = [
     # beads. Sits next to issue_type so a gate's WAIT condition reads right
     # after its type. See derive.gate_condition / api_bead.
     "gate_condition",
+    # merge-slot mutex state (synthetic, interpreted): only present on gt:slot
+    # beads. Sits next to issue_type so a slot's held/available state reads
+    # right after its type. See derive.merge_slot_view / api_bead.
+    "merge_slot",
     "status",
     "priority",
     "assignee",
@@ -1626,6 +1710,12 @@ def _classify_field(key: str, val: Any) -> str:
     # value isn't swallowed by the generic json branch below.
     if key == "gate_condition" and isinstance(val, dict):
         return "gate"
+    # The synthetic merge-slot row carries an interpreted mutex shape
+    # (held/available + holder + waiter queue) and renders via a dedicated
+    # `merge_slot` kind, never as raw json. Checked before the generic json
+    # branch so a dict value isn't swallowed by it.
+    if key == "merge_slot" and isinstance(val, dict):
+        return "merge_slot"
     if val is None or val == [] or val == {} or val == "":
         return "empty"
     if key in _KIND_CHIPS and isinstance(val, list):

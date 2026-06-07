@@ -43,6 +43,7 @@ host (e.g. ``gecgithub01.walmart.com``) builds correct links exactly like
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -52,10 +53,119 @@ from bdboard.derive.timeutil import _parse_dt
 # time.Duration, which serialises to an integer nanosecond count.
 _NS_PER_SEC = 1_000_000_000
 
+# The magic label bd stamps on a merge-slot bead. There is exactly one slot
+# per rig (`<prefix>-merge-slot`), and it is the only bead carrying this label.
+_MERGE_SLOT_LABEL = "gt:slot"
+
 
 def is_gate(bead: dict[str, Any]) -> bool:
     """True for an async-coordination gate bead (``issue_type == "gate"``)."""
     return (bead.get("issue_type") or "").lower() == "gate"
+
+
+def is_merge_slot(bead: dict[str, Any]) -> bool:
+    """True for a merge-slot mutex bead (carries the ``gt:slot`` label).
+
+    A merge-slot is bd's exclusive-access primitive: a single bead per rig
+    (``<prefix>-merge-slot``) that serialises conflict resolution. It is NOT a
+    gate (``issue_type`` is whatever bd creates it as, not ``"gate"``) — the
+    only reliable discriminator is the ``gt:slot`` label, so we match on that
+    rather than on type or id-suffix (id prefix varies per rig).
+    """
+    labels = bead.get("labels") or []
+    if not isinstance(labels, list):
+        return False
+    return _MERGE_SLOT_LABEL in labels
+
+
+def _coerce_metadata(raw: Any) -> dict[str, Any]:
+    """Return a metadata mapping from bd's ``metadata`` field, or ``{}``.
+
+    bd usually emits ``metadata`` as a JSON object, but a defensive parse keeps
+    the affordance from crashing on a stringified payload or an unexpected
+    shape — graceful degradation is the whole point of this module.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+        except (ValueError, TypeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _coerce_waiters(raw: Any) -> list[str]:
+    """Normalise ``metadata.waiters`` into an ordered list of waiter labels.
+
+    bd stores the waiter queue as a priority-ordered list. Each entry may be a
+    bare string (a worker address) or a small dict (e.g. ``{"actor": ...}`` /
+    ``{"holder": ...}`` / ``{"id": ...}``); we render a human label for either
+    so the queue is never a raw JSON blob. Order is preserved verbatim (bd's
+    queue is already priority-ordered — we don't re-sort).
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for entry in raw:
+        if isinstance(entry, str):
+            label = entry.strip()
+        elif isinstance(entry, dict):
+            label = str(
+                entry.get("actor")
+                or entry.get("holder")
+                or entry.get("name")
+                or entry.get("id")
+                or entry
+            ).strip()
+        else:
+            label = str(entry).strip()
+        if label:
+            out.append(label)
+    return out
+
+
+def merge_slot_view(bead: dict[str, Any]) -> dict[str, Any] | None:
+    """Interpret a merge-slot bead into a held/available + waiter-queue view.
+
+    Returns ``None`` for a non-slot bead. For a slot, returns a dict the panel
+    and the modal render instead of the raw ``metadata`` JSON blob::
+
+        {
+          "id":       "x-merge-slot",
+          "held":     True,                 # status == in_progress
+          "holder":   "agent-7" | None,     # metadata.holder when held
+          "waiters":  ["agent-3", "agent-9"],  # priority-ordered queue
+          "waiter_count": 2,
+          "state":    "held" | "available",
+        }
+
+    Held vs available follows bd's convention: ``status == "in_progress"`` is
+    HELD, anything else (notably ``open``) is AVAILABLE. The holder is only
+    meaningful while held; an available slot reports ``holder = None`` even if
+    a stale ``metadata.holder`` lingers. Pure over the bead dict (no I/O).
+    """
+    if not is_merge_slot(bead):
+        return None
+
+    status = (bead.get("status") or "").lower()
+    held = status == "in_progress"
+    meta = _coerce_metadata(bead.get("metadata"))
+    holder = meta.get("holder")
+    holder_str = str(holder).strip() if holder not in (None, "") else None
+    waiters = _coerce_waiters(meta.get("waiters"))
+
+    return {
+        "id": bead.get("id"),
+        "held": held,
+        # An available slot has no current holder, regardless of any stale
+        # holder value left in metadata.
+        "holder": holder_str if held else None,
+        "waiters": waiters,
+        "waiter_count": len(waiters),
+        "state": "held" if held else "available",
+    }
 
 
 def _github_link(repo_url: str | None, await_type: str, await_id: str) -> str | None:

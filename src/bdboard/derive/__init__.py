@@ -18,7 +18,12 @@ over the snapshot list with no I/O.
 
 from __future__ import annotations
 
-from bdboard.derive.gates import gate_condition, is_gate
+from bdboard.derive.gates import (
+    gate_condition,
+    is_gate,
+    is_merge_slot,
+    merge_slot_view,
+)
 from bdboard.derive.history import (
     DEFAULT_HISTORY_RANGE,
     HISTORY_PAGE_SIZE,
@@ -95,6 +100,8 @@ __all__ = [
     # gate derivations
     "is_gate",
     "gate_condition",
+    "is_merge_slot",
+    "merge_slot_view",
     # lane derivations
     "epic_lane",
     "lanes",
