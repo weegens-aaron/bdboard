@@ -30,7 +30,7 @@
     {% if meta == "history" %}
     {% if b.close_reason %}<span class="history-close-reason">{{ b.close_reason }}</span>{% endif %}
     {% else %}
-    {% if b.issue_type %}<span class="bead-type">{{ b.issue_type }}</span>{% endif %}
+    {% if b.issue_type %}{% with type_value = b.issue_type %}{% include "partials/bead_type_badge.html" %}{% endwith %}{% endif %}
     {% if b.dependency_count %}<span class="bead-dep">&#9939; {{ b.dependency_count }}</span>{% endif %}
     {% endif %}
   </div>

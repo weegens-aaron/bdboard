@@ -5,6 +5,7 @@
       <div class="modal-head-row">
         <span class="bead-id">{{ bead.id }}</span>
         {% include "partials/bead_priority_badge.html" %}
+        {% if bead.issue_type %}{% with type_value = bead.issue_type %}{% include "partials/bead_type_badge.html" %}{% endwith %}{% endif %}
         {% if bead.status %}<span class="bead-status status-{{ bead.status }}">{{ bead.status }}</span>{% endif %}
         <button class="modal-close" onclick="document.getElementById('bead-modal').innerHTML=''">✕</button>
       </div>

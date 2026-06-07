@@ -88,6 +88,52 @@ def _dep_label(dep_type: str | None, direction: str) -> str:
     return inbound_label if is_inbound else outbound_label
 
 
+# Per-type glyphs mirroring the beads field-guide "anatomy" type signal
+# (chapter 1). bdboard previously rendered every type as identical uppercase
+# grey text (memory bdboard-anatomy-type-flat / audit FB-2), so a milestone,
+# gate, or coordination bead was indistinguishable from a chore at a glance.
+# The glyph is the at-a-glance type key; per-type COLOR (in styles.css
+# `.bead-type-glyph.type-<slug>`) only reinforces it, so meaning never depends
+# on colour alone (WCAG 1.4.1). Stored as Unicode escapes (not literal glyphs)
+# to keep the source ASCII-clean.
+#
+# Covers the 9 built-in types + the `event` pseudo-type (field guide), plus the
+# two internal container types `gate` and `molecule` that the audit flagged as
+# legibility black holes (FB-3 / FB-5 downstream). An unknown/custom type maps
+# to "" -> the badge renders the plain grey label with no glyph (no crash).
+_TYPE_GLYPHS: dict[str, str] = {
+    "task": "\u25cf",  # BLACK CIRCLE
+    "bug": "\u25b2",  # BLACK UP-POINTING TRIANGLE
+    "feature": "\u25a0",  # BLACK SQUARE
+    "chore": "\u25cb",  # WHITE CIRCLE
+    "epic": "\u25c6",  # BLACK DIAMOND
+    "decision": "\u25c7",  # WHITE DIAMOND
+    "spike": "\u2197",  # NORTH EAST ARROW
+    "story": "\u25b8",  # BLACK RIGHT-POINTING SMALL TRIANGLE
+    "milestone": "\u25ce",  # BULLSEYE
+    "event": "\u25c9",  # FISHEYE
+    "gate": "\u25a3",  # WHITE SQUARE CONTAINING BLACK SMALL SQUARE
+    "molecule": "\u25c8",  # WHITE DIAMOND CONTAINING BLACK SMALL DIAMOND
+}
+
+
+def _type_glyph(issue_type: str | None) -> str:
+    """Return the glyph for a bead type, or "" for unknown/custom types.
+
+    An empty string makes the badge fall back to the plain grey label with no
+    glyph, so a custom or future bd type never crashes the render.
+
+    Examples:
+        _type_glyph('task') -> the BLACK CIRCLE glyph
+        _type_glyph('Bug') -> the BLACK UP-POINTING TRIANGLE glyph (case-insensitive)
+        _type_glyph('custom-thing') -> ''
+        _type_glyph(None) -> ''
+    """
+    if not issue_type:
+        return ""
+    return _TYPE_GLYPHS.get(issue_type.strip().lower(), "")
+
+
 TEMPLATES = Jinja2Templates(directory=str(_PKG_DIR / "templates"))
 TEMPLATES.env.filters["humanize_ts"] = derive.humanize_ts
 TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
@@ -96,6 +142,7 @@ TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
 # and the renderer has html=False, so script-injection is not possible.
 TEMPLATES.env.filters["md"] = md.render
 TEMPLATES.env.filters["dep_label"] = _dep_label
+TEMPLATES.env.filters["type_glyph"] = _type_glyph
 # Cache-bust query param for /static assets. Every server restart gets a
 # fresh value — means no more 'why is my CSS old?' moments during dev,
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).
