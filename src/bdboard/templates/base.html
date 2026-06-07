@@ -233,6 +233,18 @@
       <div class="footer-cell footer-center">
         <span class="live-dot" id="live-dot" aria-hidden="true"></span>
         <span id="live-status">connecting…</span>
+        {# Dolt local-vs-remote sync badge (bdboard-lwiv). DISTINCT from the
+           SSE "live" pill above (which only tracks the event socket): this
+           shells bd/dolt to surface un-pushed / behind / no-remote drift the
+           board would otherwise hide. Polled (a stale board gets no SSE
+           events, so it can't rely on `refresh from:body` alone) and also
+           re-checked on every SSE refresh so it clears promptly after a
+           push/pull. The endpoint never 500s — it degrades to an empty
+           badge. #}
+        <span class="sync-region"
+              hx-get="/api/dolt-sync"
+              hx-trigger="load, every 30s, refresh from:body"
+              hx-swap="innerHTML"></span>
       </div>
       <div class="footer-cell footer-right">
         <a href="/docs" class="footer-link">API</a>
@@ -551,7 +563,7 @@
           if (dot) dot.className = 'live-dot ' + cls;
         };
         const es = new EventSource('/api/events');
-        es.addEventListener('open', () => setStatus('live · push', 'live-on'));
+        es.addEventListener('open', () => setStatus('live · updates', 'live-on'));
         es.addEventListener('error', () => setStatus('reconnecting…', 'live-off'));
         es.addEventListener('beads_changed', () => {
           // Fire a 'refresh' event that bubbles; all hx-trigger="refresh from:body"

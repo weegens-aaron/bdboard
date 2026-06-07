@@ -2582,6 +2582,54 @@ pre { margin: 0; }
 }
 .footer-link:hover { color: var(--brand-blue); text-decoration: underline; }
 
+/* ============================================================
+   Dolt local-vs-remote sync badge (bdboard-lwiv). Sits beside the SSE
+   "live" pill in the footer but means something different: it surfaces
+   un-pushed (ahead) / behind / no-remote drift the board would otherwise
+   hide. Empty region collapses (synced / unknown paths render nothing).
+   All colours flow through theme tokens so dark mode is free. Contrast of
+   the fg tokens on their soft fills clears WCAG 2.2 AA for the 12px text.
+   ============================================================ */
+.sync-region:empty { display: none; }
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid transparent;
+  cursor: default;
+}
+.sync-badge-icon { font-weight: 700; }
+/* Ahead = local writes not yet pushed (amber: action needed, not an error). */
+.sync-badge-ahead {
+  color: var(--warning-text);
+  background: var(--spark-10);
+  border-color: var(--spark-100);
+}
+/* Behind = stale vs origin; same severity, distinguished by arrow + label. */
+.sync-badge-behind {
+  color: var(--info);
+  background: var(--brand-blue-l);
+  border-color: #9ab8ff;
+}
+/* Diverged = both directions; danger tone, this needs a pull-then-push. */
+.sync-badge-diverged {
+  color: var(--danger-fg);
+  background: var(--danger-bg);
+  border-color: var(--danger-fg);
+}
+/* No remote = neutral/muted: informational, nothing is wrong yet. */
+.sync-badge-noremote {
+  color: var(--ink-2);
+  background: var(--code-chip-bg);
+  border-color: var(--muted-2);
+}
+
 /* Live indicator — small pulsing dot proves polling is alive. */
 .live-dot {
   width: 7px;

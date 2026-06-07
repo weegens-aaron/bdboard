@@ -1,0 +1,43 @@
+{# Dolt local-vs-remote sync badge (bdboard-lwiv).
+
+   bdboard reads the LOCAL dolt store and never consults the remote, so
+   un-pushed local writes (ahead of origin) and a teammate's pushed-but-
+   un-pulled writes (behind origin) are invisible: the board reads "live"
+   while it's silently stale-vs-origin. This badge surfaces that drift.
+
+   This is DISTINCT from the SSE "live" pill, which only reflects the
+   browser↔server event socket (relabeled "live · updates" so it no longer
+   reads as a `bd dolt push` indicator).
+
+   Renders nothing on the quiet paths (synced / unknown / no remote ref to
+   compare) so a healthy, pushed board carries no chrome. `role=status` +
+   aria-live=polite announces drift to assistive tech without stealing focus.
+   The data comes from BdClient.dolt_sync_status(), which NEVER raises — so a
+   missing remote, an absent `dolt` binary, or a never-fetched ref all fail
+   soft to a quiet/empty badge rather than a 500. #}
+{% set state = sync.state %}
+{% if state == "no-remote" %}
+<span class="sync-badge sync-badge-noremote" role="status" aria-live="polite"
+      title="No Dolt remote configured — bead writes stay local until you add one (bd dolt remote add).">
+  <span class="sync-badge-icon" aria-hidden="true"></span>
+  <span class="sync-badge-text">no remote</span>
+</span>
+{% elif state == "ahead" %}
+<span class="sync-badge sync-badge-ahead" role="status" aria-live="polite"
+      title="{{ sync.ahead }} local commit(s) not yet on the remote. Run `bd dolt push` to sync.">
+  <span class="sync-badge-icon" aria-hidden="true">↑</span>
+  <span class="sync-badge-text">{{ sync.ahead }} unpushed</span>
+</span>
+{% elif state == "behind" %}
+<span class="sync-badge sync-badge-behind" role="status" aria-live="polite"
+      title="{{ sync.behind }} remote commit(s) not yet local — the board is stale vs origin. Run `bd dolt pull`.">
+  <span class="sync-badge-icon" aria-hidden="true">↓</span>
+  <span class="sync-badge-text">{{ sync.behind }} behind</span>
+</span>
+{% elif state == "diverged" %}
+<span class="sync-badge sync-badge-diverged" role="status" aria-live="polite"
+      title="Diverged from origin: {{ sync.ahead }} local-only and {{ sync.behind }} remote-only commit(s). Pull, then push.">
+  <span class="sync-badge-icon" aria-hidden="true">↕</span>
+  <span class="sync-badge-text">↑{{ sync.ahead }} ↓{{ sync.behind }} diverged</span>
+</span>
+{% endif %}

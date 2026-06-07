@@ -260,6 +260,7 @@ TEMPLATES.env.globals["csrf_token"] = _CSRF_TOKEN
 # and we wrap getcwd() to fall back to $PWD when sandboxed.
 _WORKSPACE = Path(os.environ.get("BDBOARD_WORKSPACE") or _safe_cwd())
 _BD_BIN = os.environ.get("BDBOARD_BD_BIN", "bd")
+_DOLT_BIN = os.environ.get("BDBOARD_DOLT_BIN", "dolt")
 
 # Optional actor override for the audit trail on manual field edits. When unset
 # bd falls back to $BEADS_ACTOR / git user.name / $USER, so this is just a way
@@ -267,7 +268,7 @@ _BD_BIN = os.environ.get("BDBOARD_BD_BIN", "bd")
 # also be writing to the same workspace (auditability).
 _ACTOR = os.environ.get("BDBOARD_ACTOR") or None
 
-bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE)
+bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE, dolt_bin=_DOLT_BIN)
 store = Store(bd)
 
 
@@ -1555,6 +1556,27 @@ async def api_staleness(request: Request) -> HTMLResponse:
             "staleness": state,
             "last_success_label": last_success_label,
         },
+    )
+
+
+@app.get("/api/dolt-sync", response_class=HTMLResponse)
+async def api_dolt_sync(request: Request) -> HTMLResponse:
+    """Render the Dolt local-vs-remote sync badge (HTMX poll target).
+
+    bdboard reads the LOCAL dolt store and never consults the remote, so
+    un-pushed local writes (ahead) and a teammate's pushed-but-un-pulled
+    writes (behind) are otherwise invisible — the board reads fresh while it's
+    silently stale-vs-origin. This polls :meth:`BdClient.dolt_sync_status`,
+    which NEVER raises (it degrades to ``unknown``), so the badge can't 500
+    the masthead even when no remote is configured or ``dolt`` is absent.
+    Rendered empty on a clean/unknown/no-remote-not-worth-flagging board so
+    the region stays quiet on the happy path.
+    """
+    sync = await bd.dolt_sync_status()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/dolt_sync_badge.html",
+        {"sync": sync},
     )
 
 

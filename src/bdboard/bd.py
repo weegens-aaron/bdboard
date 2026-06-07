@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import shutil
 import time
 from dataclasses import dataclass
@@ -52,8 +53,15 @@ MERGE_SLOT_TIMEOUT_S = 8.0
 MOL_PROGRESS_TIMEOUT_S = 8.0  # cheap children-rollup count (~0.7s observed)
 SWARM_TIMEOUT_S = 15.0  # swarm status/validate walk the DAG; on-demand only
 POUR_TIMEOUT_S = 30.0  # pour cooks inline + materializes a whole formula tree
+DOLT_SYNC_TIMEOUT_S = 8.0  # masthead sync badge: cheap local-vs-remote ref read
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
+
+# A Dolt branch/remote name is only safe to interpolate into a dolt_log() ref
+# if it matches this charset. Names come from bd/dolt config (not user input),
+# but we validate before f-stringing them into SQL anyway — defense in depth
+# against a hostile remote name becoming SQL injection.
+_DOLT_REF_SAFE = re.compile(r"^[A-Za-z0-9._/-]+$")
 
 # bd memories --json carries a metadata sentinel alongside the key->body
 # entries; it is not a memory and must be stripped before rendering. An
@@ -108,15 +116,31 @@ class BdClient:
     Constructor args:
         bd_bin: path to the bd binary (default: 'bd' from PATH)
         workspace: directory containing .beads/ (default: cwd)
+        dolt_bin: path to the standalone dolt binary (default: 'dolt' from
+            PATH). Used ONLY by :meth:`dolt_sync_status` to read local-vs-remote
+            commit counts — bd's own `dolt status` reports engine state, not
+            ahead/behind — and degrades gracefully (state='unknown') when the
+            binary is absent.
     """
 
-    def __init__(self, bd_bin: str = "bd", workspace: Path | None = None) -> None:
+    def __init__(
+        self,
+        bd_bin: str = "bd",
+        workspace: Path | None = None,
+        dolt_bin: str = "dolt",
+    ) -> None:
         self.bd_bin = bd_bin
+        self.dolt_bin = dolt_bin
         self.workspace = (workspace or Path.cwd()).resolve()
         self._history_cache: dict[str, CacheEntry] = {}
         self._show_cache: dict[str, CacheEntry] = {}
         self._memories_cache: dict[str, CacheEntry] = {}
         self._status_cache: dict[str, CacheEntry] = {}
+        # Resolved lazily once: the embedded dolt db directory whose ahead/
+        # behind the sync badge reports. None until first resolved; cached for
+        # the process lifetime (the active db doesn't change under a running
+        # board).
+        self._dolt_db_dir: Path | None = None
         # bd's embedded dolt server can lock-wait under concurrent CLI calls;
         # serialize requests so one slow command cannot deadlock peers.
         self._subprocess_gate = asyncio.Semaphore(1)
@@ -1113,3 +1137,211 @@ class BdClient:
                 raise RuntimeError(
                     err_text or f"bd {args[0]} failed (exit {proc.returncode}). Please try again."
                 )
+
+    # ----- dolt sync state (masthead badge) -----
+
+    async def dolt_sync_status(self) -> dict[str, Any]:
+        """Best-effort local-vs-remote Dolt sync state for the masthead badge.
+
+        bdboard reads the LOCAL dolt store and otherwise never looks at the
+        remote, so a teammate's ``bd dolt push`` (or your own un-pushed writes)
+        leaves the board silently stale-vs-origin. This surfaces that drift.
+
+        Returns a dict the route renders directly:
+            ``state``  one of: ``no-remote`` | ``synced`` | ``ahead`` |
+                       ``behind`` | ``diverged`` | ``unknown``
+            ``ahead``  local commits not yet on the remote (un-pushed)
+            ``behind`` remote commits not yet local (un-pulled)
+            ``remote`` the remote name, or None
+            ``branch`` the active branch, or None
+
+        NEVER raises (CancelledError aside) — a 500 on the masthead would be
+        worse than a quiet ``unknown``. Every shell-out degrades to ``unknown``
+        on failure, so a missing remote, an absent ``dolt`` binary, or a
+        never-fetched remote ref all fail soft.
+
+        Why two binaries: ``bd dolt status`` reports engine state (embedded vs
+        server), not ahead/behind — bd exposes no porcelain for commit drift.
+        So we use bd for the offline checks (remote configured? engine ok?) and
+        read the actual ahead/behind counts straight from the embedded dolt db
+        via the standalone ``dolt`` binary. If ``dolt`` isn't on PATH we still
+        report ``no-remote`` vs (remote-present-but-unknown) honestly.
+        """
+        result: dict[str, Any] = {
+            "state": "unknown",
+            "ahead": 0,
+            "behind": 0,
+            "remote": None,
+            "branch": None,
+        }
+
+        # 1) Is a Dolt remote configured? bd-native, offline. No remote => the
+        #    board can't be ahead/behind, so short-circuit to 'no-remote'.
+        remotes = await self._bd_dolt_remotes()
+        if remotes is None:
+            return result  # couldn't even list remotes -> unknown
+        if not remotes:
+            result["state"] = "no-remote"
+            return result
+        result["remote"] = remotes[0]
+
+        # 2) Liveness probe: `bd dolt status`. Its payload doesn't carry
+        #    ahead/behind, but a failed/missing engine should read 'unknown'
+        #    rather than a misleading 'synced'. Soft-fails (never 500).
+        if not await self._bd_dolt_status_ok():
+            return result
+
+        # 3) Ahead/behind: compare local branch HEAD to its remote-tracking
+        #    ref via the embedded dolt db. Degrades to 'unknown' when dolt is
+        #    absent or the remote ref was never fetched.
+        counts = await self._dolt_ahead_behind(remotes[0])
+        if counts is None:
+            return result
+        branch, ahead, behind = counts
+        result["branch"] = branch
+        result["ahead"] = ahead
+        result["behind"] = behind
+        if ahead and behind:
+            result["state"] = "diverged"
+        elif ahead:
+            result["state"] = "ahead"
+        elif behind:
+            result["state"] = "behind"
+        else:
+            result["state"] = "synced"
+        return result
+
+    async def _bd_dolt_remotes(self) -> list[str] | None:
+        """Configured Dolt remote names (possibly empty), or None on error.
+
+        ``bd dolt remote list --json`` emits a JSON array of
+        ``{name, sql_url, ...}`` — or null/[] when none are configured. We
+        normalise any non-list payload to ``[]`` (no remotes).
+        """
+        payload = await self._run_capture_json([self.bd_bin, "dolt", "remote", "list", "--json"])
+        if payload is None:
+            return None
+        if not isinstance(payload, list):
+            return []
+        return [str(r["name"]) for r in payload if isinstance(r, dict) and r.get("name")]
+
+    async def _bd_dolt_status_ok(self) -> bool:
+        """True iff ``bd dolt status --json`` returns a parseable object."""
+        payload = await self._run_capture_json([self.bd_bin, "dolt", "status", "--json"])
+        return isinstance(payload, dict)
+
+    async def _dolt_ahead_behind(self, remote: str) -> tuple[str, int, int] | None:
+        """(branch, ahead, behind) from the embedded dolt db, or None on any
+        failure (no dolt binary, db not found, remote ref never fetched)."""
+        if not shutil.which(self.dolt_bin):
+            return None
+        if not _DOLT_REF_SAFE.match(remote):
+            return None
+        db_dir = await self._resolve_dolt_db_dir()
+        if db_dir is None:
+            return None
+        branch_rows = await self._run_dolt_sql(db_dir, "SELECT active_branch() AS branch")
+        if not branch_rows:
+            return None
+        branch = branch_rows[0].get("branch")
+        if not isinstance(branch, str) or not _DOLT_REF_SAFE.match(branch):
+            return None
+        tracking = f"remotes/{remote}/{branch}"
+        # COUNT commits each side has that the other lacks. dolt_log('A..B')
+        # is B's commits not reachable from A. If the remote-tracking ref was
+        # never fetched it doesn't exist and dolt_log errors -> None -> unknown.
+        query = (
+            f"SELECT (SELECT COUNT(*) FROM dolt_log('{tracking}..{branch}')) AS ahead, "
+            f"(SELECT COUNT(*) FROM dolt_log('{branch}..{tracking}')) AS behind"
+        )
+        rows = await self._run_dolt_sql(db_dir, query)
+        if not rows:
+            return None
+        try:
+            return branch, int(rows[0]["ahead"]), int(rows[0]["behind"])
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    async def _resolve_dolt_db_dir(self) -> Path | None:
+        """Locate (and cache) the active embedded dolt db directory.
+
+        ``.beads/embeddeddolt/`` can hold several dbs (e.g. a stray ``beads``
+        alongside the project db). We prefer the name from ``bd dolt show
+        --json`` and fall back to the first subdir that actually has a
+        ``.dolt/`` store. Cached for the process lifetime.
+        """
+        if self._dolt_db_dir is not None:
+            return self._dolt_db_dir
+        embedded = self.beads_dir / "embeddeddolt"
+        if not embedded.is_dir():
+            return None
+        payload = await self._run_capture_json([self.bd_bin, "dolt", "show", "--json"])
+        candidate: Path | None = None
+        if isinstance(payload, dict) and isinstance(payload.get("database"), str):
+            named = embedded / payload["database"]
+            if (named / ".dolt").is_dir():
+                candidate = named
+        if candidate is None:
+            for d in sorted(embedded.iterdir()):
+                if (d / ".dolt").is_dir():
+                    candidate = d
+                    break
+        if candidate is None:
+            return None
+        self._dolt_db_dir = candidate
+        return candidate
+
+    async def _run_dolt_sql(self, db_dir: Path, query: str) -> list[dict[str, Any]] | None:
+        """Run a read-only ``dolt sql -r json -q <query>`` in ``db_dir`` and
+        return its rows, or None on any failure. dolt's JSON result format is
+        ``{"rows": [ {..}, .. ]}``.
+        """
+        payload = await self._run_capture_json(
+            [self.dolt_bin, "sql", "-r", "json", "-q", query], cwd=db_dir
+        )
+        if isinstance(payload, dict) and isinstance(payload.get("rows"), list):
+            return payload["rows"]
+        return None
+
+    async def _run_capture_json(self, argv: list[str], cwd: Path | None = None) -> Any:
+        """Run ``argv``, capture stdout, parse JSON. Returns the parsed object,
+        or None on ANY failure (binary missing, non-zero exit, timeout, bad
+        JSON). NEVER raises except for CancelledError (which must propagate for
+        clean task teardown) — the sync-badge path wants a quiet degrade to
+        'unknown', not a 500.
+
+        Serialized on ``_subprocess_gate`` so it can't race bd's single-writer
+        embedded dolt, and drains pipes on every exit path to avoid fd leaks
+        (same posture as :meth:`_run_json`).
+        """
+        async with self._subprocess_gate:
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *argv,
+                    cwd=str(cwd or self.workspace),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+            except OSError:
+                # Binary not found / fd exhaustion — degrade quietly.
+                return None
+            timed_out = False
+            try:
+                stdout, _stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=DOLT_SYNC_TIMEOUT_S
+                )
+            except TimeoutError:
+                timed_out = True
+                _safe_kill(proc)
+                stdout, _stderr = await proc.communicate()  # drain + close
+            except BaseException:
+                # CancelledError etc. — cleanup then propagate.
+                _safe_kill(proc)
+                await proc.communicate()  # drain + close
+                raise
+            if timed_out or proc.returncode != 0:
+                return None
+            try:
+                return json.loads(stdout)
+            except json.JSONDecodeError:
+                return None
