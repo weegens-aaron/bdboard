@@ -137,6 +137,91 @@ def _type_glyph(issue_type: str | None) -> str:
     return _TYPE_GLYPHS.get(issue_type.strip().lower(), "")
 
 
+# Magic labels carry machine meaning beyond a freeform tag: bd / formula
+# tooling stamps prefixed labels as structured markers. Rendering them as
+# undifferentiated grey chips (audit FB-14) buries that meaning. We decode the
+# known markers into a category + value so the modal can style and label them
+# distinctly from ordinary tags. Unknown labels fall back to category "tag".
+#
+# prefix:value markers — map prefix -> (category slug, human kind label):
+#   dim:<axis>       a scoring / classification dimension on the bead
+#   gt:<slot>        a gate / merge-slot coordination marker
+#   provides:<cap>   a capability this bead provides (formula wiring)
+#   export:<artifact>an artifact this bead exports (formula wiring)
+_MAGIC_LABEL_PREFIXES: dict[str, tuple[str, str]] = {
+    "dim": ("dim", "dimension"),
+    "gt": ("gate", "gate"),
+    "provides": ("provides", "provides"),
+    "export": ("export", "export"),
+}
+
+# Bare (colon-less) magic labels: a whole-string flag, not a prefix:value pair.
+_MAGIC_LABEL_FLAGS: dict[str, tuple[str, str]] = {
+    "template": ("template", "template"),
+}
+
+
+def _decode_label(label: Any) -> dict[str, Any]:
+    """Decode a bd label into a structured chip descriptor.
+
+    Magic labels (prefix:value markers like dim:foo, gt:slot, provides:x,
+    export:y, plus bare flags like ``template``) carry machine meaning that a
+    plain grey chip hides (audit FB-14). This returns a dict the chip template
+    dispatches on::
+
+        {raw, category, prefix, value, kind_label}
+
+    - category:   slug for styling (``.chip-<category>``); "tag" for freeform.
+    - prefix:     the magic prefix ("dim") or "" for bare flags / plain tags.
+    - value:      the part after the colon (or the whole flag) — shown big.
+    - kind_label: a human label for the marker kind (small badge text).
+
+    A plain freeform tag decodes to category "tag" with the raw string as the
+    value and no prefix, so ordinary labels keep rendering as before.
+
+    Examples:
+        _decode_label('dim:wcag')   -> category 'dim',      value 'wcag'
+        _decode_label('gt:merge')   -> category 'gate',     value 'merge'
+        _decode_label('provides:x') -> category 'provides', value 'x'
+        _decode_label('template')   -> category 'template', value 'template'
+        _decode_label('anatomy')    -> category 'tag',      value 'anatomy'
+    """
+    raw = "" if label is None else str(label)
+    stripped = raw.strip()
+    # Bare flag labels (no colon): whole-string markers.
+    flag = _MAGIC_LABEL_FLAGS.get(stripped.lower())
+    if flag is not None:
+        category, kind_label = flag
+        return {
+            "raw": raw,
+            "category": category,
+            "prefix": "",
+            "value": stripped,
+            "kind_label": kind_label,
+        }
+    # prefix:value magic labels.
+    if ":" in stripped:
+        prefix, _, value = stripped.partition(":")
+        magic = _MAGIC_LABEL_PREFIXES.get(prefix.strip().lower())
+        if magic is not None:
+            category, kind_label = magic
+            return {
+                "raw": raw,
+                "category": category,
+                "prefix": prefix.strip(),
+                "value": value.strip(),
+                "kind_label": kind_label,
+            }
+    # Freeform tag: render as the classic label chip.
+    return {
+        "raw": raw,
+        "category": "tag",
+        "prefix": "",
+        "value": stripped,
+        "kind_label": "",
+    }
+
+
 TEMPLATES = Jinja2Templates(directory=str(_PKG_DIR / "templates"))
 TEMPLATES.env.filters["humanize_ts"] = derive.humanize_ts
 TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
@@ -146,6 +231,7 @@ TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
 TEMPLATES.env.filters["md"] = md.render
 TEMPLATES.env.filters["dep_label"] = _dep_label
 TEMPLATES.env.filters["type_glyph"] = _type_glyph
+TEMPLATES.env.filters["decode_label"] = _decode_label
 # Cache-bust query param for /static assets. Every server restart gets a
 # fresh value — means no more 'why is my CSS old?' moments during dev,
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).
@@ -1617,6 +1703,12 @@ _FIELD_ORDER = [
     # ─ content: what is this work? ─
     "description",
     "acceptance_criteria",
+    # design: markdown-bearing (registry editor="md"), emitted by bd show
+    # --long, and especially load-bearing on decision/ADR beads. It belongs
+    # in the content group next to acceptance_criteria; without an explicit
+    # slot it sorted to the alphabetical tail AND rendered unformatted
+    # (absent from _KIND_MARKDOWN). Audit FB-14.
+    "design",
     "deps",
     "dependencies",
     "dependents",
@@ -1666,7 +1758,16 @@ _KIND_COMMENTS = {"comments"}
 # Fields whose string value is markdown prose. Rendered through md.render
 # and inserted via |safe in the template. close_reason and acceptance_criteria
 # are short prose that still benefit from inline link / emphasis support.
-_KIND_MARKDOWN = {"description", "notes", "close_reason", "acceptance_criteria"}
+_KIND_MARKDOWN = {
+    "description",
+    "notes",
+    "close_reason",
+    "acceptance_criteria",
+    # design is markdown prose (registry editor="md") — ADR/design rationale
+    # carries headings, lists, links. Render it through md.render like the
+    # other prose fields so it doesn't collapse to a plain-text wall. FB-14.
+    "design",
+}
 
 # Short scalar-ish metadata fields that benefit from a compact two-column
 # layout in the modal (less vertical churn, faster scanning).
@@ -1743,9 +1844,24 @@ class FieldSpec:
 
 # Priority is an integer enum P0..P4 in bd; expose the option *values* as
 # strings so the future <select> can label them "P0".."P4" while posting the
-# bare int. issue_type enum mirrors bd's built-in set (custom-config aside).
+# bare int. issue_type enum mirrors bd's full built-in set so the inline-edit
+# dropdown is NON-LOSSY: every built-in type (verified via `bd types --json`,
+# 9 core types) must be selectable, else editing a spike/story/milestone
+# silently couldn't preserve its own type (audit FB-14). Order matches
+# `bd types` output. Custom types (bd config set types.custom) are out of
+# scope here — same caveat as _TYPE_GLYPHS.
 _PRIORITY_OPTIONS = ("0", "1", "2", "3", "4")
-_ISSUE_TYPE_OPTIONS = ("bug", "feature", "task", "epic", "chore", "decision")
+_ISSUE_TYPE_OPTIONS = (
+    "task",
+    "bug",
+    "feature",
+    "chore",
+    "epic",
+    "decision",
+    "spike",
+    "story",
+    "milestone",
+)
 
 # The registry. Only the v1 whitelist (spike §5) is marked editable; every
 # other field bd emits is intentionally absent (=> read-only). Keep this the

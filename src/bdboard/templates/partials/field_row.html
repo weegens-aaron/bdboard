@@ -38,8 +38,26 @@
     {% if f.kind == "empty" %}
       <span class="muted">—</span>
     {% elif f.kind == "chips" %}
+      {# Labels/tags. Magic labels (dim:, gt:, provides:, export:, template)
+         are decoded server-side via the decode_label filter into a structured
+         {category, prefix, value, kind_label} so they render as distinct,
+         legible markers instead of undifferentiated grey chips (audit FB-14).
+         A magic chip shows its prefix as a small badge + the value; the prefix
+         text (not just colour) carries the meaning, so meaning never depends
+         on colour alone (WCAG 1.4.1). Freeform tags decode to category "tag"
+         and render as the classic single-token chip. #}
       <ul class="chip-list">
-        {% for item in f.val %}<li class="chip chip-label">{{ item }}</li>{% endfor %}
+        {% for item in f.val %}
+          {% set lbl = item | decode_label %}
+          {% if lbl.category == "tag" %}
+            <li class="chip chip-tag">{{ lbl.value }}</li>
+          {% else %}
+            <li class="chip chip-magic chip-{{ lbl.category }}" title="{{ lbl.raw }}">
+              {% if lbl.prefix %}<span class="chip-prefix">{{ lbl.prefix }}</span>{% else %}<span class="chip-prefix">{{ lbl.kind_label }}</span>{% endif %}
+              <span class="chip-value">{{ lbl.value }}</span>
+            </li>
+          {% endif %}
+        {% endfor %}
       </ul>
     {% elif f.kind == "deps" %}
       <ul class="dep-list">
