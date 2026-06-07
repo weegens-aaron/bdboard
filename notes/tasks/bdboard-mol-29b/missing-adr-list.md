@@ -2,12 +2,12 @@
 
 Date: 2026-06-01
 Scope: significant architectural/process decisions made in **code + beads**,
-cross-referenced against written records in `docs/decisions/` (ADRs) and
-`docs/design/<bead-id>/` (design docs + `*-decision.md` files).
+cross-referenced against written records in `notes/decisions/` (ADRs) and
+`notes/design/<bead-id>/` (design docs + `*-decision.md` files).
 
 > **Third pass.** This re-runs the ADR-coverage check first done in
-> `docs/tasks/bdboard-mol-c09/` (2026-05-29) and again in
-> `docs/tasks/bdboard-mol-7up/` (2026-05-31). Between the 7up audit and this
+> `notes/tasks/bdboard-mol-c09/` (2026-05-29) and again in
+> `notes/tasks/bdboard-mol-7up/` (2026-05-31). Between the 7up audit and this
 > one, **the ADR backlog the prior audits flagged was actually written** — so
 > this pass (a) verifies that backfill, and (b) surfaces decisions made since
 > that are still undocumented. Per project rules this audit does not self-close
@@ -17,8 +17,8 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 
 1. Re-inventoried the two decision homes against `git log -1` =
    `fbe4e34` (2026-06-01 00:55):
-   - `docs/decisions/` — formal ADRs.
-   - `docs/design/<bead-id>/` — design docs + `*-decision.md`.
+   - `notes/decisions/` — formal ADRs.
+   - `notes/design/<bead-id>/` — design docs + `*-decision.md`.
 2. Diffed every commit since the 7up audit (`git log e662e2d..HEAD`, 21
    commits) for new architectural/process decisions and read the bead notes
    behind the significant ones.
@@ -30,7 +30,7 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 
 **The entire prior missing-ADR list has been written down.** Commit `524c3fb`
 (bdboard-jdd, "fix ADR process gap — add template, index, 0001, backfill
-M1-M4") turned `docs/decisions/` from a single orphaned `0002` into a complete,
+M1-M4") turned `notes/decisions/` from a single orphaned `0002` into a complete,
 indexed ADR set:
 
 | Prior gap | Now recorded in | Verdict |
@@ -42,7 +42,7 @@ indexed ADR set:
 | M3 (live-refresh watcher→Store.refresh→SSE) | `0005-live-refresh-architecture.md` | RESOLVED |
 | N1 (non-recursive `noms/` watch fd-safety) | folded into `0005` | RESOLVED |
 | M4 (manual field-editing model) | `0006-manual-field-editing-model.md` | RESOLVED |
-| N2 (formulas now generic/variable-less) | "superseded" pointer added to `docs/design/bdboard-ace/cadence-invoker-decision.md` | RESOLVED (verify pointer present) |
+| N2 (formulas now generic/variable-less) | "superseded" pointer added to `notes/design/bdboard-ace/cadence-invoker-decision.md` | RESOLVED (verify pointer present) |
 | N3 (CI uses uv venv + `--no-sync`) | workflow YAML + bead notes; lightweight, ADR optional | ACCEPTED AS-IS |
 
 The README index's own preamble cites both prior audits as the reason it exists.
@@ -127,7 +127,7 @@ fix (`de66415`). Correctly left undocumented as ADRs.
 
 - M1–M4 → ADRs 0003–0006; N1 folded into 0005; X1 → 0001; X2 → template +
   README index + ADR-vs-design-doc rule (all via bdboard-jdd, `524c3fb`).
-- N2 → "superseded" pointer in `docs/design/bdboard-ace/cadence-invoker-decision.md`.
+- N2 → "superseded" pointer in `notes/design/bdboard-ace/cadence-invoker-decision.md`.
 - N3 → workflow YAML + bead notes (ADR optional, accepted as-is).
 
 **Process health:** the root-cause gap (X2 — no canonical ADR home) that made

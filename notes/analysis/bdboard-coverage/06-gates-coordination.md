@@ -7,7 +7,7 @@
 | Capability area  | `gates-coordination`                           |
 | Field-guide ref  | `field-guide-06-gates-and-coordination.html` (chapter 6) |
 | bdboard owner    | `bdboard-6yvg`                                 |
-| Primary sources  | `src/bdboard/derive/lanes.py` (`_is_epic`, `_is_molecule`, `_has_unmet_blocking_dep`, `lanes()`, `counts()`); `src/bdboard/app.py` (`_dep_label`, `_FIELD_ORDER`, `_classify_field`, `_ordered_fields`, `_diff_issue`); `templates/partials/{bead_card,field_row,bead_modal}.html`; `docs/catalog/board-lanes.md` |
+| Primary sources  | `src/bdboard/derive/lanes.py` (`_is_epic`, `_is_molecule`, `_has_unmet_blocking_dep`, `lanes()`, `counts()`); `src/bdboard/app.py` (`_dep_label`, `_FIELD_ORDER`, `_classify_field`, `_ordered_fields`, `_diff_issue`); `templates/partials/{bead_card,field_row,bead_modal}.html`; `notes/catalog/board-lanes.md` |
 | Status           | `done`                                         |
 
 ---
@@ -78,7 +78,7 @@ plus an exclusive-access primitive:
 **Headline: bdboard has ZERO gate/coordination awareness.** A repo-wide search
 for `gate` (the coordination noun), `await`, `await_type`, `await_id`,
 `merge-slot`, `gt:slot`, and `waits-for` across `src/bdboard/**` and
-`docs/catalog/**` returns **no feature code** — only unrelated hits
+`notes/catalog/**` returns **no feature code** — only unrelated hits
 (`_subprocess_gate` the asyncio semaphore, the "status gate" for field-edit
 locking at `app.py:1072-1093`, and awaited coroutines). bdboard never calls
 `bd gate {list,show,check,resolve}` or `bd merge-slot {check,...}`, never reads
@@ -175,7 +175,7 @@ surface exists: no `gate list` "Open Gates (N)" view, no pending-gate count in
 the masthead (`counts()` tracks only open/blocked/deferred/closed,
 `lanes.py:390-410`), no `gate check` resolve/escalate, no `merge-slot
 check`/`acquire`/`release`. There is no gate or merge-slot catalog entry;
-`docs/catalog/board-lanes.md` documents only the four status-derived lanes.
+`notes/catalog/board-lanes.md` documents only the four status-derived lanes.
 
 ### 2.7 Pending vs resolved gates: distinguishable only by lane, and misframed
 

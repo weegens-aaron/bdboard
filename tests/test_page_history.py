@@ -1,6 +1,6 @@
 """Route tests for GET /history (the full-page History view), the new third
 masthead nav entry, and the SSE re-fetch wiring, per
-docs/design/bdboard-rrc/history-page-design.md §4/D4/D7 (bead C, bdboard-7ib).
+notes/design/bdboard-rrc/history-page-design.md §4/D4/D7 (bead C, bdboard-7ib).
 
 We invoke the endpoint coroutine directly with a minimal ASGI Request (no
 TestClient/httpx dependency needed) and assert on the rendered HTML. The page

@@ -7,7 +7,7 @@
 | Capability area  | `anatomy`                                       |
 | Field-guide ref  | `field-guide-01-anatomy-of-a-bead.html` (chapter 1) |
 | bdboard owner    | `bdboard-cnzi`                                       |
-| Primary sources  | `src/bdboard/app.py` (field registry + ordering); `templates/partials/field_row.html`, `bead_modal.html`, `bead_card.html`, `bead_priority_badge.html`; `src/bdboard/bd.py` (`show_long`); `static/styles.css`; `docs/catalog/bead-modal.md`, `bead-inline-edit.md`, `bead-raw.md` |
+| Primary sources  | `src/bdboard/app.py` (field registry + ordering); `templates/partials/field_row.html`, `bead_modal.html`, `bead_card.html`, `bead_priority_badge.html`; `src/bdboard/bd.py` (`show_long`); `static/styles.css`; `notes/catalog/bead-modal.md`, `bead-inline-edit.md`, `bead-raw.md` |
 | Status           | `done`                                  |
 
 ---

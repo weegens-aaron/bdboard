@@ -3,20 +3,20 @@
 - **Status:** accepted
 - **Date:** 2026-06-01
 - **Relates to:** bdboard-jdd (ADR process gap), audits in
-  `docs/tasks/bdboard-mol-c09/` and `docs/tasks/bdboard-mol-7up/`
+  `notes/tasks/bdboard-mol-c09/` and `notes/tasks/bdboard-mol-7up/`
 
 > We record significant architectural and process decisions as numbered ADRs
-> in `docs/decisions/`. This is ADR 0001 — it both establishes the practice and
+> in `notes/decisions/`. This is ADR 0001 — it both establishes the practice and
 > backfills the missing `0001` slot (process gap X1).
 
 ## Context
 
-bdboard's `docs/decisions/` directory began at `0002-dashboard-architecture.md`
+bdboard's `notes/decisions/` directory began at `0002-dashboard-architecture.md`
 — there was never a `0001`, no ADR template, and no index. Worse, decisions had
 **two competing homes** with no rule for which to use:
 
-- `docs/decisions/NNNN-*.md` — formal ADRs (a single one existed).
-- `docs/design/<bead-id>/*-decision.md` — bead-scoped decision docs.
+- `notes/decisions/NNNN-*.md` — formal ADRs (a single one existed).
+- `notes/design/<bead-id>/*-decision.md` — bead-scoped decision docs.
 
 Two successive decision-coverage audits (bdboard-mol-c09, then bdboard-mol-7up)
 found that, because there was no frictionless canonical path, architectural
@@ -26,7 +26,7 @@ written down.** The missing template/index/home (gap X2) was the root cause.
 
 ## Decision
 
-1. **`docs/decisions/` is the canonical home for architectural decisions.**
+1. **`notes/decisions/` is the canonical home for architectural decisions.**
    We use the lightweight Nygard-style ADR format captured in
    [`0000-template.md`](0000-template.md).
 2. **Numbering is monotonic and zero-padded** (`0001`, `0002`, …); numbers are
@@ -35,7 +35,7 @@ written down.** The missing template/index/home (gap X2) was the root cause.
    the old one.
 3. **The split between ADRs and design docs is defined** in
    [`README.md`](README.md): durable/cross-cutting architectural contracts →
-   ADR; exploratory, bead-scoped working material → `docs/design/<bead-id>/`.
+   ADR; exploratory, bead-scoped working material → `notes/design/<bead-id>/`.
    A decision born in a spike gets distilled into an ADR *and* linked from its
    design doc.
 4. This ADR occupies the previously-missing `0001` slot, closing gap X1.

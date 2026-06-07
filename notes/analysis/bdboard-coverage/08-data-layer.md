@@ -7,7 +7,7 @@
 | Capability area  | `data-layer`                                       |
 | Field-guide ref  | `field-guide-08-data-layer.html` (chapter 8)                          |
 | bdboard owner    | `bdboard-svbo`                                       |
-| Primary sources  | `src/bdboard/bd.py` (`list_active`/`list_closed`/`list_closed_history`, `revision_signature`, `watch_targets`, `_subprocess_gate`); `src/bdboard/store.py` (three-way split cache, `refresh`); `src/bdboard/watcher.py` (`RefreshScheduler`); `src/bdboard/events.py` (`EventBus`); `src/bdboard/app.py` (`_watch_beads`, `sse_events`); `src/bdboard/templates/base.html` (live-status pill); `docs/decisions/0003`,`0004`,`0005`; `docs/catalog/store-cache.md`, `sse-live-refresh.md` |
+| Primary sources  | `src/bdboard/bd.py` (`list_active`/`list_closed`/`list_closed_history`, `revision_signature`, `watch_targets`, `_subprocess_gate`); `src/bdboard/store.py` (three-way split cache, `refresh`); `src/bdboard/watcher.py` (`RefreshScheduler`); `src/bdboard/events.py` (`EventBus`); `src/bdboard/app.py` (`_watch_beads`, `sse_events`); `src/bdboard/templates/base.html` (live-status pill); `notes/decisions/0003`,`0004`,`0005`; `notes/catalog/store-cache.md`, `sse-live-refresh.md` |
 | Status           | `done`                                  |
 
 ---
@@ -91,7 +91,7 @@ manifest/noms churn the watcher copes with). Itemized:
 
 bdboard reads bead state **only** through `bd … --json` (`BdClient` in `bd.py`),
 **never** `.beads/issues.jsonl`, and **never writes** to `.beads/` (ADR 0004;
-`docs/catalog/store-cache.md` "Source of truth"). It even refuses to *require*
+`notes/catalog/store-cache.md` "Source of truth"). It even refuses to *require*
 the JSONL to exist (`bd.py:244-246`: "modern bd workspaces are dolt-backed and
 the JSONL is just a secondary export that may be absent or stale"). This is the
 chapter's anti-pattern #1 honored correctly — bdboard treats Dolt-via-CLI as
@@ -120,7 +120,7 @@ byte-identical** (the self-feedback-loop guard, bdboard-ywep); (b) one logical
 `bd` write fans out to 3–5 files, absorbed by the debounce/cooldown. So bdboard's
 liveness is literally a reflection of Dolt's commit mechanics. SSE then
 broadcasts a single `beads_changed` only when the bead list structurally changed
-(`events.py`; `docs/catalog/sse-live-refresh.md`).
+(`events.py`; `notes/catalog/sse-live-refresh.md`).
 
 ### 2.4 The only "history/VC" surface that IS reflected: per-bead `bd history`
 

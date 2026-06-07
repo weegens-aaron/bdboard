@@ -10,7 +10,7 @@
 | Capability area  | `<area slug>`                                                     |
 | Field-guide ref  | `field-guide-NN-<chapter>.html` (chapter N)                       |
 | bdboard owner    | `bdboard-XXXX` (the audit bead that fills this section)            |
-| Primary sources  | `src/bdboard/*.py`, `templates/partials/*.html`, `docs/catalog/*.md` |
+| Primary sources  | `src/bdboard/*.py`, `templates/partials/*.html`, `notes/catalog/*.md` |
 | Status           | `not-started` \| `in-progress` \| `done`                          |
 
 ---
@@ -29,11 +29,11 @@ surface **with a chapter reference** so a reader can trace the claim.
 What does bdboard **show the user** of the above? **Every claim needs a
 `file:line` citation** into the bdboard display surface so the synthesis is
 verifiable. Cite `src/bdboard/*.py` (derivation/routes), `templates/partials/*.html`
-(the rendered markup), and `docs/catalog/*.md` (the feature's own documentation).
+(the rendered markup), and `notes/catalog/*.md` (the feature's own documentation).
 
 - `derive/lanes.py:NN` — how the bead state is bucketed/derived for display…
 - `templates/partials/field_row.html:NN` — the markup that renders the field…
-- `docs/catalog/<feature>.md` — what the catalog says this feature shows.
+- `notes/catalog/<feature>.md` — what the catalog says this feature shows.
 - If a feature is consumed/derived in `bd.py`, cite the call site.
 - If a feature is **not** reflected at all, say so explicitly here (and open a
   GAP below) — silence is not a finding.

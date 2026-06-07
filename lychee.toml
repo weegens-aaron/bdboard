@@ -18,7 +18,7 @@ accept = ["200..=299", "301", "302", "307", "308"]
 #
 # NB: exclude_path entries are REGEXES matched against the whole path, not
 # literal substrings. An unanchored ".git" matches "-git" too (the `.` is the
-# any-char metachar), which silently dropped docs/decisions/
+# any-char metachar), which silently dropped notes/decisions/
 # 0003-beads-sync-via-dolt-git-refs.md from the sweep. Anchor every entry to a
 # path boundary -- (^|/)NAME(/|$) -- and escape literal dots so we only ever
 # exclude real directory names. (bdboard-mol-h8p)

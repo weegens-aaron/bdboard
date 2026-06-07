@@ -52,10 +52,10 @@ make code-health      # lint + format-check + dead-code + tests + duplication + 
 
 ## Design decisions
 
-Architectural rationale lives in [`docs/decisions/`](docs/decisions/) as ADRs.
-Start with the [ADR index & guidelines](docs/decisions/README.md) (it explains
-when to write an ADR vs. a `docs/design/<bead-id>/` doc) and copy
-[`0000-template.md`](docs/decisions/0000-template.md) for a new one.
+Architectural rationale lives in [`notes/decisions/`](notes/decisions/) as ADRs.
+Start with the [ADR index & guidelines](notes/decisions/README.md) (it explains
+when to write an ADR vs. a `notes/design/<bead-id>/` doc) and copy
+[`0000-template.md`](notes/decisions/0000-template.md) for a new one.
 If you're proposing a significant structural change, add an ADR.
 
 ## License

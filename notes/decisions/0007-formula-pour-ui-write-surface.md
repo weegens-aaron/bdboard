@@ -4,8 +4,8 @@
 - **Date:** 2026-06-02
 - **Relates to:** bdboard-ain (epic, "Add beads to the board from a formula via
   a UI element"), bdboard-9n4 (spike,
-  `docs/design/bdboard-9n4/formula-to-board-ui-spike.md`), bdboard-obv (feature
-  catalog, `docs/catalog/pour-formula.md`), bdboard-fh8p / bdboard-ksny /
+  `notes/design/bdboard-9n4/formula-to-board-ui-spike.md`), bdboard-obv (feature
+  catalog, `notes/catalog/pour-formula.md`), bdboard-fh8p / bdboard-ksny /
   bdboard-078p (UI hardening). Builds on ADR 0004 (CLI is the source of truth),
   ADR 0005 (live-refresh pipeline), and ADR 0006 (manual field-editing model).
 - **Supersedes / Superseded by:** none.

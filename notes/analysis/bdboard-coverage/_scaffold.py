@@ -9,7 +9,7 @@ Mirrors the bead-chain precedent
 (`../../../.code_puppy/plugins/bead_chain/notes/analysis/bead-chain-coverage/_scaffold.py`)
 but reframes the LEVERAGED axis to REFLECTED: bdboard is a DISPLAY tool, so the
 audit asks what each area's bead state bdboard SHOWS, citing src/bdboard/*.py,
-templates/partials/*.html, and docs/catalog/*.md.
+templates/partials/*.html, and notes/catalog/*.md.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ AREAS = [
         1,
         "bdboard-cnzi",
         "`templates/partials/field_row.html`, `bead_modal.html`, "
-        "`bead_card.html`; `src/bdboard/bd.py`; `docs/catalog/bead-modal.md`",
+        "`bead_card.html`; `src/bdboard/bd.py`; `notes/catalog/bead-modal.md`",
     ),
     (
         "02",
@@ -38,7 +38,7 @@ AREAS = [
         2,
         "bdboard-vhke",
         "`src/bdboard/derive/lanes.py`; `templates/partials/field_row.html`, "
-        "`bead_modal.html`; `docs/catalog/bead-modal.md`",
+        "`bead_modal.html`; `notes/catalog/bead-modal.md`",
     ),
     (
         "03",
@@ -48,7 +48,7 @@ AREAS = [
         3,
         "bdboard-2w9b",
         "`src/bdboard/derive/lanes.py`; `templates/partials/lanes.html`, "
-        "`closed_lane.html`, `counts.html`; `docs/catalog/board-lanes.md`",
+        "`closed_lane.html`, `counts.html`; `notes/catalog/board-lanes.md`",
     ),
     (
         "04",
@@ -58,7 +58,7 @@ AREAS = [
         4,
         "bdboard-hdol",
         "`templates/memory.html`, `templates/partials/memory_list.html`; "
-        "`src/bdboard/app.py`, `bd.py`; `docs/catalog/memory-list.md`",
+        "`src/bdboard/app.py`, `bd.py`; `notes/catalog/memory-list.md`",
     ),
     (
         "05",
@@ -69,7 +69,7 @@ AREAS = [
         "bdboard-whjh",
         "`templates/partials/formula_form.html`, `formula_list.html`, "
         "`formula_pour_result.html`; `src/bdboard/app.py`, `bd.py`; "
-        "`docs/catalog/pour-formula.md`",
+        "`notes/catalog/pour-formula.md`",
     ),
     (
         "06",
@@ -79,7 +79,7 @@ AREAS = [
         6,
         "bdboard-6yvg",
         "`src/bdboard/derive/lanes.py`; `templates/partials/field_row.html`, "
-        "`bead_card.html`; `docs/catalog/board-lanes.md`",
+        "`bead_card.html`; `notes/catalog/board-lanes.md`",
     ),
     (
         "07",
@@ -89,7 +89,7 @@ AREAS = [
         7,
         "bdboard-6ljg",
         "`templates/partials/field_row.html`, `bead_modal.html`; "
-        "`src/bdboard/bd.py`; `docs/catalog/bead-modal.md`",
+        "`src/bdboard/bd.py`; `notes/catalog/bead-modal.md`",
     ),
     (
         "08",
@@ -99,7 +99,7 @@ AREAS = [
         8,
         "bdboard-svbo",
         "`src/bdboard/store.py`, `watcher.py`, `events.py`, `app.py`; "
-        "`docs/catalog/sse-live-refresh.md`, `store-cache.md`",
+        "`notes/catalog/sse-live-refresh.md`, `store-cache.md`",
     ),
     (
         "09",
@@ -110,7 +110,7 @@ AREAS = [
         "bdboard-rohn",
         "`src/bdboard/bd.py`, `derive/lanes.py`; "
         "`templates/partials/counts.html`, `bead_audit.html`; "
-        "`docs/catalog/board-counts.md`, `bead-audit.md`",
+        "`notes/catalog/board-counts.md`, `bead-audit.md`",
     ),
 ]
 
@@ -137,7 +137,7 @@ _TODO ({bead}): summarize the bd 1.0.4 feature surface for this area, citing
 ## 2. REFLECTED — what bdboard actually displays
 
 _TODO ({bead}): what bdboard SHOWS the user, with `file:line` citations into
-`src/bdboard/*.py`, `templates/partials/*.html`, and `docs/catalog/*.md`. State
+`src/bdboard/*.py`, `templates/partials/*.html`, and `notes/catalog/*.md`. State
 explicitly anything that is NOT reflected._
 
 ## 3. GAPS — what's misrepresented or unshown, and how much it matters

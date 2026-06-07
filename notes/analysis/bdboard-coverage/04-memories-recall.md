@@ -7,7 +7,7 @@
 | Capability area  | `memories-recall`                              |
 | Field-guide ref  | `field-guide-04-memories-and-recall.html` (chapter 4) |
 | bdboard owner    | `bdboard-hdol`                                 |
-| Primary sources  | `src/bdboard/templates/memory.html`, `templates/partials/memory_list.html`, `memory_skeleton.html`; `src/bdboard/bd.py` (`memories`/`remember`/`forget`); `src/bdboard/app.py` (`page_memory`, `api_memory`, `api_memory_create`, `api_memory_delete`); `docs/catalog/memory-list.md`, `memory-create.md`, `memory-delete.md`; `docs/design/bdboard-5p1/memory-view-design.md` |
+| Primary sources  | `src/bdboard/templates/memory.html`, `templates/partials/memory_list.html`, `memory_skeleton.html`; `src/bdboard/bd.py` (`memories`/`remember`/`forget`); `src/bdboard/app.py` (`page_memory`, `api_memory`, `api_memory_create`, `api_memory_delete`); `notes/catalog/memory-list.md`, `memory-create.md`, `memory-delete.md`; `notes/design/bdboard-5p1/memory-view-design.md` |
 | Status           | `done`                                         |
 
 ---
@@ -23,7 +23,7 @@ substring in the 2.9 MB file is a coincidental fragment **inside** a base64
 blob, not prose — verified), so the surface below is sourced from the **installed
 `bd` binary's own `--help` and `--json` behaviour** (a stronger citation than
 un-extractable slide text) and corroborated by the bdboard spike in
-`docs/design/bdboard-5p1/memory-view-design.md` section 2.
+`notes/design/bdboard-5p1/memory-view-design.md` section 2.
 
 **The four memory verbs (verified against `bd 1.0.5 (6a3f515ce)`):**
 

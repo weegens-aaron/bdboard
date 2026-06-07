@@ -2,16 +2,16 @@
 
 Date: 2026-05-29
 Scope: significant architectural/process decisions made in **code + beads**
-cross-referenced against written records in `docs/decisions/` (ADRs) and
-`docs/design/` (design docs + `decision`-type beads).
+cross-referenced against written records in `notes/decisions/` (ADRs) and
+`notes/design/` (design docs + `decision`-type beads).
 
 ## Method
 
 1. Enumerated all 123 beads (`bd list --all --json`) and the last 144 git
    commits to surface "significant recent changes."
 2. Inventoried existing written decision records:
-   - `docs/decisions/` — formal ADRs (only **one**: `0002-dashboard-architecture.md`).
-   - `docs/design/<bead-id>/` — 8 design docs + 1 `decision`-type bead
+   - `notes/decisions/` — formal ADRs (only **one**: `0002-dashboard-architecture.md`).
+   - `notes/design/<bead-id>/` — 8 design docs + 1 `decision`-type bead
      (`bdboard-tsu`, captured in bead body, not in a file).
 3. Flagged decisions that shaped the codebase/architecture but have **no**
    written rationale, OR have rationale only in transient locations (bead
@@ -21,8 +21,8 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 
 - **MISSING** — significant decision with **no** durable written record outside
   a bead note / README paragraph / memory. Strongest ADR candidates.
-- **PARTIAL** — rationale exists in `docs/design/` or a `decision` bead, but was
-  never promoted to a formal ADR in `docs/decisions/`. Lower priority; coverage
+- **PARTIAL** — rationale exists in `notes/design/` or a `decision` bead, but was
+  never promoted to a formal ADR in `notes/decisions/`. Lower priority; coverage
   exists, just not in the canonical ADR home.
 - **PROCESS** — gap in the ADR system itself (numbering, template, index).
 
@@ -38,11 +38,11 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
   (committing `.beads/issues.jsonl` as the wire protocol; third-party Dolt
   hosting) and picks `refs/dolt/data` on the existing git origin. That's a
   textbook "context + decision + alternatives + consequences" ADR.
-- **Gap:** No file in `docs/decisions/`. README documents the *how-to* but is
+- **Gap:** No file in `notes/decisions/`. README documents the *how-to* but is
   onboarding-focused (and ADR-0002 explicitly says rationale should NOT live in
   the README). The spike bead is the only place the *why/alternatives* are
   recorded, and bead notes are not a durable design home.
-- **Recommended:** `docs/decisions/0003-beads-sync-via-dolt-git-refs.md`.
+- **Recommended:** `notes/decisions/0003-beads-sync-via-dolt-git-refs.md`.
 
 ### M2. Runtime source of truth = `bd` CLI JSON output, never `.beads/issues.jsonl`
 - **Where the decision lives now:** `bd remember` memory `stack-overview` +
@@ -55,7 +55,7 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 - **Gap:** Recorded only in memories/README; no decision record stating *why*
   JSONL is never read (freshness + upstream COMMUNITY_TOOLS guidance).
 - **Recommended:** fold into M1's ADR, or write a sibling
-  `docs/decisions/0004-runtime-source-of-truth.md`.
+  `notes/decisions/0004-runtime-source-of-truth.md`.
 
 ### M3. Live-refresh pipeline: `watchfiles` → `Store.refresh` (`bd list`) → SSE `beads_changed`
 - **Where the decision lives now:** `bd remember` memory `refresh-architecture`
@@ -68,10 +68,10 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
   derivable by reading four spike docs.
 - **Gap:** No consolidated record; the only canonical statement is a one-line
   `bd remember` memory.
-- **Recommended:** `docs/decisions/0005-live-refresh-architecture.md`.
+- **Recommended:** `notes/decisions/0005-live-refresh-architecture.md`.
 
 ### M4. Manual field editing — editability registry + open-only mutation + append-only notes
-- **Where the decision lives now:** `docs/design/bdboard-7q9/manual-field-editing-spike.md`
+- **Where the decision lives now:** `notes/design/bdboard-7q9/manual-field-editing-spike.md`
   (good spike) **plus** two decisions made *after* the spike that aren't in any
   design doc:
   - **Edits gated to OPEN beads only** (`bdboard-1lf`) — a real policy decision.
@@ -85,49 +85,49 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 - **Gap:** PARTIAL spike coverage, but the post-spike *policy* decisions
   (open-only, append-only-as-invariant, optimistic-lock-now-not-later) are
   uncaptured.
-- **Recommended:** promote to `docs/decisions/0006-manual-field-editing-model.md`
+- **Recommended:** promote to `notes/decisions/0006-manual-field-editing-model.md`
   (the durable invariants), keep the spike as supporting detail.
 
 ---
 
 ## Tier 2 — PARTIAL (rationale exists, not promoted to an ADR)
 
-These have a real written record in `docs/design/` or a `decision` bead. They
-are **covered**; flagged only because `docs/decisions/` is the project's stated
+These have a real written record in `notes/design/` or a `decision` bead. They
+are **covered**; flagged only because `notes/decisions/` is the project's stated
 canonical ADR home (per ADR-0002 consequences). Promote opportunistically.
 
 | # | Decision | Recorded in | Promote? |
 |---|---|---|---|
 | P1 | Priority color scale P0–P4 (light+dark) | `bdboard-tsu` (decision bead body) | Optional — bead is thorough but file-less |
-| P2 | No scheduler for recurring formulas (cadence/invoker) | `docs/design/bdboard-ace/cadence-invoker-decision.md` | Already a decision doc; move to `docs/decisions/`? |
-| P3 | Formula grouping node shows as epic (Option A) | `docs/design/bdboard-ain.2/grouping-node-display-decision.md` | Already a decision doc |
+| P2 | No scheduler for recurring formulas (cadence/invoker) | `notes/design/bdboard-ace/cadence-invoker-decision.md` | Already a decision doc; move to `notes/decisions/`? |
+| P3 | Formula grouping node shows as epic (Option A) | `notes/design/bdboard-ain.2/grouping-node-display-decision.md` | Already a decision doc |
 | P4 | Code-health checks in CI, not a bd formula | ADR-0002 §Decision 2 | Already an ADR ✅ |
-| P5 | Memory View read-only vs CRUD | `docs/design/bdboard-5p1/memory-view-design.md` §3 | Covered |
+| P5 | Memory View read-only vs CRUD | `notes/design/bdboard-5p1/memory-view-design.md` §3 | Covered |
 
 Observation: P2 and P3 are literally titled `*-decision.md` and live under
-`docs/design/`. The project has **two homes** for decisions (`docs/design/` and
-`docs/decisions/`) with no rule for which goes where — see PROCESS gap X2.
+`notes/design/`. The project has **two homes** for decisions (`notes/design/` and
+`notes/decisions/`) with no rule for which goes where — see PROCESS gap X2.
 
 ---
 
 ## Tier 3 — PROCESS gaps in the ADR system
 
 ### X1. Missing ADR-0001
-`docs/decisions/` starts at `0002`. There is no `0001-*.md` and no record of
+`notes/decisions/` starts at `0002`. There is no `0001-*.md` and no record of
 what 0001 was (superseded? never written?). Either backfill `0001` (e.g. the
 "adopt ADRs / record-architecture-decisions" meta-decision) or add a note in
 the index explaining the gap.
 
 ### X2. No ADR index or template, and two competing decision homes
-- No `docs/decisions/README.md` (or `0000-template.md`) defining the ADR format,
+- No `notes/decisions/README.md` (or `0000-template.md`) defining the ADR format,
   numbering, or status lifecycle.
-- Decisions are split between `docs/decisions/*.md` (ADR-numbered) and
-  `docs/design/<bead>/*-decision.md` (bead-scoped) with no documented rule for
+- Decisions are split between `notes/decisions/*.md` (ADR-numbered) and
+  `notes/design/<bead>/*-decision.md` (bead-scoped) with no documented rule for
   which to use. This is *why* M1–M4 slipped through: the path of least
   resistance was a bead note or a design doc, never a numbered ADR.
-- **Recommended:** add `docs/decisions/0000-template.md` + an index, and a
+- **Recommended:** add `notes/decisions/0000-template.md` + an index, and a
   one-line rule (e.g. "cross-cutting/architectural → numbered ADR; feature-local
-  → `docs/design/<bead>/`").
+  → `notes/design/<bead>/`").
 
 ---
 

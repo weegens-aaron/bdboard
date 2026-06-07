@@ -5,7 +5,7 @@ We invoke the endpoint coroutine directly with a minimal ASGI Request
 HTML. bd.memories is stubbed so no real subprocess is spawned.
 
 Covers the cases called out in
-docs/design/bdboard-5p1/memory-view-design.md §5/§6 (bead B):
+notes/design/bdboard-5p1/memory-view-design.md §5/§6 (bead B):
   - full list lists all memories, count + cards rendered
   - search renders the "matching" count copy + forwards q server-side
   - no-memories-at-all empty state

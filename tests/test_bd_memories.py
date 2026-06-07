@@ -1,7 +1,7 @@
 """Unit tests for BdClient.memories() JSON-contract handling.
 
 These exercise the four contract shapes called out in
-docs/design/bdboard-5p1/memory-view-design.md §2.1:
+notes/design/bdboard-5p1/memory-view-design.md §2.1:
   - empty / sentinel-only payload  -> zero results
   - no-match search (sentinel only) -> zero results
   - search-match (one entry + sentinel) -> that entry, sentinel stripped

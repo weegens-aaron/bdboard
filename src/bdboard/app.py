@@ -1167,7 +1167,7 @@ async def api_formula_form(request: Request, name: str) -> HTMLResponse:
     single file read. We do NOT use the list payload's ``description`` (it is
     truncated), ``formula show --json`` (omits variables) nor the ``vars``
     count (always 0). See the bd CLI formula gotchas documented in
-    docs/design/.
+    notes/design/.
 
     One field per variable: ``description`` is the label/help, ``default`` is
     the prefilled value, and no-default variables are marked ``required`` so

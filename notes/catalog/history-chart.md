@@ -197,5 +197,5 @@ and pagination state are URL-borne, not element-borne, keeping the wiring DRY.)
   `test_combined_chart_shows_per_day_counts_and_baseline_columns` (per-day
   counts + baseline columns, the bdboard-oey regression guard) and the broader
   `/api/history` render/range/pagination coverage.
-- `docs/bugs/bdboard-oey/created-vs-closed-upside-down.png` — the original
+- `notes/bugs/bdboard-oey/created-vs-closed-upside-down.png` — the original
   upside-down regression screenshot.

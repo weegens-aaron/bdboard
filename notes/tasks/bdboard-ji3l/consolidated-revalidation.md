@@ -3,7 +3,7 @@
 > **Bead:** bdboard-ji3l (Run full revalidation of regenerated docs vs rubric)
 > **Epic:** bdboard-sqn2 (End-to-end revalidation + loop decision)
 > **Milestone:** bdboard-bivn (FlowDoc formulas match agent-loop output quality)
-> **Rubric:** [`docs/tasks/bdboard-pf4f/flowdoc-rubric.md`](../bdboard-pf4f/flowdoc-rubric.md)
+> **Rubric:** [`notes/tasks/bdboard-pf4f/flowdoc-rubric.md`](../bdboard-pf4f/flowdoc-rubric.md)
 > **Reference (gold):** `~/rep_engineer_station/docs/<service>/` — realized
 > `flowdoc` / `flowdoc-user` agent-loop output.
 > **Validator:** code-puppy-8e2379 · all checks re-run fresh from repo root.

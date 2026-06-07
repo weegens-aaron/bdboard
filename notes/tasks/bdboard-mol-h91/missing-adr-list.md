@@ -4,11 +4,11 @@ Date: 2026-06-02
 Pass: **5th** docs-validation ADR-coverage check.
 Molecule: bdboard-mol-gy6 (`docs-validation gy6`).
 Scope: significant architectural/process decisions made in **code + beads**,
-cross-referenced against written records in `docs/decisions/` (ADRs) and
-`docs/design/<bead-id>/` (design docs + `*-decision.md` files).
+cross-referenced against written records in `notes/decisions/` (ADRs) and
+`notes/design/<bead-id>/` (design docs + `*-decision.md` files).
 
 > **Lineage.** This re-runs the ADR-coverage check first done in
-> `docs/tasks/bdboard-mol-c09/` (2026-05-29), then `bdboard-mol-7up/`
+> `notes/tasks/bdboard-mol-c09/` (2026-05-29), then `bdboard-mol-7up/`
 > (2026-05-31), `bdboard-mol-29b/` (2026-06-01), and `bdboard-mol-lon/`
 > (2026-06-02). The c09/7up audits found a large missing-ADR backlog
 > (written by `bdboard-jdd` → ADRs 0001–0006 + template + index). The 29b
@@ -20,8 +20,8 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 ## Method
 
 1. Re-inventoried both decision homes:
-   - `docs/decisions/` — ADRs 0001–0006 + `0000-template.md` + README index.
-   - `docs/design/<bead-id>/` — spikes + `*-decision.md` deliverables.
+   - `notes/decisions/` — ADRs 0001–0006 + `0000-template.md` + README index.
+   - `notes/design/<bead-id>/` — spikes + `*-decision.md` deliverables.
 2. Verified the lon-pass defects (D1/D2) against the **current** ADR text.
 3. Diffed every commit since the lon audit and read the bead notes / code
    behind the architecturally significant ones (notably the bdboard-ain
@@ -72,17 +72,17 @@ written).** The two STALE defects the prior (lon) pass filed are now verified
   (goes through the `bd` CLI, never direct file writes; atomic rollback; stderr
   surfaced because `--dry-run` can't catch dependency-graph failures) lived
   **only** in: spike bdboard-9n4
-  (`docs/design/bdboard-9n4/formula-to-board-ui-spike.md`), the feature catalog
-  `docs/catalog/pour-formula.md`, and code/bead notes (bdboard-ain epic). No
+  (`notes/design/bdboard-9n4/formula-to-board-ui-spike.md`), the feature catalog
+  `notes/catalog/pour-formula.md`, and code/bead notes (bdboard-ain epic). No
   ADR.
 - **Fix (inline, this pass):** wrote
-  [`docs/decisions/0007-formula-pour-ui-write-surface.md`](../../decisions/0007-formula-pour-ui-write-surface.md)
+  [`notes/decisions/0007-formula-pour-ui-write-surface.md`](../../decisions/0007-formula-pour-ui-write-surface.md)
   — status accepted — distilling the decision, the rejected alternatives
   (terminal-only / cook-then-pour / `formula show --json` for variables /
   direct `.beads/` writes), and the consequences (bdboard now has **two**
   documented write surfaces; the "read-only observer" framing of 0004/0005 must
   be read as "no direct file writes / no read-loop origination," not "no
-  mutation"). Added it to the `docs/decisions/README.md` index, pointed the
+  mutation"). Added it to the `notes/decisions/README.md` index, pointed the
   spike and the feature catalog at it (per the design-doc-→-ADR rule). This is
   the same "when in doubt, write the ADR" remedy the `bdboard-jdd` backfill
   applied to the original c09/7up backlog.

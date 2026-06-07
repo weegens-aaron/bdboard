@@ -2,7 +2,7 @@
 
 > **Bead:** bdboard-30vz (Validate regenerated maintainer docs against rubric)
 > **Epic:** bdboard-uyt1 · **Milestone:** bdboard-bivn
-> **Rubric:** [`docs/tasks/bdboard-pf4f/flowdoc-rubric.md`](../bdboard-pf4f/flowdoc-rubric.md)
+> **Rubric:** [`notes/tasks/bdboard-pf4f/flowdoc-rubric.md`](../bdboard-pf4f/flowdoc-rubric.md)
 > **Candidate:** `__docs/` (maintainer family, **M**) — finalized by bdboard-mol-4ik
 > **Reference:** the `flowdoc` agent gold output under `~/rep_engineer_station/docs/<service>/`
 > **Validator:** code-puppy-8e2379 · objective re-runnable checks (see Method)

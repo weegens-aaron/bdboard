@@ -25,7 +25,7 @@ The masthead pairs a genuinely editorial serif wordmark (`bdboard`, in
 | Memory nav | plain padded link | Reads as a button-in-waiting, not a contents entry. |
 | Theme toggle | rounded **pill** `☀ Light` / `☽ Dark` with border + bg | A bordered pill is the most "app" thing in the header. |
 
-Reference: `docs/bugs/bdboard-buq/current-header.png`.
+Reference: `notes/bugs/bdboard-buq/current-header.png`.
 
 ### 1.1 The vocabulary is already in the header
 

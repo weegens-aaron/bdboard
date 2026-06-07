@@ -108,7 +108,7 @@ make outdated         # advisory only (dependency staleness)
 ```
 
 These checks live in CI rather than a bd formula by design — see
-[`docs/decisions/0002-dashboard-architecture.md`](docs/decisions/0002-dashboard-architecture.md).
+[`notes/decisions/0002-dashboard-architecture.md`](notes/decisions/0002-dashboard-architecture.md).
 
 | Gate | Tool | Make target | Config |
 | --- | --- | --- | --- |
@@ -134,7 +134,7 @@ These checks live in CI rather than a bd formula by design — see
 
 - **Lanes** — Deferred / Blocked / Ready / In-Progress / Closed are derived in-process from `bd list --json` snapshots
 - **Activity** — derived from `updated_at` / `closed_at` / `created_at` because bd doesn't expose a global audit feed; rendered as a swim lane alongside the bead lanes
-- **JSONL freshness** — bdboard reads bead state via the `bd list ... --json` CLI (the dolt-native, always-fresh path), using a **three-way split** rather than a single `--all` fetch (see [ADR 0004](docs/decisions/0004-runtime-source-of-truth-bd-cli-json.md)): (1) active issues via `bd list --no-pager --limit 0` (no `--all`, so closed are excluded) — the ~5 KB fast first-paint path; (2) the **board** Closed lane + header CLOSED KPI via `bd list --status closed --closed-after <iso> --sort closed --no-pager --limit 0`, **date-window-bounded** (`BOARD_CLOSED_WINDOW_DAYS`) — *not* count-capped — so the lane and KPI count the same set (bdboard-p8v); and (3) the **History** page via `bd list --status closed --sort closed --no-pager --limit 0 [--closed-after <iso>]`, which is **count-uncapped by design** so older closures never silently vanish (bdboard-a194) but is window-bounded when a range filter is active (bdboard-gp06). The closed lane is lazy-loaded as a second phase after the active lanes paint (`hx-trigger="load"`). We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher observes each dolt database's `noms/` directory (plus `.beads/` itself) **non-recursively** so any bd write triggers a refresh within ~250ms (debounced) + ~1s cooldown. We deliberately avoid recursively watching the whole `.beads/` tree: dolt's churning `noms/` object store would open a kqueue fd per directory on macOS and exhaust `RLIMIT_NOFILE`. SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
+- **JSONL freshness** — bdboard reads bead state via the `bd list ... --json` CLI (the dolt-native, always-fresh path), using a **three-way split** rather than a single `--all` fetch (see [ADR 0004](notes/decisions/0004-runtime-source-of-truth-bd-cli-json.md)): (1) active issues via `bd list --no-pager --limit 0` (no `--all`, so closed are excluded) — the ~5 KB fast first-paint path; (2) the **board** Closed lane + header CLOSED KPI via `bd list --status closed --closed-after <iso> --sort closed --no-pager --limit 0`, **date-window-bounded** (`BOARD_CLOSED_WINDOW_DAYS`) — *not* count-capped — so the lane and KPI count the same set (bdboard-p8v); and (3) the **History** page via `bd list --status closed --sort closed --no-pager --limit 0 [--closed-after <iso>]`, which is **count-uncapped by design** so older closures never silently vanish (bdboard-a194) but is window-bounded when a range filter is active (bdboard-gp06). The closed lane is lazy-loaded as a second phase after the active lanes paint (`hx-trigger="load"`). We do NOT read `.beads/issues.jsonl` directly — per the upstream [COMMUNITY_TOOLS.md](https://github.com/gastownhall/beads/blob/main/docs/COMMUNITY_TOOLS.md), that path is deprecated and may be missing fields. A `watchfiles` watcher observes each dolt database's `noms/` directory (plus `.beads/` itself) **non-recursively** so any bd write triggers a refresh within ~250ms (debounced) + ~1s cooldown. We deliberately avoid recursively watching the whole `.beads/` tree: dolt's churning `noms/` object store would open a kqueue fd per directory on macOS and exhaust `RLIMIT_NOFILE`. SSE pushes a single `beads_changed` event only when the bead list actually changed (structural equality vs the previous cache). No `bd export` calls; bdboard never writes to `.beads/`.
 
 ## Getting the bead history (fresh clone)
 
@@ -145,7 +145,7 @@ auto-fetched by a normal `git clone`, and the local Dolt DB itself
 (`.beads/embeddeddolt/`) is gitignored — so a bare clone has **no bead
 database at all**. Until you hydrate once, `bd list` reports `no beads database
 found` and `bdboard` renders an **empty board**. (See
-[`docs/decisions/0003-beads-sync-via-dolt-git-refs.md`](docs/decisions/0003-beads-sync-via-dolt-git-refs.md)
+[`notes/decisions/0003-beads-sync-via-dolt-git-refs.md`](notes/decisions/0003-beads-sync-via-dolt-git-refs.md)
 for the full rationale.)
 
 After cloning, hydrate the bead database with a one-time `bd bootstrap`:
@@ -178,7 +178,7 @@ Issue data **is** replicated off-machine. The Dolt remote `origin` points at
 the same GitHub origin as the code (`weegens-aaron/bdboard.git`), and the full
 issue history rides under `refs/dolt/data` there via Dolt's git-compatible wire
 protocol — **not** as a committed `issues.jsonl`. See
-[`docs/decisions/0003-beads-sync-via-dolt-git-refs.md`](docs/decisions/0003-beads-sync-via-dolt-git-refs.md)
+[`notes/decisions/0003-beads-sync-via-dolt-git-refs.md`](notes/decisions/0003-beads-sync-via-dolt-git-refs.md)
 for the full rationale, and [Getting the bead history](#getting-the-bead-history-fresh-clone)
 for how a fresh clone hydrates.
 

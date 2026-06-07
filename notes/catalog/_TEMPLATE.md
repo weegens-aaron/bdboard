@@ -1,6 +1,6 @@
 # <Feature name>
 
-> Copy this file to `docs/catalog/<name>.md` and replace every placeholder.
+> Copy this file to `notes/catalog/<name>.md` and replace every placeholder.
 > Keep the section order below — it is the canonical shape every catalog doc
 > shares so readers can scan any feature the same way. Delete this blockquote
 > and the one-line prompts once you have filled in real content.

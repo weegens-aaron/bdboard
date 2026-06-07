@@ -7,7 +7,7 @@
 | Capability area  | `status-lifecycle`                                       |
 | Field-guide ref  | `field-guide-03-status-lifecycle.html` (chapter 3)                          |
 | bdboard owner    | `bdboard-2w9b`                                       |
-| Primary sources  | `src/bdboard/derive/lanes.py`; `templates/partials/lanes.html`, `counts.html`, `counts_skeleton.html`, `closed_lane.html`; `docs/catalog/board-lanes.md`; `docs/design/bdboard-o9v.6/status-transition-affordance-design.md` |
+| Primary sources  | `src/bdboard/derive/lanes.py`; `templates/partials/lanes.html`, `counts.html`, `counts_skeleton.html`, `closed_lane.html`; `notes/catalog/board-lanes.md`; `notes/design/bdboard-o9v.6/status-transition-affordance-design.md` |
 | Status           | `done`                                  |
 
 ---
@@ -17,7 +17,7 @@
 bd 1.0.4 exposes **seven** lifecycle statuses. bd enforces them with an explicit
 allow-list — `bd list --status=foo` rejects unknown values with *"valid: open,
 in_progress, blocked, deferred, closed, pinned, hooked"* (verified against the
-installed `bd` and recorded in `docs/design/bdboard-o9v.6/…§2`). Chapter 3
+installed `bd` and recorded in `notes/design/bdboard-o9v.6/…§2`). Chapter 3
 ("Status, Lifecycle & Operational State") frames these as an **operational state
 machine**, not free-form scalars:
 
@@ -70,7 +70,7 @@ Rendered by `templates/partials/lanes.html:35` (loops the fixed key list
 lane card uses `bead_card.html`; epics are pulled out into the strip
 (`epic_lane()`), so the `in_progress` **count seen in the lane can differ from
 the masthead count** by the number of in_progress epics (live example below).
-Catalog: `docs/catalog/board-lanes.md`.
+Catalog: `notes/catalog/board-lanes.md`.
 
 **Masthead counts** — `derive/lanes.py:counts()` (`lanes.py:382-410`) →
 `templates/partials/counts.html`. Fixed cell order `["open","blocked","deferred",
@@ -81,7 +81,7 @@ Catalog: `docs/catalog/board-lanes.md`.
 **Status-transition affordances** — **none shipped.** The status row in the bead
 modal is a plain read-only scalar. A full verb-labelled transition affordance
 (claim / block / defer / close / reopen, with a guard table and close-policy)
-was *designed* in `docs/design/bdboard-o9v.6/status-transition-affordance-design.md`
+was *designed* in `notes/design/bdboard-o9v.6/status-transition-affordance-design.md`
 but that doc explicitly ships **no code**. So bdboard reflects bd's lifecycle
 *state* but exposes **zero lifecycle actions** — consistent with its read-mostly
 mission, but worth recording.

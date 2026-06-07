@@ -176,7 +176,7 @@ def _is_molecule(bead: dict[str, Any]) -> bool:
     the epic root step (which already surfaces in the epic strip), so the bare
     wrapper is redundant on the board. We hide it from the swim lanes rather
     than render it as a stray ready-lane card. See the grouping-node
-    display decision under docs/design/.
+    display decision under notes/design/.
     """
     return (bead.get("issue_type") or "").lower() == "molecule"
 

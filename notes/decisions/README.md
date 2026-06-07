@@ -6,7 +6,7 @@ contract, or a process that the whole project relies on, it gets an ADR here —
 not a bead note, not a code comment, not a one-off design doc.
 
 > **Why this file exists.** Two successive audits
-> (`docs/tasks/bdboard-mol-c09/` and `docs/tasks/bdboard-mol-7up/`) found that
+> (`notes/tasks/bdboard-mol-c09/` and `notes/tasks/bdboard-mol-7up/`) found that
 > architectural decisions kept landing in bead notes / design docs / code
 > comments because there was no frictionless, canonical ADR path. This index +
 > the [template](0000-template.md) *are* the fix (bdboard-jdd). When in doubt,
@@ -32,7 +32,7 @@ not a bead note, not a code comment, not a one-off design doc.
 There are two decision homes in this repo and they have **distinct jobs**.
 Use this rule:
 
-### `docs/decisions/NNNN-*.md` — **ADRs (this directory)**
+### `notes/decisions/NNNN-*.md` — **ADRs (this directory)**
 
 Write an ADR when the decision is **durable, cross-cutting, and architectural**:
 
@@ -47,7 +47,7 @@ Write an ADR when the decision is **durable, cross-cutting, and architectural**:
 ADRs are **short, numbered, and immutable**. To change one, write a new ADR
 that supersedes it (add a "Superseded by" pointer to the old one).
 
-### `docs/design/<bead-id>/*.md` — **design docs & spike outputs**
+### `notes/design/<bead-id>/*.md` — **design docs & spike outputs**
 
 Write/keep a design doc when the artifact is **exploratory or scoped to one
 piece of work**:
@@ -57,17 +57,17 @@ piece of work**:
 - It is tied to a specific bead's lifecycle (named after the bead id) and may
   contain more breadth/detail than a crisp decision record.
 
-A `docs/design/<bead-id>/*-decision.md` file is fine as the **deliverable of a
+A `notes/design/<bead-id>/*-decision.md` file is fine as the **deliverable of a
 single bead**, but if the decision it records is architectural and durable,
 **also distil it into an ADR here** and have the design doc point at the ADR.
 When an ADR supersedes the assumptions in a design doc, add a "Superseded by"
 note to the design doc so the stale doc points forward (see
-`docs/design/bdboard-ace/cadence-invoker-decision.md`).
+`notes/design/bdboard-ace/cadence-invoker-decision.md`).
 
 ### TL;DR
 
 | Question | Answer → home |
 |---|---|
-| Durable architectural/process contract? | **ADR** (`docs/decisions/`) |
-| Working material / spike output for one bead? | **design doc** (`docs/design/<bead-id>/`) |
+| Durable architectural/process contract? | **ADR** (`notes/decisions/`) |
+| Working material / spike output for one bead? | **design doc** (`notes/design/<bead-id>/`) |
 | Both (architectural decision born in a spike)? | ADR + design doc that **links to** the ADR |

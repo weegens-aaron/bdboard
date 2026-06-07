@@ -208,5 +208,5 @@ bdboard never reads `issues.jsonl` and never writes to `.beads/`
 - `src/bdboard/app.py` — `_settle_task` (~253) / `store.refresh()` call (~268):
   the watcher path that drives refresh; mutating routes' inline
   `store.refresh()` (~942) for immediate post-mutation freshness.
-- `docs/decisions/0004-runtime-source-of-truth-bd-cli-json.md` — the ADR fixing
+- `notes/decisions/0004-runtime-source-of-truth-bd-cli-json.md` — the ADR fixing
   bd CLI JSON as the runtime source of truth.

@@ -3,7 +3,7 @@
 Mirrors tests/test_api_memory.py: we invoke the endpoint coroutine directly
 with a minimal ASGI Request and a stubbed store.snapshot so no real bd
 subprocess runs. Covers the cases called out in the History design
-(docs/design/bdboard-rrc/history-page-design.md §4/§5, bead B):
+(notes/design/bdboard-rrc/history-page-design.md §4/§5, bead B):
 
   - KPI strip (closed in range, median lead time, throughput/day avg)
   - throughput chart bars carry text aria-labels (not colour-only)

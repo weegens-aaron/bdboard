@@ -9,7 +9,7 @@
 | Capability area  | `quality-hygiene`                              |
 | Field-guide ref  | `field-guide-09-quality-and-hygiene.html` (chapter 9) |
 | bdboard owner    | `bdboard-rohn`                                 |
-| Primary sources  | `src/bdboard/bd.py`, `derive/lanes.py`; `templates/partials/counts.html`, `bead_audit.html`, `field_row.html`; `docs/catalog/board-counts.md`, `bead-audit.md` |
+| Primary sources  | `src/bdboard/bd.py`, `derive/lanes.py`; `templates/partials/counts.html`, `bead_audit.html`, `field_row.html`; `notes/catalog/board-counts.md`, `bead-audit.md` |
 | Status           | `done`                                         |
 
 ---
@@ -111,12 +111,12 @@ Specific places a hygiene signal *could* live but doesn't:
 - **stale** — `field_row.html` shows `updated_at`/`created_at` (humanized
   timestamps), so staleness is *eyeballable*, but there is **no** age-threshold
   highlight, no "stale" badge, no sort-by-rot. `counts.html` tallies only
-  open/blocked/deferred/closed (`docs/catalog/board-counts.md`).
+  open/blocked/deferred/closed (`notes/catalog/board-counts.md`).
 - **duplicates / doctor / preflight** — entirely absent (and largely
   *appropriately* so — see GAP 6).
 
 > **Naming false-friend:** bdboard's `bead_audit.html` / `/api/bead/{id}/audit`
-> "**Audit trail**" is a `bd history` change-log view (`docs/catalog/bead-audit.md`),
+> "**Audit trail**" is a `bd history` change-log view (`notes/catalog/bead-audit.md`),
 > **not** a hygiene/lint audit. Don't mistake it for a quality surface — it
 > reports *what changed*, never *what's wrong*.
 

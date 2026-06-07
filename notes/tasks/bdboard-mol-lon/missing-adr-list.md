@@ -2,13 +2,13 @@
 
 Date: 2026-06-02
 Scope: significant architectural/process decisions made in **code + beads**,
-cross-referenced against written records in `docs/decisions/` (ADRs) and
-`docs/design/<bead-id>/` (design docs + `*-decision.md` files).
+cross-referenced against written records in `notes/decisions/` (ADRs) and
+`notes/design/<bead-id>/` (design docs + `*-decision.md` files).
 
 > **Fourth pass.** This re-runs the ADR-coverage check first done in
-> `docs/tasks/bdboard-mol-c09/` (2026-05-29), again in
-> `docs/tasks/bdboard-mol-7up/` (2026-05-31), and again in
-> `docs/tasks/bdboard-mol-29b/` (2026-06-01). The c09/7up audits found a large
+> `notes/tasks/bdboard-mol-c09/` (2026-05-29), again in
+> `notes/tasks/bdboard-mol-7up/` (2026-05-31), and again in
+> `notes/tasks/bdboard-mol-29b/` (2026-06-01). The c09/7up audits found a large
 > missing-ADR backlog; the `bdboard-jdd` commit wrote all of it; the 29b audit
 > verified that backfill and surfaced exactly **one** new gap (D1: ADR 0004
 > gone stale vs. the split/bounded read path). This pass (a) checks whether D1
@@ -20,8 +20,8 @@ cross-referenced against written records in `docs/decisions/` (ADRs) and
 ## Method
 
 1. Re-inventoried both decision homes at HEAD=`7a8bdf5`:
-   - `docs/decisions/` — formal ADRs 0000–0006 + README index (intact).
-   - `docs/design/<bead-id>/` — design docs + `*-decision.md` files.
+   - `notes/decisions/` — formal ADRs 0000–0006 + README index (intact).
+   - `notes/design/<bead-id>/` — design docs + `*-decision.md` files.
 2. Diffed every commit since the 29b audit commit (`1a3e7c4..HEAD`, 39
    commits) and read the bead notes / code behind the architecturally
    significant ones (207 beads total via `bd list --all --json`).

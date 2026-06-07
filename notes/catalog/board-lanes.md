@@ -107,7 +107,7 @@ trigger the SSE refresh above.)
   in the strip) **and** `molecule`-typed wrappers via `_is_molecule`. A
   `bd mol pour` creates a `molecule` wrapper that parents the poured tree *plus*
   an `epic`-typed root step. Per the grouping-node display decision (Option A,
-  see `docs/design/`), the human-readable `<formula> <id>` name is carried by the
+  see `notes/design/`), the human-readable `<formula> <id>` name is carried by the
   epic root step (which already surfaces in the epic strip), so the bare wrapper
   is redundant and is hidden from the swim lanes rather than rendered as a stray
   ready-lane card.

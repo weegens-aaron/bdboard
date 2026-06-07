@@ -43,11 +43,11 @@ merges — they are **not** packaged as a bd *formula*.
 **Why CI and not a bd formula?** bd *formulas* spawn work; they do not run
 checks. These deterministic pass/fail checks belong in CI gating every PR,
 leaving the `code-health-audit` formula to **triage** CI output
-rather than re-run the tools (see `docs/design/formula-spike/`).
+rather than re-run the tools (see `notes/design/formula-spike/`).
 
 ## Consequences
 
 - The README stays focused on *what bdboard is* and *how to run it*; the
   rationale for these choices lives here and is linked, not inlined.
 - Future stack/tooling decisions should be recorded as additional ADRs in
-  `docs/decisions/` rather than expanding the README.
+  `notes/decisions/` rather than expanding the README.

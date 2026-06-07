@@ -3,7 +3,7 @@
 - **Status:** accepted
 - **Date:** 2026-06-01
 - **Relates to:** bdboard-7q9 (spike,
-  `docs/design/bdboard-7q9/manual-field-editing-spike.md`), parent epic
+  `notes/design/bdboard-7q9/manual-field-editing-spike.md`), parent epic
   bdboard-o9v, memory `notes-append-not-replace`. Backfills audit item **M4**.
 
 > Manual editing of bead field *values* is driven by an explicit per-field

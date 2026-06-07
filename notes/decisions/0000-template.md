@@ -38,7 +38,7 @@ impose? What would have to be true for us to revisit this decision?
 
 <!--
 HOW TO USE THIS TEMPLATE
-1. Copy to docs/decisions/NNNN-kebab-title.md using the NEXT free number
+1. Copy to notes/decisions/NNNN-kebab-title.md using the NEXT free number
    (zero-padded, monotonically increasing; never reuse a number).
 2. Fill every section. Delete a section only if it is genuinely N/A and say so.
 3. ADRs are immutable once accepted. To change a decision, write a NEW ADR that

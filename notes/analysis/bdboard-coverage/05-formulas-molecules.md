@@ -7,7 +7,7 @@
 | Capability area  | `formulas-molecules`                           |
 | Field-guide ref  | `field-guide-05-formulas-and-molecules.html` (chapter 5) |
 | bdboard owner    | `bdboard-whjh`                                 |
-| Primary sources  | `templates/partials/formula_list.html`, `formula_form.html`, `formula_pour_result.html`; `src/bdboard/app.py` (`api_formulas`, `api_formula_form`, `api_formula_pour`, `_pour_counts`, `_short_pour_id`); `src/bdboard/bd.py` (`list_formulas`, `read_formula_detail`, `read_formula_variables`, `pour_formula`, `rename_bead`); `src/bdboard/derive/lanes.py` (`_is_molecule`, `lanes`); `docs/catalog/pour-formula.md`; `docs/decisions/0007-formula-pour-ui-write-surface.md`; `docs/design/bdboard-ain.2/grouping-node-display-decision.md` |
+| Primary sources  | `templates/partials/formula_list.html`, `formula_form.html`, `formula_pour_result.html`; `src/bdboard/app.py` (`api_formulas`, `api_formula_form`, `api_formula_pour`, `_pour_counts`, `_short_pour_id`); `src/bdboard/bd.py` (`list_formulas`, `read_formula_detail`, `read_formula_variables`, `pour_formula`, `rename_bead`); `src/bdboard/derive/lanes.py` (`_is_molecule`, `lanes`); `notes/catalog/pour-formula.md`; `notes/decisions/0007-formula-pour-ui-write-surface.md`; `notes/design/bdboard-ain.2/grouping-node-display-decision.md` |
 | Status           | `done`                                         |
 
 ---
@@ -118,7 +118,7 @@ good fidelity touches:
 **Grouping-node display — Option A (FAITHFUL to a recorded decision).**
 `bd mol pour` mints **two** structural nodes: a `molecule`-typed wrapper
 (`new_epic_id`) and the formula's own `epic`-typed root step. Per
-`docs/design/bdboard-ain.2/grouping-node-display-decision.md` (Option A) and
+`notes/design/bdboard-ain.2/grouping-node-display-decision.md` (Option A) and
 ADR 0007: the wrapper is **hidden from the swim lanes** (`_is_molecule`,
 `lanes.py:101`; excluded in `lanes()`, `lanes.py:322`), and the epic root step
 is **renamed** to `"<formula> <short-id>"` at pour time (`rename_bead`,

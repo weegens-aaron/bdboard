@@ -7,7 +7,7 @@
 | Capability area  | `swarms`                                       |
 | Field-guide ref  | `field-guide-07-swarms.html` (chapter 7)                          |
 | bdboard owner    | `bdboard-6ljg`                                       |
-| Primary sources  | `src/bdboard/derive/lanes.py` (`_is_molecule`, `lanes()`, `activity()`, `counts()`); `src/bdboard/derive/history.py` (`status_timeline`); `src/bdboard/app.py` (`_ordered_fields`, `_FIELD_ORDER`, `_diff_issue`); `templates/partials/{lanes,bead_card,field_row,bead_audit}.html`; `docs/catalog/{board-lanes,bead-audit}.md` |
+| Primary sources  | `src/bdboard/derive/lanes.py` (`_is_molecule`, `lanes()`, `activity()`, `counts()`); `src/bdboard/derive/history.py` (`status_timeline`); `src/bdboard/app.py` (`_ordered_fields`, `_FIELD_ORDER`, `_diff_issue`); `templates/partials/{lanes,bead_card,field_row,bead_audit}.html`; `notes/catalog/{board-lanes,bead-audit}.md` |
 | Status           | `done`                                  |
 
 ---
@@ -95,7 +95,7 @@ the `/api/bead/<id>` modal URL, where it renders as a generic bead.
 Because bdboard never invokes the swarm verbs, **none** of the computed
 coordination surface exists in the UI: no progress %, no Completed/Active/Ready/
 Blocked rollup, no coordinator handle, no "Swarmable" check. Catalog
-`docs/catalog/board-lanes.md` describes only the status-derived lanes; there is
+`notes/catalog/board-lanes.md` describes only the status-derived lanes; there is
 no swarm catalog entry.
 
 ### 2.3 Waves / parallel groups are not surfaced
