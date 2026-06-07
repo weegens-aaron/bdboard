@@ -22,3 +22,16 @@ if command -v bd >/dev/null 2>&1; then
   if [ $_bd_exit -ne 0 ]; then exit $_bd_exit; fi
 fi
 # --- END BEADS INTEGRATION v1.0.4 ---
+
+# --- BEGIN bead-sync: bd dolt push on git push (custom; NOT managed by beads) ---
+# Mirror every code push with a bead-data push (refs/dolt/data via dolt wire proto).
+# Non-blocking: warns on failure but never aborts the git push.
+if command -v bd >/dev/null 2>&1 && bd dolt remote list 2>/dev/null | grep -q .; then
+  echo "bead-sync: pushing bead data via 'bd dolt push'..." >&2
+  if bd dolt push 1>&2; then
+    echo "bead-sync: bead data synced." >&2
+  else
+    echo "bead-sync: WARNING - 'bd dolt push' failed; bead data NOT synced. Run it manually." >&2
+  fi
+fi
+# --- END bead-sync ---
