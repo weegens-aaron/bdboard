@@ -80,6 +80,10 @@ from bdboard.derive.lanes import (
     get_dependency_type,
     lanes,
 )
+from bdboard.derive.swarm import (
+    epic_rollup,
+    swarm_view,
+)
 from bdboard.derive.timeutil import (
     _day_bucket,
     _epoch,
@@ -115,6 +119,9 @@ __all__ = [
     "lanes",
     "activity",
     "counts",
+    # epic rollup + swarm derivations (audit FB-10)
+    "epic_rollup",
+    "swarm_view",
     # graph-hygiene derivations (audit FB-6)
     "cycle_member_ids",
     "blocked_reason",

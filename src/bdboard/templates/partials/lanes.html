@@ -16,6 +16,18 @@
         {% endif %}
       </div>
       <div class="bead-title">{{ e.title }}</div>
+      {% if e.rollup %}
+      <div class="epic-rollup" title="{{ e.rollup.completed }} of {{ e.rollup.total }} children complete{% if e.rollup.in_progress %} ({{ e.rollup.in_progress }} in progress){% endif %}">
+        <div class="epic-rollup-bar"
+             role="progressbar"
+             aria-valuenow="{{ e.rollup.percent }}"
+             aria-valuemin="0" aria-valuemax="100"
+             aria-label="Children complete: {{ e.rollup.percent }} percent">
+          <div class="epic-rollup-fill" style="width: {{ e.rollup.percent }}%"></div>
+        </div>
+        <span class="epic-rollup-text">{{ e.rollup.completed }}/{{ e.rollup.total }} · {{ e.rollup.percent }}%</span>
+      </div>
+      {% endif %}
       <div class="epic-meta">
         <span class="epic-status status-{{ e.status_key }}" aria-label="Status: {{ e.status_label }}">
           <span class="epic-status-icon" aria-hidden="true">{{ e.status_icon }}</span>

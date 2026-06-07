@@ -21,6 +21,20 @@
        for at-a-glance state context. One fetch, two render targets. #}
     <div id="lifecycle-slot"></div>
 
+    {# Swarm slot (audit FB-10): for epics, lazily pull the swarm-coordination
+       panel (progress %, Completed/Active/Ready/Blocked cohorts, and the Wave
+       model). On-demand only because bd swarm status/validate walk the DAG;
+       non-epics carry no swarm shape so the fetch is skipped entirely. #}
+    {% if (bead.issue_type or '') | lower == 'epic' %}
+    <section class="modal-body"
+             hx-get="/api/epic/{{ bead.id }}/swarm"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+      <h3 class="modal-section-title">Swarm</h3>
+      <p class="muted">loading swarm state…</p>
+    </section>
+    {% endif %}
+
     <section class="modal-body">
       <h3 class="modal-section-title">Bead details</h3>
       <dl class="field-grid">

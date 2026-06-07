@@ -714,6 +714,7 @@ async def api_lanes(request: Request) -> HTMLResponse:
     # target is merely closed-and-unfetched (audit FB-6 / bdboard-dzu2).
     known_ids = store.cached_known_ids()
     epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads), known_ids)
+    await _attach_epic_rollups(epic_lane)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/lanes.html",
@@ -1655,6 +1656,41 @@ async def api_bead_raw(bead_id: str) -> JSONResponse:
     return JSONResponse(full)
 
 
+@app.get("/api/epic/{epic_id}/swarm", response_class=HTMLResponse)
+async def api_epic_swarm(request: Request, epic_id: str) -> HTMLResponse:
+    """Render the swarm-coordination panel for an epic (audit FB-10).
+
+    Lazily loaded into the bead modal when an epic opens. Shells the two
+    on-demand-only swarm reads concurrently — ``bd swarm status`` (the
+    Completed/Active/Ready/Blocked cohorts + progress %) and ``bd swarm
+    validate`` (the swarmable verdict, max parallelism and the Wave model) —
+    and merges them via :func:`derive.swarm_view`.
+
+    Degrades gracefully (symmetric with /api/gates): either bd call may fail
+    independently; the panel renders whatever succeeded and notes the missing
+    half rather than 500-ing the modal. If BOTH fail the panel emits a single
+    inline retry message.
+    """
+    status_res, validate_res = await asyncio.gather(
+        bd.swarm_status(epic_id),
+        bd.swarm_validate(epic_id),
+        return_exceptions=True,
+    )
+    status = None if isinstance(status_res, BaseException) else status_res
+    validate = None if isinstance(validate_res, BaseException) else validate_res
+    if isinstance(status_res, BaseException):
+        log.warning("bd swarm status for %s failed: %s", epic_id, status_res)
+    if isinstance(validate_res, BaseException):
+        log.warning("bd swarm validate for %s failed: %s", epic_id, validate_res)
+
+    view = derive.swarm_view(status, validate) if (status or validate) else None
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/swarm_panel.html",
+        {"swarm": view, "epic_id": epic_id},
+    )
+
+
 # ----- helpers -----
 
 
@@ -1694,6 +1730,35 @@ async def _hydrate_epic_dependencies(
         if "dependency_count" in full:
             epic["dependency_count"] = full["dependency_count"]
     return enriched
+
+
+async def _attach_epic_rollups(epic_lane: list[dict[str, Any]]) -> None:
+    """Stamp a child count/progress rollup onto each epic in the strip (FB-10).
+
+    Fans out ``bd mol progress <id>`` concurrently (one cheap ~0.7s call per
+    active epic) and grafts the shaped rollup onto each epic dict in place as
+    ``epic["rollup"]``. Mutates the list the route just built rather than
+    refetching.
+
+    Best-effort by design: a rollup that can't be computed (a childless epic,
+    a transient bd hiccup) is surfaced as a ``return_exceptions=True`` failure
+    and simply leaves ``rollup`` unset, so the badge is omitted instead of
+    breaking the board. The lanes path stays resilient even when bd is flaky.
+    """
+    targets = [e for e in epic_lane if e.get("id")]
+    if not targets:
+        return
+    results = await asyncio.gather(
+        *(bd.mol_progress(e["id"]) for e in targets),
+        return_exceptions=True,
+    )
+    for epic, result in zip(targets, results, strict=True):
+        if isinstance(result, BaseException):
+            log.debug("mol progress rollup for %s failed: %s", epic.get("id"), result)
+            continue
+        rollup = derive.epic_rollup(result)
+        if rollup is not None:
+            epic["rollup"] = rollup
 
 
 # Field display order in the modal: identity anchors first, then

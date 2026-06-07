@@ -1,0 +1,125 @@
+{# Swarm coordination panel for an epic (audit FB-10).
+
+   Lazily loaded into the bead modal via /api/epic/<id>/swarm when an epic
+   opens. Surfaces bd's computed swarm state that the board previously had no
+   representation for:
+   - progress % + the Completed/Active/Ready/Blocked cohorts (swarms#2)
+   - the Wave model: parallel groups with max parallelism (swarms#3)
+
+   Degrades gracefully: when both bd calls fail `swarm` is None and we show a
+   single retry line; when only one half fails the available half still
+   renders and the missing half is noted. #}
+{% if swarm is none %}
+  <section class="swarm-panel" aria-labelledby="swarm-title">
+    <h3 id="swarm-title" class="modal-section-title">Swarm</h3>
+    <p class="swarm-error muted" role="status" aria-live="polite">
+      Couldn’t load swarm state right now. Please try again in a moment.
+    </p>
+  </section>
+{% else %}
+  <section class="swarm-panel" aria-labelledby="swarm-title">
+    <h3 id="swarm-title" class="modal-section-title">Swarm</h3>
+
+    {# ----- progress rollup ----- #}
+    {% if swarm.has_status %}
+    <div class="swarm-progress">
+      <div class="swarm-progress-head">
+        <span class="swarm-progress-pct">{{ swarm.progress_percent }}%</span>
+        <span class="swarm-progress-label muted">
+          {{ swarm.completed_count }} of {{ swarm.total }} complete
+        </span>
+      </div>
+      <div class="swarm-progress-track"
+           role="progressbar"
+           aria-valuenow="{{ swarm.progress_percent }}"
+           aria-valuemin="0" aria-valuemax="100"
+           aria-label="Swarm progress {{ swarm.progress_percent }} percent">
+        <div class="swarm-progress-fill" style="width: {{ swarm.progress_percent }}%"></div>
+      </div>
+    </div>
+
+    {# ----- Completed / Active / Ready / Blocked cohorts ----- #}
+    <div class="swarm-cohorts">
+      {% set cohorts = [
+        ("completed", "Completed", swarm.completed, swarm.completed_count),
+        ("active",    "Active",    swarm.active,    swarm.active_count),
+        ("ready",     "Ready",     swarm.ready,     swarm.ready_count),
+        ("blocked",   "Blocked",   swarm.blocked,   swarm.blocked_count)
+      ] %}
+      {% for key, label, items, count in cohorts %}
+      <div class="swarm-cohort swarm-cohort-{{ key }}">
+        <div class="swarm-cohort-head">
+          <span class="swarm-cohort-label">{{ label }}</span>
+          <span class="swarm-cohort-count">{{ count }}</span>
+        </div>
+        {% if items %}
+        <ul class="swarm-cohort-list">
+          {% for it in items %}
+          <li class="swarm-cohort-item"
+              hx-get="/api/bead/{{ it.id }}"
+              hx-target="#bead-modal" hx-swap="innerHTML"
+              style="cursor:pointer">
+            <span class="bead-id">{{ it.id }}</span>
+            <span class="swarm-cohort-title">{{ it.title }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="swarm-cohort-empty muted">none</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="swarm-partial muted">Live status unavailable — showing structure only.</p>
+    {% endif %}
+
+    {# ----- Wave model (swarm validate) ----- #}
+    {% if swarm.has_validate %}
+    <div class="swarm-waves">
+      <div class="swarm-waves-head">
+        <h4 class="swarm-waves-title">Waves</h4>
+        <span class="swarm-swarmable swarm-swarmable-{{ 'yes' if swarm.swarmable else 'no' }}">
+          {{ 'swarmable' if swarm.swarmable else 'not swarmable' }}
+        </span>
+        <span class="swarm-parallelism muted">
+          max parallelism {{ swarm.max_parallelism }} · ~{{ swarm.estimated_sessions }} sessions
+        </span>
+      </div>
+
+      {% for w in swarm.warnings %}
+      <p class="swarm-warning" role="status"> {{ w }}</p>
+      {% endfor %}
+      {% for e in swarm.errors %}
+      <p class="swarm-error-msg" role="alert"> {{ e }}</p>
+      {% endfor %}
+
+      {% if swarm.waves %}
+      <ol class="swarm-wave-list">
+        {% for wave in swarm.waves %}
+        <li class="swarm-wave">
+          <div class="swarm-wave-head">
+            <span class="swarm-wave-label">Wave {{ wave.wave }}</span>
+            <span class="swarm-wave-size muted">{{ wave.size }} parallel</span>
+          </div>
+          <ul class="swarm-wave-issues">
+            {% for it in wave.issues %}
+            <li class="swarm-wave-issue"
+                hx-get="/api/bead/{{ it.id }}"
+                hx-target="#bead-modal" hx-swap="innerHTML"
+                style="cursor:pointer">
+              <span class="bead-id">{{ it.id }}</span>
+              <span class="swarm-wave-issue-title">{{ it.title }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="swarm-wave-empty muted">No ready waves — every child is closed or blocked.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+{% endif %}

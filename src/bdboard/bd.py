@@ -49,6 +49,8 @@ UPDATE_TIMEOUT_S = 10.0  # field edits: dolt commit, possibly long markdown
 FORMULA_LIST_TIMEOUT_S = 8.0
 GATE_LIST_TIMEOUT_S = 8.0
 MERGE_SLOT_TIMEOUT_S = 8.0
+MOL_PROGRESS_TIMEOUT_S = 8.0  # cheap children-rollup count (~0.7s observed)
+SWARM_TIMEOUT_S = 15.0  # swarm status/validate walk the DAG; on-demand only
 POUR_TIMEOUT_S = 30.0  # pour cooks inline + materializes a whole formula tree
 SUCCESS_TTL_S = 10.0
 ERROR_TTL_S = 30.0
@@ -426,6 +428,85 @@ class BdClient:
         if not isinstance(value, dict):
             raise RuntimeError(
                 f"bd merge-slot check returned non-object "
+                f"({type(value).__name__}); expected JSON object"
+            )
+        return value
+
+    # ----- epic rollup + swarm: molecule progress & swarm coordination -----
+
+    async def mol_progress(self, epic_id: str) -> dict[str, Any]:
+        """Roll up an epic's children via ``bd mol progress <id> --json``.
+
+        ``bd mol progress`` walks the epic's child tree and returns a compact
+        rollup the epic strip surfaces back on the parent (audit FB-10 /
+        formulas#2): ``{total, completed, in_progress, percent, molecule_id,
+        molecule_title, current_step_id}``. It works on ANY epic with
+        children, not just poured molecules, so the strip can show a
+        count/progress rollup for hand-built epics too.
+
+        Cheap enough (~0.7s observed) to fan out concurrently on the lanes
+        hot path. Raises RuntimeError on subprocess failure or a non-dict
+        payload; the caller gathers with ``return_exceptions=True`` so a
+        rollup that can't be computed (e.g. a childless epic) simply omits
+        the badge rather than breaking the board.
+        """
+        value = await self._run_json(
+            ["mol", "progress", epic_id],
+            timeout=MOL_PROGRESS_TIMEOUT_S,
+        )
+        if not isinstance(value, dict):
+            raise RuntimeError(
+                f"bd mol progress returned non-object "
+                f"({type(value).__name__}); expected JSON object"
+            )
+        return value
+
+    async def swarm_status(self, epic_id: str) -> dict[str, Any]:
+        """Compute a swarm's live state via ``bd swarm status <id> --json``.
+
+        Returns bd's computed swarm state (audit FB-10 / swarms#2): the
+        ``progress_percent`` plus the four work cohorts —
+        ``completed`` / ``active`` / ``ready`` / ``blocked`` (each a list of
+        ``{id, title, assignee?}`` plus a matching ``*_count``) — and the
+        ``epic_id`` / ``epic_title`` header. This is the only place bd's
+        Completed/Active/Ready/Blocked breakdown is exposed.
+
+        Slower than :meth:`mol_progress` (it resolves the readiness front), so
+        callers fetch it ON DEMAND (when an epic modal opens), never on the
+        lanes hot path. Raises RuntimeError on subprocess failure or a
+        non-dict payload.
+        """
+        value = await self._run_json(
+            ["swarm", "status", epic_id],
+            timeout=SWARM_TIMEOUT_S,
+        )
+        if not isinstance(value, dict):
+            raise RuntimeError(
+                f"bd swarm status returned non-object "
+                f"({type(value).__name__}); expected JSON object"
+            )
+        return value
+
+    async def swarm_validate(self, epic_id: str) -> dict[str, Any]:
+        """Validate an epic's swarmability via ``bd swarm validate <id> --json``.
+
+        Returns bd's structural analysis (audit FB-10 / swarms#3): whether the
+        epic is ``swarmable``, its ``max_parallelism`` and
+        ``estimated_sessions``, any ``errors`` / ``warnings``, and the WAVE
+        model — ``ready_fronts``, a list of ``{wave, issues, titles}`` groups
+        that can run in parallel. bd emits ``errors`` / ``warnings`` as JSON
+        ``null`` when empty (NOT ``[]``); callers normalise downstream.
+
+        On-demand only (DAG walk, ~2.6s observed). Raises RuntimeError on
+        subprocess failure or a non-dict payload.
+        """
+        value = await self._run_json(
+            ["swarm", "validate", epic_id],
+            timeout=SWARM_TIMEOUT_S,
+        )
+        if not isinstance(value, dict):
+            raise RuntimeError(
+                f"bd swarm validate returned non-object "
                 f"({type(value).__name__}); expected JSON object"
             )
         return value

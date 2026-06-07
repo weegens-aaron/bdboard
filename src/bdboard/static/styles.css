@@ -620,6 +620,208 @@ pre { margin: 0; }
   border-color: var(--status-unknown-border);
 }
 
+/* ----- Epic strip rollup (audit FB-10): child count + progress ----- */
+.epic-rollup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 6px;
+}
+.epic-rollup-bar {
+  flex: 1 1 auto;
+  height: 6px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.epic-rollup-fill {
+  height: 100%;
+  background: var(--brand-green);
+  border-radius: 999px;
+}
+.epic-rollup-text {
+  flex: 0 0 auto;
+  font-family: var(--mono, var(--sans));
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* ----- Swarm coordination panel (audit FB-10) ----- */
+.swarm-panel { margin-top: 4px; }
+.swarm-error,
+.swarm-partial,
+.swarm-error-msg,
+.swarm-warning { font-size: 13px; margin: 4px 0; }
+.swarm-error-msg { color: var(--danger-fg); font-weight: 600; }
+.swarm-warning { color: var(--accent-2); font-weight: 600; }
+
+.swarm-progress { margin: 8px 0 12px; }
+.swarm-progress-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.swarm-progress-pct {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-green);
+}
+.swarm-progress-label { font-size: 12px; }
+.swarm-progress-track {
+  height: 8px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.swarm-progress-fill {
+  height: 100%;
+  background: var(--brand-green);
+  border-radius: 999px;
+}
+
+.swarm-cohorts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.swarm-cohort {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--paper);
+}
+.swarm-cohort-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.swarm-cohort-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.swarm-cohort-count {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.swarm-cohort-completed { border-left: 3px solid var(--brand-green); }
+.swarm-cohort-active    { border-left: 3px solid var(--brand-blue); }
+.swarm-cohort-ready     { border-left: 3px solid var(--spark-140); }
+.swarm-cohort-blocked   { border-left: 3px solid var(--accent); }
+.swarm-cohort-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.swarm-cohort-item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+.swarm-cohort-item:hover { background: var(--paper-2); }
+.swarm-cohort-title,
+.swarm-wave-issue-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.swarm-cohort-empty { font-size: 12px; margin: 0; }
+
+.swarm-waves { margin-top: 6px; }
+.swarm-waves-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.swarm-waves-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.swarm-swarmable {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+.swarm-swarmable-yes {
+  background: var(--status-open-bg);
+  color: var(--brand-green);
+  border: 1px solid var(--brand-green);
+}
+.swarm-swarmable-no {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  border: 1px solid var(--status-blocked-border);
+}
+.swarm-parallelism { font-size: 11px; }
+.swarm-wave-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.swarm-wave {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--brand-blue);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--paper);
+}
+.swarm-wave-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.swarm-wave-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.swarm-wave-size { font-size: 11px; }
+.swarm-wave-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.swarm-wave-issue {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+.swarm-wave-issue:hover { background: var(--paper-2); }
+.swarm-wave-empty,
+.swarm-cohort-empty { font-size: 12px; }
+
 .lanes {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
