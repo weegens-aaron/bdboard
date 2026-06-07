@@ -28,7 +28,7 @@ help:
 	@echo "  duplication - jscpd copy-paste detector (config: .jscpd.json)"
 	@echo "  audit       - pip-audit dependency CVE scan"
 	@echo "  outdated    - uv pip list --outdated (advisory, never fails)"
-t@echo "  links       - lychee broken-link sweep over all markdown (config: lychee.toml)"
+	@echo "  links       - lychee broken-link sweep over all markdown (config: lychee.toml)"
 	@echo "  docs-site   - build the static HTML doc site(s) from FlowDoc markdown"
 	@echo "  code-health - run all mechanical code-health gates (CI parity)"
 	@echo "  clean       - rm caches and venv"
