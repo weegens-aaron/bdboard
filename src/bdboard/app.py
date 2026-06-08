@@ -652,6 +652,41 @@ async def api_analytics(request: Request, view: str | None = None) -> HTMLRespon
     )
 
 
+@app.get("/coordination", response_class=HTMLResponse)
+async def page_coordination(request: Request) -> HTMLResponse:
+    """Full-page Coordination view (bdboard-wr85), symmetric with `/memory`.
+
+    Promotes the coordination panel (open gates + merge-slot mutexes) off the
+    board into its own primary-nav tab (epic bdboard-e47e). The board no longer
+    carries an inline #coordination region; this dedicated page renders the
+    SAME panel by HTMX-loading partials/gates_panel.html via /api/gates on load
+    + ``refresh from:body`` (so SSE live updates and modal drill-downs into
+    gate/slot beads keep working unchanged). It passes ``standalone=1`` so the
+    panel renders expanded and shows an explicit empty state when there is no
+    coordination state — instead of the board's render-nothing behaviour that
+    would leave a dedicated page blank. Extends base.html, stays trivially
+    cheap, and surfaces the workspace validation error for parity with the
+    other pages so a broken workspace fails visibly.
+    """
+    err = _validate_or_warn()
+    if err:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            {"error": err, "workspace": str(_WORKSPACE)},
+            status_code=500,
+        )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "coordination.html",
+        {
+            "workspace": _WORKSPACE.name,
+            "workspace_path": str(_WORKSPACE),
+            "active": "coordination",
+        },
+    )
+
+
 @app.get("/history")
 async def page_history(request: Request) -> RedirectResponse:
     """Redirect the former standalone History page into the Analytics tab.
@@ -787,7 +822,7 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
 
 
 @app.get("/api/gates", response_class=HTMLResponse)
-async def api_gates(request: Request) -> HTMLResponse:
+async def api_gates(request: Request, standalone: bool = False) -> HTMLResponse:
     """Render the gates / coordination panel (HTMX swap target).
 
     Surfaces the two coordination primitives bd exposes but bdboard previously
@@ -803,6 +838,12 @@ async def api_gates(request: Request) -> HTMLResponse:
     message for the gates section rather than 500-ing the whole partial, and
     the merge-slot section is best-effort (a failed slot read is simply
     omitted) — symmetric with /api/formulas and /api/memory.
+
+    ``standalone`` is set by the dedicated /coordination page (bdboard-wr85):
+    when true the panel is rendered expanded (it is the page's primary focus,
+    not a collapsed secondary board element) and an explicit empty state is
+    shown when there is no coordination state, instead of the board's
+    render-nothing behaviour that would leave the page blank.
     """
     repo_url = _repo_base_url()
     gates: list[dict[str, Any]] = []
@@ -853,6 +894,7 @@ async def api_gates(request: Request) -> HTMLResponse:
             "gates": gates,
             "gates_error": gates_error,
             "slots": slots,
+            "standalone": standalone,
         },
     )
 

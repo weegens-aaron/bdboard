@@ -1,11 +1,11 @@
-{# Primary page navigation (Board / Analytics / Memory).
+{# Primary page navigation (Board / Coordination / Analytics / Memory).
 
    Two-row masthead: this nav ALWAYS lives on its own second
    masthead row, left-aligned, while the theme toggle + page actions (Pour
    Formula, counts) sit right-aligned on the TOP row. The toggle used to be
    emitted here too — it now lives in partials/theme_toggle.html so it can be
    grouped with the top-row actions. Keeping the nav links in one shared
-   partial keeps Board / Analytics / Memory consistent (DRY).
+   partial keeps the pages consistent (DRY).
 
    Treatment: a typographic "contents bar" that reuses the masthead's own
    editorial kit — small-caps + letterspacing and hairline vertical rules
@@ -13,9 +13,12 @@
    page is signalled by THREE non-colour cues: ink colour + bold weight + an
    inset baseline rule (.mh-link.is-active).
 
-   `active` ("board" | "analytics" | "memory") marks the current page: it both
-   gets the .is-active styling hook and an aria-current="page" so assistive
-   tech announces the current location. NOTE: the former standalone History
+   `active` ("board" | "coordination" | "analytics" | "memory") marks the
+   current page: it both gets the .is-active styling hook and an
+   aria-current="page" so assistive tech announces the current location.
+   Coordination is its own tab (bdboard-wr85): the open-gates + merge-slot
+   panel was promoted off the board into the dedicated /coordination page.
+   NOTE: the former standalone History
    and Interactions entries are now sub-views inside the Analytics tab
    (bdboard-ove7 / bdboard-vtd4); /history and /interactions redirect to
    /analytics?view=history and /analytics?view=interactions respectively. #}
@@ -23,6 +26,9 @@
   <a href="/"
      class="mh-link{% if active == 'board' %} is-active{% endif %}"
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
+  <a href="/coordination"
+     class="mh-link{% if active == 'coordination' %} is-active{% endif %}"
+     {% if active == 'coordination' %}aria-current="page"{% endif %}>Coordination</a>
   <a href="/analytics"
      class="mh-link{% if active == 'analytics' %} is-active{% endif %}"
      {% if active == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>

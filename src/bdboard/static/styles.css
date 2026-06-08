@@ -2070,11 +2070,13 @@ pre { margin: 0; }
 .merge-slot-waiter { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
 .merge-slot-queue-empty { margin: 0; font-size: 12px; }
 
-/* Coordination panel (board): open gates + merge-slots, hydrated into
-   #coordination. Deliberately a SECONDARY element (bdboard-f7yp): it sits
-   BELOW the lanes and is a collapsed-by-default native <details> disclosure,
-   because coordination state can sit idle for months. Only present when there
-   is coordination state, so a board that never uses gates/slots is unchanged. */
+/* Coordination panel: open gates + merge-slots, hydrated into #coordination.
+   Promoted off the board into its own /coordination tab (bdboard-wr85). On the
+   board it WAS a collapsed-by-default native <details> secondary element
+   (bdboard-f7yp); on the dedicated page it is the primary focus, so the
+   .coordination-panel-standalone modifier renders it expanded and de-mutes the
+   summary. Only present when there is coordination state — otherwise the
+   standalone page shows an explicit .coordination-empty-state instead. */
 .coordination-panel {
   border: 1px solid var(--rule);
   border-radius: 6px;
@@ -2164,6 +2166,45 @@ pre { margin: 0; }
 .coordination-gate-title { font-size: 13px; color: var(--ink-2); }
 .coordination-empty,
 .coordination-error { margin: 0; font-size: 12px; }
+
+/* Dedicated /coordination page (bdboard-wr85). The page is the panel's primary
+   focus, so stack the region and let it breathe rather than sitting BELOW the
+   lanes as a secondary board element. */
+.layout-coordination {
+  flex-direction: column;
+}
+/* Standalone modifier: render the disclosure expanded (the route also emits
+   the `open` attribute) and de-mute the summary so it reads as a section
+   heading, not a collapsed secondary affordance. */
+.coordination-panel-standalone {
+  margin-top: 0;
+}
+.coordination-panel-standalone .coordination-summary {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+/* Explicit empty state shown on the dedicated page when there are no gates or
+   merge slots — so the page is never blank. */
+.coordination-empty-state {
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  padding: 28px 22px;
+  text-align: center;
+}
+.coordination-empty-state-title {
+  margin: 0 0 6px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.coordination-empty-state-hint {
+  margin: 0 auto;
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.5;
+}
 
 /* Field renderers — chips for labels, dep-list for deps, para for prose. */
 .chip-list {

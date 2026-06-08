@@ -29,8 +29,10 @@ from css_test_utils import extract_style_property
 CSS_PATH = Path("src/bdboard/static/styles.css")
 TEMPLATES = Path("src/bdboard/templates")
 # History migrated into the Analytics tab (bdboard-ove7); analytics.html is the
-# full-page surface that now shares the two-row masthead structure.
-SURFACES = ("dashboard.html", "analytics.html", "memory.html")
+# full-page surface that now shares the two-row masthead structure. Coordination
+# was promoted off the board into its own /coordination tab (bdboard-wr85) and
+# shares the same masthead wiring.
+SURFACES = ("dashboard.html", "analytics.html", "memory.html", "coordination.html")
 
 
 def _css() -> str:

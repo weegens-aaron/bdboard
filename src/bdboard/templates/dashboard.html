@@ -62,16 +62,9 @@
            hx-get="/api/lanes" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
     {% include "partials/lanes_skeleton.html" %}
   </section>
-  {# Coordination panel: open gates + merge-slot mutexes. Hydrates via HTMX
-     on load (and on SSE `refresh`) so it stays cheap on first paint and live
-     with the rest of the board. Renders nothing when there is no
-     coordination state, so a board that never uses gates/slots is unchanged
-     (audit FB-9). Deliberately placed BELOW the lanes and collapsed by
-     default (bdboard-f7yp): coordination state can sit idle for months, so
-     it is a secondary element, not a primary focus. #}
-  <div class="coordination-region"
-       id="coordination"
-       hx-get="/api/gates" hx-trigger="load, refresh from:body" hx-swap="innerHTML"></div>
+  {# Coordination (open gates + merge-slot mutexes) is no longer an inline
+     board region: it was promoted to its own primary-nav tab at /coordination
+     (bdboard-wr85). The board stays focused on the lanes. #}
 </main>
 
 {# Pour-formula dialog. A native <dialog> traps keyboard focus
