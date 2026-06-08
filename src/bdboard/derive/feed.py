@@ -16,6 +16,7 @@ from typing import Any
 from bdboard.derive.lanes import (
     CLOSED_STATUSES,
     HIDDEN_BOARD_STATUSES,
+    _is_epic,
     _is_gate,
 )
 from bdboard.derive.timeutil import _epoch
@@ -86,6 +87,15 @@ def counts(beads: list[dict[str, Any]]) -> dict[str, int]:
     for b in beads:
         status = (b.get("status") or "unknown").lower()
         if status in HIDDEN_BOARD_STATUSES:
+            continue
+        # Epics are containers, not WIP: lanes.py excludes them from every
+        # lane bucket (they live in the epic strip), so tallying them here
+        # would make a KPI exceed its lane — e.g. an in_progress epic inflates
+        # the In Progress count above the In Progress lane card count
+        # (bdboard-6cov). Mirror the non_epics filter and skip epics from ALL
+        # status tallies so each masthead KPI matches its lane (this also keeps
+        # the closed KPI honest: closed epics aren't in the closed lane).
+        if _is_epic(b):
             continue
         if _is_gate(b) and status not in CLOSED_STATUSES:
             by_status["gate"] += 1
