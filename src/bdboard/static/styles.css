@@ -532,22 +532,34 @@ pre { margin: 0; }
 .epic-lane {
   border-bottom: 1px solid var(--rule-2);
   margin-bottom: 14px;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 .epic-lane-title {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  font-family: var(--display);
-  font-size: 18px;
-  margin: 0 0 8px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex: 0 0 auto;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0;
 }
+.epic-lane-title .lane-count { font-size: 11px; }
 .epic-strip {
   list-style: none;
   margin: 0;
-  padding: 0 0 2px;
+  padding: 2px 0;
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -557,90 +569,56 @@ pre { margin: 0; }
 .epic-strip::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
 .epic-strip > * { flex-shrink: 0; }
 .epic-chip {
-  min-width: 250px;
-  max-width: 320px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 380px;
   background: var(--paper-3);
   border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 5px 12px;
   cursor: pointer;
+  font-size: 13px;
+  line-height: 1.3;
 }
 .epic-chip:hover {
   border-color: var(--blue-100);
   box-shadow: 0 1px 3px rgba(0, 83, 226, 0.15);
 }
-.epic-chip-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
+.epic-chip:focus-visible {
+  outline: 2px solid var(--blue-100);
+  outline-offset: 1px;
 }
-.epic-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
+.epic-chip-marker {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  align-self: center;
+  color: var(--ink-2);
 }
-.epic-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  border-radius: 3px;
-  border: 1px solid transparent;
-  padding: 1px 6px;
+.epic-chip-marker.p0 { color: var(--brand-red); }
+.epic-chip-marker.p1 { color: var(--brand-yellow); }
+.epic-chip-marker.p2 { color: var(--blue-100); }
+.epic-chip-marker.p3 { color: var(--ink-2); }
+.epic-chip-marker.p4,
+.epic-chip-marker.px { color: var(--muted); }
+.epic-chip .bead-id {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
-.epic-status-icon { font-size: 12px; line-height: 1; }
-.epic-status.status-open {
-  background: var(--status-open-bg);
-  color: var(--status-open-fg);
-  border-color: var(--status-open-border);
+.epic-chip-sep {
+  flex: 0 0 auto;
+  color: var(--ink-2);
 }
-.epic-status.status-in_progress {
-  background: var(--status-in-progress-bg);
-  color: var(--status-in-progress-fg);
-  border-color: var(--status-in-progress-border);
-}
-.epic-status.status-blocked {
-  background: var(--status-blocked-bg);
-  color: var(--status-blocked-fg);
-  border-color: var(--status-blocked-border);
-}
-.epic-status.status-deferred {
-  background: var(--status-deferred-bg);
-  color: var(--status-deferred-fg);
-  border-color: var(--status-deferred-border);
-}
-.epic-status.status-unknown {
-  background: var(--status-unknown-bg);
-  color: var(--status-unknown-fg);
-  border-color: var(--status-unknown-border);
-}
-
-/* ----- Epic strip rollup (audit FB-10): child count + progress ----- */
-.epic-rollup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 6px;
-}
-.epic-rollup-bar {
-  flex: 1 1 auto;
-  height: 6px;
-  background: var(--paper-2);
-  border: 1px solid var(--rule);
-  border-radius: 999px;
+.epic-chip-title {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
 }
-.epic-rollup-fill {
-  height: 100%;
-  background: var(--brand-green);
-  border-radius: 999px;
-}
-.epic-rollup-text {
+.epic-chip-progress {
   flex: 0 0 auto;
   font-family: var(--mono, var(--sans));
   font-size: 11px;

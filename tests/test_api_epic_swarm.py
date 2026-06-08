@@ -64,10 +64,11 @@ def test_lanes_stamps_epic_rollup_badge(monkeypatch):
     body = resp.body.decode()
 
     assert resp.status_code == 200
-    assert "epic-rollup" in body
+    assert "epic-chip-progress" in body
     assert "10/14" in body
-    assert "71%" in body
-    assert 'style="width: 71%"' in body
+    # Compact strip preserves progressbar semantics via aria, not a fill bar.
+    assert 'role="progressbar"' in body
+    assert "71 percent" in body
 
 
 def test_lanes_omits_rollup_when_mol_progress_fails(monkeypatch):
@@ -97,7 +98,7 @@ def test_lanes_omits_rollup_when_mol_progress_fails(monkeypatch):
     body = resp.body.decode()
 
     assert resp.status_code == 200
-    assert "epic-rollup" not in body
+    assert "epic-chip-progress" not in body
     # The epic chip itself still rendered.
     assert "bdboard-atvy" in body
 
