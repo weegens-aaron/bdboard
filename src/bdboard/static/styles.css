@@ -3442,18 +3442,17 @@ pre { margin: 0; }
 .stale-banner-text { font-weight: 600; }
 
 /* ============================================================
-   Interactions page — the CROSS-RUN swarm interaction log
+   Interactions sub-view — the CROSS-RUN swarm interaction log
    (.beads/interactions.jsonl: llm_call / tool_call / label
-   reward entries). Reuses the filter-badge + lane-count idioms
-   so the surface stays visually consistent with the board and
-   History pages. Distinct from the per-bead bd-history modal.
-   All colours flow through theme tokens so dark mode is free.
+   reward entries). Now the SECOND Analytics sub-view
+   (bdboard-vtd4): the region sits inside .layout-analytics /
+   .analytics-panel (which own padding, scroll, and centering),
+   so there is no dedicated page-layout rule. Reuses the
+   filter-badge + lane-count idioms so the surface stays
+   visually consistent with the board and History views.
+   Distinct from the per-bead bd-history modal. All colours flow
+   through theme tokens so dark mode is free.
    ============================================================ */
-.layout-interactions {
-  display: block;
-  overflow-y: auto;
-  padding: 18px 24px 32px;
-}
 .interactions-region-inner {
   display: flex;
   flex-direction: column;

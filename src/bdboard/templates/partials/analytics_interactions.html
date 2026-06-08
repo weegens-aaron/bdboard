@@ -1,0 +1,43 @@
+{# Interactions sub-view shell for the Analytics tab (bdboard-vtd4).
+
+   The SECOND Analytics sub-view, migrated from the former standalone
+   /interactions page. It is self-contained: it owns the #interactions-region
+   swap target and reuses /api/interactions + partials/interactions.html
+   EXACTLY as the old page did, including the kind= filter chips (those chips
+   live in partials/interactions.html and re-fetch /api/interactions?kind=<k>
+   targeting #interactions-region, so filtering keeps working unchanged inside
+   the Analytics panel).
+
+   Reads the CROSS-RUN swarm audit trail (.beads/interactions.jsonl: llm_call /
+   tool_call / label reward entries — the SFT/RL "why did the agent do that"
+   signal), which is DISTINCT from the per-bead `bd history` Audit/Lifecycle
+   modal (that view is intentionally left unchanged). #}
+<section class="analytics-subview analytics-subview-interactions" aria-label="Interactions">
+  {# Interaction-log region — the single HTMX swap target. partials/
+     interactions.html (loaded via /api/interactions) renders the kind filter
+     chips + the entry list into this element; each chip re-fetches
+     /api/interactions?kind=<k> with hx-target="#interactions-region", so the
+     control surface stays server-driven with zero client framework.
+
+     Triggers:
+       - load              → fill on switch-in / first paint (all kinds).
+       - refresh from:body → SSE live-update, inheriting the board's pipeline
+         (base.html fires a synthetic `refresh` on <body> on any .beads/
+         change), so a freshly recorded interaction appears live. An SSE
+         refresh re-reads the DEFAULT (all-kinds) view — the same "snap back to
+         fresh data" behaviour the board and History regions have. #}
+  <section
+    id="interactions-region"
+    class="interactions-region"
+    aria-label="Swarm interaction log"
+    aria-busy="true"
+    hx-get="/api/interactions"
+    hx-trigger="load, refresh from:body"
+    hx-swap="innerHTML"
+  >
+    {# Instant skeleton so the sub-view never shows a blank region while the
+       first /api/interactions fetch is in flight. Replaced on the first swap;
+       purely a perceived-performance placeholder. #}
+    {% include "partials/interactions_skeleton.html" %}
+  </section>
+</section>

@@ -1,13 +1,18 @@
-"""Route tests for the swarm interaction-log viewer (bead bdboard-bghy).
+"""Route tests for the swarm interaction-log viewer.
+
+Interactions migrated from a standalone /interactions page into the SECOND
+Analytics sub-view (bdboard-vtd4); /interactions is now a thin 307 redirect to
+/analytics?view=interactions (symmetric with /history). The interaction log
+itself is unchanged — the Analytics sub-view shell reuses /api/interactions +
+partials/interactions.html, kind filter chips and all.
 
 Covers:
-  - GET /interactions returns 200, extends base.html, and is the active nav page
-  - the page lazy-loads its region from /api/interactions on load + SSE refresh
-  - the shared nav now exposes the Interactions link on every page
+  - GET /interactions 307-redirects into the Analytics Interactions sub-view
+  - the Interactions sub-view is reachable + lazy-loads /api/interactions
+  - the standalone Interactions PRIMARY nav item is gone (now an Analytics tab)
   - GET /api/interactions renders kind filter chips + entry rows
-  - ?kind= filters the list to one kind
+  - ?kind= filters the list to one kind (still works inside Analytics)
   - a missing interactions.jsonl degrades to a friendly empty state (no 500)
-  - the per-bead bd-history Audit modal is NOT touched by this feature
 
 We invoke the endpoint coroutines directly with a minimal ASGI Request (no
 TestClient needed). The autouse conftest fixture stubs workspace validation so
@@ -36,11 +41,6 @@ def _request(path: str = "/interactions", query: str = "") -> Request:
     return Request(scope)
 
 
-def _call_page() -> tuple[int, str]:
-    resp = asyncio.run(app_module.page_interactions(_request()))
-    return resp.status_code, resp.body.decode()
-
-
 def _call_api(kind: str = "", *, beads_dir=None, monkeypatch=None) -> tuple[int, str]:
     if beads_dir is not None and monkeypatch is not None:
         # Point the module-level bd client's workspace at the tmp dir; its
@@ -57,44 +57,38 @@ def _seed(beads_dir, rows) -> None:
     )
 
 
-# ----- page shell -----
+# ----- /interactions redirect into the Analytics tab -----
 
 
-def test_page_renders_full_document() -> None:
-    status, body = _call_page()
-    assert status == 200
-    assert "<!doctype html>" in body.lower()
-    assert "<title>Interactions" in body
-    assert 'class="masthead"' in body
+def test_interactions_redirects_into_analytics() -> None:
+    """The former standalone page is now a 307 redirect to the sub-view, so old
+    links / bookmarks / the removed nav entry never break."""
+    resp = asyncio.run(app_module.page_interactions(_request()))
+    assert resp.status_code == 307
+    assert resp.headers["location"] == "/analytics?view=interactions"
 
 
-def test_page_region_lazy_loads_and_refreshes() -> None:
-    _, body = _call_page()
+def test_interactions_subview_lazy_loads_and_refreshes() -> None:
+    """Selecting the Interactions sub-view renders the region that lazy-loads
+    /api/interactions and live-updates via the shared SSE pipeline."""
+    resp = asyncio.run(app_module.page_analytics(_request("/analytics"), view="interactions"))
+    body = resp.body.decode()
+    assert resp.status_code == 200
     assert 'id="interactions-region"' in body
     assert 'hx-get="/api/interactions"' in body
     # Reuses the SSE pipeline for live updates, like History/Memory.
     assert 'hx-trigger="load, refresh from:body"' in body
 
 
-def test_page_nav_marks_interactions_active() -> None:
-    _, body = _call_page()
-    assert 'aria-label="Primary"' in body
-    assert 'href="/interactions"' in body
-    # Interactions is the active page here (is-active + aria-current).
-    assert 'href="/interactions"\n     class="mh-link is-active"' in body
-
-
-def test_other_pages_expose_interactions_link() -> None:
-    # The shared nav partial must surface the link everywhere (board here).
+def test_standalone_interactions_nav_item_is_gone() -> None:
+    """The primary nav no longer carries a standalone Interactions link — it is
+    an Analytics switcher tab now. The board's masthead must not link to
+    /interactions."""
     resp = asyncio.run(app_module.index(_request("/")))
-    assert 'href="/interactions"' in resp.body.decode()
-
-
-def test_page_surfaces_workspace_error(monkeypatch) -> None:
-    monkeypatch.setattr(app_module, "_validate_or_warn", lambda: "bd not found")
-    resp = asyncio.run(app_module.page_interactions(_request()))
-    assert resp.status_code == 500
-    assert "bd not found" in resp.body.decode()
+    body = resp.body.decode()
+    assert 'href="/interactions"' not in body
+    # Analytics is the surface that now hosts it.
+    assert 'href="/analytics"' in body
 
 
 # ----- /api/interactions partial -----

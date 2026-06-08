@@ -53,13 +53,20 @@ class AnalyticsView:
 # missing/unknown ?view=). Order here is the order the switcher renders.
 #
 # History is the first sub-view (migrated from the former standalone /history
-# page). Interactions follows in task_analytics_interactions — when it lands it
-# is literally one more AnalyticsView entry + its shell partial, nothing else.
+# page); Interactions is the second (migrated from the former standalone
+# /interactions page, bdboard-vtd4). Each is literally one AnalyticsView entry +
+# its shell partial — the proof that the extension point documented above is
+# additive: nothing in the route, switcher, or analytics.html changed to add it.
 ANALYTICS_VIEWS: tuple[AnalyticsView, ...] = (
     AnalyticsView(
         key="history",
         label="History",
         partial="partials/analytics_history.html",
+    ),
+    AnalyticsView(
+        key="interactions",
+        label="Interactions",
+        partial="partials/analytics_interactions.html",
     ),
 )
 

@@ -74,6 +74,17 @@ def test_registry_has_history_as_first_view() -> None:
     assert analytics.DEFAULT_VIEW.key == "history"
 
 
+def test_registry_has_interactions_as_second_view() -> None:
+    """Interactions is the second sub-view (migrated from the standalone
+    /interactions page, bdboard-vtd4) — proving the registry is the additive
+    extension point."""
+    keys = [v.key for v in analytics.ANALYTICS_VIEWS]
+    assert keys == ["history", "interactions"]
+    inter = analytics.resolve_view("interactions")
+    assert inter.label == "Interactions"
+    assert inter.partial == "partials/analytics_interactions.html"
+
+
 def test_resolve_view_defaults_on_unknown_or_missing() -> None:
     """A missing/unknown ?view= degrades to the default sub-view (never 404s)."""
     assert analytics.resolve_view(None) is analytics.DEFAULT_VIEW
@@ -123,6 +134,34 @@ def test_history_subview_renders_unchanged_content() -> None:
     assert 'id="history-region"' in body
     assert 'hx-get="/api/history"' in body
     assert 'id="history-stats"' in body
+
+
+def test_interactions_subview_renders_unchanged_content() -> None:
+    """Interactions renders inside Analytics as a sub-view (bdboard-vtd4),
+    reusing /api/interactions + its kind filter chips, unchanged in content."""
+    _, body = _call_analytics(view="interactions")
+
+    # The Interactions sub-view shell owns the region and lazy-loads the SAME
+    # /api/interactions endpoint the standalone page used.
+    assert 'id="interactions-region"' in body
+    assert 'hx-get="/api/interactions"' in body
+    assert 'hx-trigger="load, refresh from:body"' in body
+    # Interactions tab reads active in the switcher.
+    assert 'href="/analytics?view=interactions"' in body
+
+
+def test_standalone_interactions_nav_entry_is_gone() -> None:
+    """The standalone Interactions PRIMARY nav entry is replaced by the
+    Analytics tab. 'Interactions' survives only as a switcher tab inside the
+    Analytics panel, never as a primary masthead nav link to /interactions."""
+    _, body = _call_analytics()
+
+    # No primary nav link to the old /interactions page (it redirects now).
+    assert 'href="/interactions"' not in body
+    # 'Interactions' survives only as a switcher tab inside the Analytics panel.
+    masthead, _sep, _panel = body.partition('class="analytics-switcher"')
+    assert ">Interactions</a>" not in masthead
+    assert 'href="/analytics?view=interactions"' in body
 
 
 def test_selected_subview_reflected_in_url_active_state() -> None:

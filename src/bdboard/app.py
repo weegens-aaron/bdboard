@@ -665,37 +665,23 @@ async def page_history(request: Request) -> RedirectResponse:
     return RedirectResponse(url="/analytics?view=history", status_code=307)
 
 
-@app.get("/interactions", response_class=HTMLResponse)
-async def page_interactions(request: Request) -> HTMLResponse:
-    """Full-page swarm interaction-log view, symmetric with `/history`.
+@app.get("/interactions")
+async def page_interactions(request: Request) -> RedirectResponse:
+    """Redirect the former standalone Interactions page into the Analytics tab.
 
-    This reads the CROSS-RUN audit trail (``.beads/interactions.jsonl``: the
-    llm_call/tool_call/label reward entries the SFT/RL pipeline cares about) —
-    deliberately SEPARATE from the per-bead ``bd history`` Audit/Lifecycle
-    modal, which is left untouched (bead bdboard-bghy acceptance). Extends
-    base.html and renders the masthead + the #interactions-region swap target;
-    that region is filled by an HTMX `load` fetch to /api/interactions and
-    re-fetched on `refresh from:body` (the existing SSE pipeline), so this
-    route stays trivially cheap and never blocks on a bd subprocess. We surface
-    the workspace validation error here for parity with the other pages.
+    Interactions migrated to the second Analytics sub-view (bdboard-vtd4),
+    alongside History; this 307 redirect keeps old links, bookmarks, and the
+    (now-removed) primary-nav entry from breaking by pointing them at the
+    Interactions sub-view. 307 (temporary) preserves the method and avoids
+    caches pinning the redirect permanently in case the canonical path ever
+    changes again — symmetric with the /history redirect.
+
+    The interaction log itself is unchanged: the sub-view shell reuses
+    /api/interactions + partials/interactions.html (kind filter chips and all),
+    so the cross-run swarm audit trail (.beads/interactions.jsonl) and the
+    per-bead `bd history` Audit/Lifecycle modal both behave exactly as before.
     """
-    err = _validate_or_warn()
-    if err:
-        return TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            {"error": err, "workspace": str(_WORKSPACE)},
-            status_code=500,
-        )
-    return TEMPLATES.TemplateResponse(
-        request,
-        "interactions.html",
-        {
-            "workspace": _WORKSPACE.name,
-            "workspace_path": str(_WORKSPACE),
-            "active": "interactions",
-        },
-    )
+    return RedirectResponse(url="/analytics?view=interactions", status_code=307)
 
 
 @app.get("/api/interactions", response_class=HTMLResponse)
