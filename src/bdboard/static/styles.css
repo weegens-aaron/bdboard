@@ -2071,26 +2071,59 @@ pre { margin: 0; }
 .merge-slot-queue-empty { margin: 0; font-size: 12px; }
 
 /* Coordination panel (board): open gates + merge-slots, hydrated into
-   #coordination. Sits above the lanes; only present when there is
-   coordination state, so a board that never uses gates/slots is unchanged. */
+   #coordination. Deliberately a SECONDARY element (bdboard-f7yp): it sits
+   BELOW the lanes and is a collapsed-by-default native <details> disclosure,
+   because coordination state can sit idle for months. Only present when there
+   is coordination state, so a board that never uses gates/slots is unchanged. */
 .coordination-panel {
   border: 1px solid var(--rule);
   border-radius: 6px;
   background: var(--paper);
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  margin-top: 16px;
 }
-.coordination-title {
+/* The clickable disclosure header — compact, muted, secondary. Native
+   <summary> handles keyboard + SR expand/collapse semantics for free. */
+.coordination-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--ink);
-  margin: 0;
+  color: var(--muted);
+  list-style-position: inside;
+}
+.coordination-summary:hover { color: var(--ink-2); }
+.coordination-summary:focus-visible {
+  outline: 2px solid var(--brand-blue-d);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+.coordination-summary-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: var(--wash, var(--rule));
+  border-radius: 10px;
+  padding: 0 7px;
+  line-height: 18px;
+}
+.coordination-summary-error {
+  font-weight: 700;
+  color: var(--danger, var(--ink-2));
+}
+/* Revealed body — padded under the summary, separated by a hairline. */
+.coordination-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--rule);
 }
 .coordination-section { display: flex; flex-direction: column; gap: 8px; }
 .coordination-subtitle {

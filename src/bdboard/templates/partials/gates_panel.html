@@ -11,8 +11,25 @@
    that never uses gates/slots carries no permanent chrome. #}
 {% set has_content = gates or gates_error or slots %}
 {% if has_content %}
-<section class="coordination-panel" aria-labelledby="coordination-title">
-  <h2 id="coordination-title" class="coordination-title">Coordination</h2>
+{# Count of live coordination items for the collapsed summary header. Gates
+   contribute their length (0 when errored/empty); slots contribute theirs.
+   Shown as 'Coordination (N)' so the panel communicates state at a glance
+   while staying collapsed by default — it can sit idle for months, so it is a
+   secondary element, not a primary focus (bdboard-f7yp). #}
+{% set gate_count = gates | length if not gates_error else 0 %}
+{% set slot_count = slots | length %}
+{% set coord_count = gate_count + slot_count %}
+{# Native <details>/<summary> is the canonical accessible disclosure: it is
+   keyboard- and screen-reader-operable for free and conveys expanded/collapsed
+   state implicitly (no manual aria-expanded/JS needed). Collapsed by default. #}
+<details class="coordination-panel">
+  <summary class="coordination-summary" aria-label="Coordination: {{ coord_count }} item{{ '' if coord_count == 1 else 's' }} (gates and merge slots)">
+    <span class="coordination-summary-title">Coordination</span>
+    <span class="coordination-summary-count">{{ coord_count }}</span>
+    {% if gates_error %}<span class="coordination-summary-error muted">!</span>{% endif %}
+  </summary>
+  <div class="coordination-body" aria-labelledby="coordination-title">
+    <h2 id="coordination-title" class="sr-only">Coordination</h2>
 
   {# ----- Open gates ----- #}
   <div class="coordination-section coordination-gates">
@@ -99,5 +116,6 @@
     </ul>
   </div>
   {% endif %}
-</section>
+  </div>
+</details>
 {% endif %}
