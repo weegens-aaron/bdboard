@@ -748,11 +748,6 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
         "partials/closed_lane.html",
         {
             "closed": closed_beads,
-            # The Closed lane only shows closures inside the board's recent-
-            # activity window; without this label a user can't tell "no old
-            # closures" from "old closures hidden" (bdboard-75rq). Surface the
-            # active window + a link to the uncapped History page.
-            "closed_window_days": derive.BOARD_CLOSED_WINDOW_DAYS,
         },
     )
 

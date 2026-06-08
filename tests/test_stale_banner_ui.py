@@ -1,15 +1,12 @@
-"""Render tests for the closed-window label + stale-data banner (bdboard-75rq).
+"""Render tests for the stale-data banner (bdboard-75rq).
 
-Two display-fidelity gaps the board had:
+A sustained ``bd list`` refresh failure froze the board on the last-good
+snapshot with only a log line. A page-level stale banner now surfaces a
+SUSTAINED outage; a healthy board renders nothing (region collapses).
 
-  1. The Closed lane only shows closures inside BOARD_CLOSED_WINDOW_DAYS with
-     NO affordance, so an empty lane was ambiguous ("nothing closed" vs "older
-     closures hidden"). The lane now states its active window and links to the
-     uncapped History page.
-
-  2. A sustained ``bd list`` refresh failure froze the board on the last-good
-     snapshot with only a log line. A page-level stale banner now surfaces a
-     SUSTAINED outage; a healthy board renders nothing (region collapses).
+(The Closed-lane window-note affordance that this file also covered was
+removed in bdboard-qugp to reduce board visual weight; its render tests went
+with it.)
 
 These are markup tests (no TestClient): they render the partials through the
 app's Jinja env and assert on the base.html poll wiring, mirroring
@@ -28,36 +25,9 @@ _PKG_DIR = Path(app_module.__file__).parent
 _BASE_HTML = (_PKG_DIR / "templates" / "base.html").read_text(encoding="utf-8")
 
 
-def _render_closed_lane(closed, window_days: int) -> str:
-    template = app_module.TEMPLATES.env.get_template("partials/closed_lane.html")
-    return template.render(closed=closed, closed_window_days=window_days)
-
-
 def _render_banner(state: StalenessState, last_success_label: str | None) -> str:
     template = app_module.TEMPLATES.env.get_template("partials/stale_banner.html")
     return template.render(staleness=state, last_success_label=last_success_label)
-
-
-# ----- AC1: the Closed lane states its window + links to History -----
-
-
-def test_closed_lane_states_active_window() -> None:
-    html = _render_closed_lane([], window_days=3)
-    assert "Last 3 days" in html
-
-
-def test_closed_lane_window_singular_day() -> None:
-    # Defensive: a 1-day window should read "day", not "days".
-    html = _render_closed_lane([], window_days=1)
-    assert "Last 1 day" in html
-    assert "Last 1 days" not in html
-
-
-def test_closed_lane_links_to_uncapped_history() -> None:
-    html = _render_closed_lane([], window_days=3)
-    # range=all is the uncapped History view — older closures are reachable.
-    assert 'href="/history?range=all"' in html
-    assert "See History" in html
 
 
 # ----- AC2 + AC3: sustained failure surfaces; transient does not -----

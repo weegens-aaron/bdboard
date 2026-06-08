@@ -3,19 +3,13 @@
    placeholder by /api/lanes/closed. The lane chrome (title, filters) stays
    in lanes.html; this is just the card list + count update.
 
-   Window affordance (bdboard-75rq): the board's Closed lane only shows
-   closures inside the recent-activity window (BOARD_CLOSED_WINDOW_DAYS).
-   Without saying so, an empty lane is ambiguous — "nothing closed" vs
-   "older closures hidden". We state the active window and link to the
-   uncapped History page so older closures are always reachable. #}
+   Note: a window-note affordance ("Last N days · See History for older →",
+   bdboard-75rq) once sat under the lane title to disambiguate an empty lane.
+   It was removed in bdboard-qugp to reduce visual weight on the board. #}
 <h2 class="lane-title">
   <span class="lane-name">Closed</span>
   <span class="lane-count" data-closed-count="total">{{ closed|length }}</span>
 </h2>
-<p class="lane-window-note muted">
-  Last {{ closed_window_days }}{{ " day" if closed_window_days == 1 else " days" }} ·
-  <a class="lane-window-link" href="/history?range=all">See History for older →</a>
-</p>
 <ul class="lane-list">
   {% for b in closed %}
   {% with show_closed_at_attr = true %}{% include "partials/bead_card.html" %}{% endwith %}

@@ -3409,33 +3409,6 @@ pre { margin: 0; }
 }
 
 /* ============================================================
-   Closed-lane window note (bdboard-75rq). The board's Closed lane is
-   bounded by BOARD_CLOSED_WINDOW_DAYS, so an empty lane is ambiguous:
-   "nothing closed" vs "older closures hidden". This sub-label states the
-   active window and links to the uncapped History page. Sits directly under
-   the lane title, muted so it reads as chrome, not a card.
-   ============================================================ */
-.lane-window-note {
-  margin: 0 0 8px;
-  font-family: var(--sans);
-  font-size: 11px;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-}
-.lane-window-link {
-  /* --info reads AA on both paper themes; underline gives a non-colour cue. */
-  color: var(--info);
-  text-decoration: underline;
-  white-space: nowrap;
-}
-.lane-window-link:hover { text-decoration: none; }
-.lane-window-link:focus-visible {
-  outline: 2px solid var(--brand-blue);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-/* ============================================================
    Stale-data banner (bdboard-75rq). A SUSTAINED bd-list refresh failure
    freezes the board on the last-good snapshot; this page-level advisory
    surfaces that outage (previously a log line only). Amber, not red: the
