@@ -395,6 +395,37 @@ pre { margin: 0; }
   box-shadow: inset 0 -2px 0 var(--brand-blue);
 }
 
+/* Coordination count badge (bdboard-iz8h). A small mono pill that rides
+   alongside the Coordination nav link, mirroring .coordination-summary-count
+   so the badge and the page's own count read as the same object. The VISIBLE
+   number is the signal (not colour-only — clears WCAG 1.4.1); the pill shape +
+   the number's presence/absence carry the meaning. The slot is the empty
+   HTMX target that lives in the markup at all times; it collapses to nothing
+   until /api/coordination/count swaps a badge in (or stays empty at count 0),
+   so there is no reserved gap on a quiet board. */
+.mh-link-badge-slot {
+  display: inline-flex;
+  align-items: center;
+}
+.mh-link-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  /* Reset the nav link's small-caps treatment so the digits read as numerals,
+     not letter-spaced caps. */
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-2);
+  background: var(--wash, var(--rule));
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0 7px;
+  line-height: 17px;
+}
+
 /* Theme toggle — borrows .mh-link styling so it reads as the
    trailing cell of the contents bar, tied in with the same hairline
    border-left. It is a <button> outside <nav>: an action, not navigation.

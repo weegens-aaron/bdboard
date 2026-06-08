@@ -100,7 +100,9 @@ def test_coordination_nav_link_present_on_other_pages() -> None:
     resp = asyncio.run(app_module.index(_request("/")))
     body = resp.body.decode()
     assert 'href="/coordination"' in body
-    assert ">Coordination</a>" in body
+    # The link text is now followed by the count-badge slot (bdboard-iz8h),
+    # so assert on the text start rather than an immediate </a>.
+    assert ">Coordination<" in body
 
 
 # ----- board no longer carries an inline coordination region -----

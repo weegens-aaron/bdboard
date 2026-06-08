@@ -28,7 +28,19 @@
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
   <a href="/coordination"
      class="mh-link{% if active == 'coordination' %} is-active{% endif %}"
-     {% if active == 'coordination' %}aria-current="page"{% endif %}>Coordination</a>
+     {% if active == 'coordination' %}aria-current="page"{% endif %}>Coordination{#
+     Count badge (bdboard-iz8h): a tiny HTMX-hydrated slot that surfaces the
+     number of outstanding coordination items (open gates + held/contended
+     merge slots) so a user knows there's something to look at WITHOUT opening
+     the tab. Empty on first paint; /api/coordination/count fills it after
+     paint and on every SSE `refresh from:body`, mirroring the counts/gates
+     hydration pattern. aria-live="polite" announces changes; the partial
+     renders nothing (so this slot stays empty) when the count is 0. #}<span
+       class="mh-link-badge-slot"
+       aria-live="polite"
+       hx-get="/api/coordination/count"
+       hx-trigger="load, refresh from:body"
+       hx-swap="innerHTML"></span></a>
   <a href="/analytics"
      class="mh-link{% if active == 'analytics' %} is-active{% endif %}"
      {% if active == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
