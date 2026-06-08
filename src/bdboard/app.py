@@ -17,12 +17,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Form, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from watchfiles import awatch
 
-from bdboard import derive, interactions, md
+from bdboard import analytics, derive, interactions, md
 from bdboard.bd import BdClient
 from bdboard.events import EventBus
 from bdboard.store import Store
@@ -586,17 +586,26 @@ async def page_memory(request: Request) -> HTMLResponse:
     )
 
 
-@app.get("/history", response_class=HTMLResponse)
-async def page_history(request: Request) -> HTMLResponse:
-    """Full-page History view, symmetric with `/` and `/memory` (design §D4).
+@app.get("/analytics", response_class=HTMLResponse)
+async def page_analytics(request: Request, view: str | None = None) -> HTMLResponse:
+    """Full-page Analytics view (bdboard-ove7), symmetric with `/` and `/memory`.
 
-    Extends base.html and renders the masthead (with the History nav entry
-    active) plus the #history-region swap target; that region is filled by an
-    HTMX `load` fetch to /api/history and re-fetched on `refresh from:body`
-    (the existing SSE pipeline, design §D7), so this route stays trivially
-    cheap and never blocks on a bd subprocess. We surface the workspace
-    validation error here for parity with `/` and `/memory` so a broken
-    workspace fails visibly rather than rendering an empty history page.
+    Hosts multiple analytics/history sub-views behind one in-page switcher so
+    the primary nav stays flat as the analytics surface grows (epic
+    bdboard-e47e). The sub-views are data-driven from the
+    :mod:`bdboard.analytics` registry — adding one is a registry entry + its
+    shell partial, with no change here (see analytics.py for the extension
+    point). History is the first sub-view, migrated from the former standalone
+    /history page; it reuses /api/history + partials/history.html unchanged.
+
+    ``?view=`` selects the active sub-view and is reflected in the URL by the
+    switcher (hx-push-url), so a sub-view is deep-linkable and back/forward
+    friendly; an unknown/missing value degrades to the default sub-view inside
+    :func:`analytics.resolve_view`. Extends base.html and renders the switcher
+    + active sub-view shell server-side; each shell lazy-loads its own data
+    region via HTMX so this route stays trivially cheap and never blocks on a
+    bd subprocess. We surface the workspace validation error here for parity
+    with the other pages so a broken workspace fails visibly.
     """
     err = _validate_or_warn()
     if err:
@@ -606,15 +615,54 @@ async def page_history(request: Request) -> HTMLResponse:
             {"error": err, "workspace": str(_WORKSPACE)},
             status_code=500,
         )
+    active_view = analytics.resolve_view(view)
     return TEMPLATES.TemplateResponse(
         request,
-        "history.html",
+        "analytics.html",
         {
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
-            "active": "history",
+            "active": "analytics",
+            "views": analytics.ANALYTICS_VIEWS,
+            "active_view": active_view,
         },
     )
+
+
+@app.get("/api/analytics", response_class=HTMLResponse)
+async def api_analytics(request: Request, view: str | None = None) -> HTMLResponse:
+    """Render the Analytics panel fragment (switcher + active sub-view).
+
+    HTMX swap target for the in-page sub-view switcher (bdboard-ove7): each
+    switcher link hx-gets this endpoint and swaps the result into
+    #analytics-panel, so a switch re-renders the switcher's active state AND the
+    selected sub-view in one round-trip. Returns the SAME partial the full page
+    embeds (partials/analytics_panel.html), keeping the two render paths DRY.
+    ``?view=`` selects the sub-view; unknown/missing degrades to the default.
+    Trivially cheap — the sub-view's own shell lazy-loads its data region.
+    """
+    active_view = analytics.resolve_view(view)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/analytics_panel.html",
+        {
+            "views": analytics.ANALYTICS_VIEWS,
+            "active_view": active_view,
+        },
+    )
+
+
+@app.get("/history")
+async def page_history(request: Request) -> RedirectResponse:
+    """Redirect the former standalone History page into the Analytics tab.
+
+    History migrated to the first Analytics sub-view (bdboard-ove7); this 307
+    redirect keeps old links, bookmarks, and the (now-removed) nav entry from
+    breaking by pointing them at the History sub-view. 307 (temporary)
+    preserves the method and avoids caches pinning the redirect permanently in
+    case the canonical path ever changes again.
+    """
+    return RedirectResponse(url="/analytics?view=history", status_code=307)
 
 
 @app.get("/interactions", response_class=HTMLResponse)

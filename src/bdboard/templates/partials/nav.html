@@ -13,17 +13,19 @@
    page is signalled by THREE non-colour cues: ink colour + bold weight + an
    inset baseline rule (.mh-link.is-active).
 
-   `active` ("board" | "history" | "interactions" | "memory") marks the
+   `active` ("board" | "analytics" | "interactions" | "memory") marks the
    current page: it both
    gets the .is-active styling hook and an aria-current="page" so assistive
-   tech announces the current location. #}
+   tech announces the current location. NOTE: the former standalone History
+   entry is now the first sub-view inside the Analytics tab (bdboard-ove7);
+   /history redirects to /analytics?view=history. #}
 <nav class="masthead-nav" aria-label="Primary">
   <a href="/"
      class="mh-link{% if active == 'board' %} is-active{% endif %}"
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
-  <a href="/history"
-     class="mh-link{% if active == 'history' %} is-active{% endif %}"
-     {% if active == 'history' %}aria-current="page"{% endif %}>History</a>
+  <a href="/analytics"
+     class="mh-link{% if active == 'analytics' %} is-active{% endif %}"
+     {% if active == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
   <a href="/interactions"
      class="mh-link{% if active == 'interactions' %} is-active{% endif %}"
      {% if active == 'interactions' %}aria-current="page"{% endif %}>Interactions</a>

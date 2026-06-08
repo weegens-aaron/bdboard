@@ -24,9 +24,10 @@
    while aria-describedby ties the tooltip text to the button so screen readers
    always announce the explanation regardless of the visual hover/focus state.
 
-   The masthead host (#history-stats) is rendered by history.html so the strip
-   exists on first paint; this OOB fragment then keeps it current on every
-   range change and SSE refresh. #}
+   The masthead host (#history-stats) is rendered by the History sub-view shell
+   (partials/analytics_history.html, inside the Analytics tab — bdboard-ove7)
+   so the strip exists on first paint; this OOB fragment then keeps it current
+   on every range change and SSE refresh. #}
 
 {# DRY: one accessible info-icon + popover. `id` must be unique per cell so
    aria-describedby resolves; `text` is the fuller explanation that used to sit
