@@ -661,7 +661,10 @@ pre { margin: 0; }
 
 .swarm-cohorts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* One-wide / stacked cohort blocks (bdboard-1wub): the Completed / Active /
+     Ready / Blocked blocks read better one per row in the narrow epic modal
+     than packed two-up. */
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 14px;
 }
