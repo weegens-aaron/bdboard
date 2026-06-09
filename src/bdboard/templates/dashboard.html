@@ -56,9 +56,11 @@
            hx-get="/api/lanes" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
     {% include "partials/lanes_skeleton.html" %}
   </section>
-  {# Coordination (open gates + merge-slot mutexes) is no longer an inline
-     board region: it was promoted to its own primary-nav tab at /coordination
-     (bdboard-wr85). The board stays focused on the lanes. #}
+  {# Coordination (open gates + merge-slot mutexes) renders back ON the board
+     as a second epic-lane-style strip (bdboard-xiwd, reverting the
+     /coordination tab bdboard-wr85). Its #coordination region + /api/gates
+     hydration live inside partials/lanes.html, directly below the "Epics in
+     flight" strip, so the board owns both strips together. #}
 </main>
 
 {# Pour-formula dialog. A native <dialog> traps keyboard focus

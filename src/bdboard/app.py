@@ -658,41 +658,6 @@ async def api_analytics(request: Request, view: str | None = None) -> HTMLRespon
     )
 
 
-@app.get("/coordination", response_class=HTMLResponse)
-async def page_coordination(request: Request) -> HTMLResponse:
-    """Full-page Coordination view (bdboard-wr85), symmetric with `/memory`.
-
-    Promotes the coordination panel (open gates + merge-slot mutexes) off the
-    board into its own primary-nav tab (epic bdboard-e47e). The board no longer
-    carries an inline #coordination region; this dedicated page renders the
-    SAME panel by HTMX-loading partials/gates_panel.html via /api/gates on load
-    + ``refresh from:body`` (so SSE live updates and modal drill-downs into
-    gate/slot beads keep working unchanged). It passes ``standalone=1`` so the
-    panel renders expanded and shows an explicit empty state when there is no
-    coordination state — instead of the board's render-nothing behaviour that
-    would leave a dedicated page blank. Extends base.html, stays trivially
-    cheap, and surfaces the workspace validation error for parity with the
-    other pages so a broken workspace fails visibly.
-    """
-    err = _validate_or_warn()
-    if err:
-        return TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            {"error": err, "workspace": str(_WORKSPACE)},
-            status_code=500,
-        )
-    return TEMPLATES.TemplateResponse(
-        request,
-        "coordination.html",
-        {
-            "workspace": _WORKSPACE.name,
-            "workspace_path": str(_WORKSPACE),
-            "active": "coordination",
-        },
-    )
-
-
 @app.get("/history")
 async def page_history(request: Request) -> RedirectResponse:
     """Redirect the former standalone History page into the Analytics tab.
@@ -831,38 +796,34 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
 
 
 @app.get("/api/gates", response_class=HTMLResponse)
-async def api_gates(request: Request, standalone: bool = False) -> HTMLResponse:
-    """Render the gates / coordination panel (HTMX swap target).
+async def api_gates(request: Request) -> HTMLResponse:
+    """Render the coordination strip (HTMX swap target).
 
     Surfaces the two coordination primitives bd exposes but bdboard previously
-    ignored (audit FB-9):
+    ignored (audit FB-9), presented as a second epic-lane-style strip on the
+    board (bdboard-xiwd — reverting the dedicated /coordination tab):
       - Open async-coordination GATES via ``bd gate list --json``, each
         interpreted into a labelled await condition (a PR/run link, a timer
         deadline, or a manual-only flag) by :func:`derive.gate_condition` — so
-        the panel reads as 'Open Gates (N)' with conditions, not raw scalars.
+        each gate chip carries its await type, not a raw scalar.
       - MERGE-SLOT mutexes (``gt:slot`` beads): held/available + the
         priority-ordered waiter queue, via :func:`derive.merge_slot_view`.
 
     Degrades gracefully (AC3): a ``bd gate list`` failure renders an inline
-    message for the gates section rather than 500-ing the whole partial, and
-    the merge-slot section is best-effort (a failed slot read is simply
-    omitted) — symmetric with /api/formulas and /api/memory.
-
-    ``standalone`` is set by the dedicated /coordination page (bdboard-wr85):
-    when true the panel is rendered expanded (it is the page's primary focus,
-    not a collapsed secondary board element) and an explicit empty state is
-    shown when there is no coordination state, instead of the board's
-    render-nothing behaviour that would leave the page blank.
+    message in the strip rather than 500-ing the whole partial, and the
+    merge-slot section is best-effort (a failed slot read is simply omitted) —
+    symmetric with /api/formulas and /api/memory. The strip renders nothing
+    when there is no coordination state (hidden-when-empty), matching the
+    board's other only-when-present strips.
     """
     gates, gates_error, slots = await _collect_coordination()
     return TEMPLATES.TemplateResponse(
         request,
-        "partials/gates_panel.html",
+        "partials/coordination_lane.html",
         {
             "gates": gates,
             "gates_error": gates_error,
             "slots": slots,
-            "standalone": standalone,
         },
     )
 
@@ -873,15 +834,15 @@ async def _collect_coordination() -> tuple[list[dict[str, Any]], str | None, lis
     Returns ``(gates, gates_error, slots)`` where:
 
     - ``gates`` is the open-gate list (each entry shaped for
-      partials/gates_panel.html: id/title/priority + interpreted condition),
+      partials/coordination_lane.html: id/title/priority + interpreted
+      condition),
     - ``gates_error`` is a friendly message when ``bd gate list`` failed (the
       gates list is then empty), and
     - ``slots`` is the list of merge-slot views (held/available + waiter
       queue).
 
-    This is the SINGLE source of truth for coordination state so the
-    /coordination panel and the nav count badge (bdboard-iz8h) can never drift
-    — both derive from the exact same gates/slots structures. Degrades
+    This is the SINGLE source of truth for coordination state so every
+    consumer derives from the exact same gates/slots structures. Degrades
     gracefully (AC3): a gate-list failure surfaces ``gates_error`` rather than
     raising, and a failed slot read falls back to the list bead.
     """
@@ -1628,36 +1589,6 @@ async def api_counts(request: Request) -> HTMLResponse:
         request,
         "partials/counts.html",
         {"counts": derive.counts(await store.snapshot())},
-    )
-
-
-@app.get("/api/coordination/count", response_class=HTMLResponse)
-async def api_coordination_count(request: Request) -> HTMLResponse:
-    """Render the Coordination nav-tab count badge (HTMX swap target).
-
-    The badge (bdboard-iz8h) tells a user there is coordination state worth
-    looking at WITHOUT opening the tab. It lives in partials/nav.html on every
-    page and hydrates after paint via HTMX (load + refresh from:body), so it
-    rides the same SSE refresh pipeline as the rest of the board and never
-    blocks first paint on a bd subprocess.
-
-    The count is derived from the EXACT same gates/slots source as the
-    /coordination page (:func:`_collect_coordination`), so the badge can't
-    drift from the page (AC: "derived from the same source"). Counting rule
-    lives in :func:`derive.coordination_count`: every open gate plus any
-    held/contended merge slot.
-
-    Degrades gracefully: if the gate list errored, that section contributes 0
-    rather than 500-ing the badge — a missing badge is strictly better than a
-    broken nav. partials/coordination_badge.html renders nothing when the
-    count is 0, so a quiet board shows no badge at all.
-    """
-    gates, _gates_error, slots = await _collect_coordination()
-    count = derive.coordination_count(gates, slots)
-    return TEMPLATES.TemplateResponse(
-        request,
-        "partials/coordination_badge.html",
-        {"count": count},
     )
 
 

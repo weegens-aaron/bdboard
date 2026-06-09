@@ -30,9 +30,9 @@ CSS_PATH = Path("src/bdboard/static/styles.css")
 TEMPLATES = Path("src/bdboard/templates")
 # History migrated into the Analytics tab (bdboard-ove7); analytics.html is the
 # full-page surface that now shares the two-row masthead structure. Coordination
-# was promoted off the board into its own /coordination tab (bdboard-wr85) and
-# shares the same masthead wiring.
-SURFACES = ("dashboard.html", "analytics.html", "memory.html", "coordination.html")
+# was reverted off its own tab back onto the board as a second epic-lane-style
+# strip (bdboard-xiwd), so it no longer has its own full-page surface here.
+SURFACES = ("dashboard.html", "analytics.html", "memory.html")
 
 
 def _css() -> str:

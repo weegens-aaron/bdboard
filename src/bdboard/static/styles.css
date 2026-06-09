@@ -395,37 +395,6 @@ pre { margin: 0; }
   box-shadow: inset 0 -2px 0 var(--brand-blue);
 }
 
-/* Coordination count badge (bdboard-iz8h). A small mono pill that rides
-   alongside the Coordination nav link, mirroring .coordination-summary-count
-   so the badge and the page's own count read as the same object. The VISIBLE
-   number is the signal (not colour-only — clears WCAG 1.4.1); the pill shape +
-   the number's presence/absence carry the meaning. The slot is the empty
-   HTMX target that lives in the markup at all times; it collapses to nothing
-   until /api/coordination/count swaps a badge in (or stays empty at count 0),
-   so there is no reserved gap on a quiet board. */
-.mh-link-badge-slot {
-  display: inline-flex;
-  align-items: center;
-}
-.mh-link-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 700;
-  /* Reset the nav link's small-caps treatment so the digits read as numerals,
-     not letter-spaced caps. */
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--ink-2);
-  background: var(--wash, var(--rule));
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 0 7px;
-  line-height: 17px;
-}
-
 /* Theme toggle — borrows .mh-link styling so it reads as the
    trailing cell of the contents bar, tied in with the same hairline
    border-left. It is a <button> outside <nav>: an action, not navigation.
@@ -2128,140 +2097,36 @@ pre { margin: 0; }
 .merge-slot-waiter { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
 .merge-slot-queue-empty { margin: 0; font-size: 12px; }
 
-/* Coordination panel: open gates + merge-slots, hydrated into #coordination.
-   Promoted off the board into its own /coordination tab (bdboard-wr85). On the
-   board it WAS a collapsed-by-default native <details> secondary element
-   (bdboard-f7yp); on the dedicated page it is the primary focus, so the
-   .coordination-panel-standalone modifier renders it expanded and de-mutes the
-   summary. Only present when there is coordination state — otherwise the
-   standalone page shows an explicit .coordination-empty-state instead. */
-.coordination-panel {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: var(--paper);
-  margin-top: 16px;
+/* Coordination strip (bdboard-xiwd): a SECOND epic-lane-style strip rendered
+   directly below the "Epics in flight" strip on the board, surfacing open
+   gates + merge-slot mutexes as chips. Reverts the dedicated /coordination tab
+   (bdboard-wr85) + its nav count badge (bdboard-iz8h). It reuses the
+   .epic-lane / .epic-chip idiom wholesale (DRY) and only needs a couple of
+   strip-local tweaks: a top rule to separate it from the epics strip above,
+   the compact in-chip state badges, and the inline gate-list error flag. */
+.coordination-lane {
+  /* Sits below the epics strip (which already carries its own bottom rule),
+     so this strip needs no extra top border — just consistent spacing. */
+  border-bottom: 1px solid var(--rule-2);
 }
-/* The clickable disclosure header — compact, muted, secondary. Native
-   <summary> handles keyboard + SR expand/collapse semantics for free. */
-.coordination-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-family: var(--sans);
-  font-size: 11px;
+/* Compact state badge living on a chip's line 1 (gate await type or merge-slot
+   held/available). It reuses the modal's .gate-await-badge /
+   .merge-slot-state-badge colours; this only shrinks them to chip scale and
+   keeps them from stretching the baseline-aligned line. */
+.coordination-chip-badge {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  align-self: center;
+  white-space: nowrap;
+}
+/* Inline gate-list error flag in the strip title (paired with the role=status
+   message chip in the strip body). Not colour-only — the "!" glyph + the
+   visible error message carry the meaning. */
+.coordination-error-flag {
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  list-style-position: inside;
-}
-.coordination-summary:hover { color: var(--ink-2); }
-.coordination-summary:focus-visible {
-  outline: 2px solid var(--brand-blue-d);
-  outline-offset: -2px;
-  border-radius: 6px;
-}
-.coordination-summary-count {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink-2);
-  background: var(--wash, var(--rule));
-  border-radius: 10px;
-  padding: 0 7px;
-  line-height: 18px;
-}
-.coordination-summary-error {
-  font-weight: 700;
-  color: var(--danger, var(--ink-2));
-}
-/* Revealed body — padded under the summary, separated by a hairline. */
-.coordination-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 14px;
-  border-top: 1px solid var(--rule);
-}
-.coordination-section { display: flex; flex-direction: column; gap: 8px; }
-.coordination-subtitle {
-  font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin: 0;
-}
-.coordination-gate-list,
-.coordination-slot-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.coordination-gate,
-.coordination-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.coordination-gate-id,
-.coordination-slot-id {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--brand-blue-d);
-  text-decoration: underline;
-  width: fit-content;
-}
-.coordination-gate-id:hover,
-.coordination-slot-id:hover { text-decoration: none; }
-.coordination-gate-title { font-size: 13px; color: var(--ink-2); }
-.coordination-empty,
-.coordination-error { margin: 0; font-size: 12px; }
-
-/* Dedicated /coordination page (bdboard-wr85). The page is the panel's primary
-   focus, so stack the region and let it breathe rather than sitting BELOW the
-   lanes as a secondary board element. */
-.layout-coordination {
-  flex-direction: column;
-}
-/* Standalone modifier: render the disclosure expanded (the route also emits
-   the `open` attribute) and de-mute the summary so it reads as a section
-   heading, not a collapsed secondary affordance. */
-.coordination-panel-standalone {
-  margin-top: 0;
-}
-.coordination-panel-standalone .coordination-summary {
-  color: var(--ink-2);
-  font-size: 12px;
-}
-/* Explicit empty state shown on the dedicated page when there are no gates or
-   merge slots — so the page is never blank. */
-.coordination-empty-state {
-  border: 1px dashed var(--rule);
-  border-radius: 6px;
-  background: var(--paper);
-  padding: 28px 22px;
-  text-align: center;
-}
-.coordination-empty-state-title {
-  margin: 0 0 6px;
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink-2);
-}
-.coordination-empty-state-hint {
-  margin: 0 auto;
-  max-width: 46ch;
-  font-size: 13px;
-  line-height: 1.5;
+  color: var(--danger-fg, var(--ink-2));
 }
 
 /* Field renderers — chips for labels, dep-list for deps, para for prose. */

@@ -45,6 +45,20 @@
   </div>
 </section>
 
+{# Coordination strip (bdboard-xiwd): a SECOND epic-lane-style strip rendered
+   directly below the "Epics in flight" strip, surfacing open gates +
+   merge-slot mutexes as chips. It reverts the dedicated /coordination tab
+   (bdboard-wr85) + nav count badge (bdboard-iz8h) — same /api/gates
+   derivation, board placement. It hydrates on its OWN cheap HTMX load (and SSE
+   `refresh from:body`) rather than inside /api/lanes, so the fast active-lane
+   snapshot path is never burdened with the per-slot `bd show` subprocess calls
+   the coordination strip needs. partials/coordination_lane.html renders
+   nothing when there is no coordination state, so the strip self-hides on a
+   quiet board. #}
+<div class="coordination-region"
+     id="coordination"
+     hx-get="/api/gates" hx-trigger="load, refresh from:body" hx-swap="innerHTML"></div>
+
 <div class="lanes">
   {# Active lanes: rendered immediately from active-only snapshot. The Pinned
      lane (infra / never-auto-close beads), the Gate lane (pending async-

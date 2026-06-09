@@ -168,34 +168,6 @@ def merge_slot_view(bead: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def coordination_count(
-    gates: list[dict[str, Any]],
-    slots: list[dict[str, Any]],
-) -> int:
-    """Count the *outstanding* coordination items for the nav badge.
-
-    The badge on the Coordination nav tab (bdboard-iz8h) answers a single
-    question — "is there anything I need to look at?" — so it counts only items
-    that actually demand attention:
-
-    - **Every open gate** counts. ``gates`` is the already-derived open-gate
-      list (``bd gate list`` returns only OPEN gates), so each entry is a
-      pending async wait by definition.
-    - **Held or contended merge slots** count. A merge slot that is simply
-      *available with no waiters* is idle infrastructure, not something to look
-      at, so it is excluded. ``slots`` is a list of
-      :func:`merge_slot_view` dicts; a slot contributes when it is ``held`` OR
-      has a non-empty waiter queue (``waiter_count > 0``).
-
-    Pure over its inputs (no I/O). Callers pass the SAME ``gates``/``slots``
-    structures the Coordination panel renders, so the badge can never drift
-    from the page (bdboard-iz8h AC: "derived from the same source").
-    """
-    gate_count = len(gates)
-    slot_count = sum(1 for s in slots if s.get("held") or (s.get("waiter_count") or 0) > 0)
-    return gate_count + slot_count
-
-
 def _github_link(repo_url: str | None, await_type: str, await_id: str) -> str | None:
     """Build the PR / Actions URL for a ``gh:pr`` / ``gh:run`` gate, or None.
 
