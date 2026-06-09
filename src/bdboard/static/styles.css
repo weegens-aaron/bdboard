@@ -843,7 +843,35 @@ pre { margin: 0; }
   .lanes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
-  .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Single CONSISTENT orientation at narrow widths (bdboard-0m4i). The lane
+     count varies (6–9, since Pinned/Gate/Swarm only appear when populated),
+     so a 2-column grid left a ragged last row that read as a mix of
+     orientations — a half-and-half board. Collapsing to ONE full-width column
+     makes every lane uniform: 6 (wide) → 3 → 1 is a clean, monotonic reduction
+     with no breakpoint where some lanes sit beside others. Single-column also
+     satisfies WCAG 1.4.10 reflow (no horizontal scrolling for content). */
+  .lanes { grid-template-columns: 1fr; }
+
+  /* Stacked lanes need the PAGE to scroll, not each lane crammed into a sliver
+     of the viewport. Flip the board from the desktop model ("fixed viewport,
+     each lane scrolls internally") to a natural page scroll: the board region
+     scrolls, the lanes grid grows with its content, and each lane caps its
+     height so one long lane still scrolls internally rather than dwarfing the
+     rest. Each lane keeps its sticky title + internally-scrolling card list. */
+  .layout-board {
+    overflow-y: auto;
+    padding: 16px 16px;
+  }
+  .lanes-region {
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+  .lanes { flex: 0 0 auto; }
+  /* Scoped to .layout-board so this beats the base `.lane { max-height: 100% }`
+     rule that appears LATER in source order (equal specificity would otherwise
+     let the base win and uncap the lane). On the board a long lane still
+     scrolls internally; short lanes size to their content. */
+  .layout-board .lane { max-height: 80vh; }
 }
 
 .lane {
