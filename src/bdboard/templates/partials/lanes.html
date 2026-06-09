@@ -9,24 +9,40 @@
         hx-target="#bead-modal"
         hx-swap="innerHTML"
         hx-disabled-elt="this">
-      <span class="epic-chip-marker p{{ e.priority if e.priority is not none else 'x' }}" aria-hidden="true">&#9670;</span>
-      {% if e.priority is not none %}<span class="sr-only">Priority P{{ e.priority }}.</span>{% endif %}
-      <span class="bead-id">{{ e.id }}</span>
-      <span class="epic-chip-sep" aria-hidden="true">·</span>
+      {# Line 1: priority marker + bead id + rollup count (right-aligned). #}
+      <span class="epic-chip-line1">
+        <span class="epic-chip-marker p{{ e.priority if e.priority is not none else 'x' }}" aria-hidden="true">&#9670;</span>
+        {% if e.priority is not none %}<span class="sr-only">Priority P{{ e.priority }}.</span>{% endif %}
+        <span class="bead-id">{{ e.id }}</span>
+        {% if e.rollup %}
+        <span class="epic-chip-progress"
+              role="progressbar"
+              aria-valuenow="{{ e.rollup.percent }}"
+              aria-valuemin="0" aria-valuemax="100"
+              aria-label="Children complete: {{ e.rollup.completed }} of {{ e.rollup.total }} ({{ e.rollup.percent }} percent)"
+              title="{{ e.rollup.completed }} of {{ e.rollup.total }} children complete{% if e.rollup.in_progress %} ({{ e.rollup.in_progress }} in progress){% endif %}">{{ e.rollup.completed }}/{{ e.rollup.total }}</span>
+        {% endif %}
+      </span>
+      {# Line 2: epic title. #}
       <span class="epic-chip-title">{{ e.title }}</span>
-      {% if e.rollup %}
-      <span class="epic-chip-progress"
-            role="progressbar"
-            aria-valuenow="{{ e.rollup.percent }}"
-            aria-valuemin="0" aria-valuemax="100"
-            aria-label="Children complete: {{ e.rollup.completed }} of {{ e.rollup.total }} ({{ e.rollup.percent }} percent)"
-            title="{{ e.rollup.completed }} of {{ e.rollup.total }} children complete{% if e.rollup.in_progress %} ({{ e.rollup.in_progress }} in progress){% endif %}">{{ e.rollup.completed }}/{{ e.rollup.total }}</span>
-      {% endif %}
     </li>
     {% else %}
     <li class="lane-empty muted">(no active epics)</li>
     {% endfor %}
   </ul>
+  {# Board-wide time filter — inlined on the SAME row as the "Epics in flight"
+     label (bdboard-tght). It used to be a separate static .board-toolbar in
+     dashboard.html, but that shell renders BEFORE /api/lanes hydrates and has
+     no epic_lane context, so the live label/count must live here. The
+     radiogroup re-renders on each /api/lanes refresh; base.html's
+     htmx:afterSettle handler re-runs wireFilterBadges() (which re-binds the
+     fresh element and restores aria-checked from sessionStorage), keeping the
+     keyboard + aria state intact across refreshes. #}
+  <div class="board-filters" role="radiogroup" aria-label="Time window filter" id="board-time-filter">
+    <button class="filter-badge" data-filter="12h" role="radio" aria-checked="false" aria-label="Show beads from the last 12 hours">12h</button>
+    <button class="filter-badge filter-badge-active" data-filter="1d" role="radio" aria-checked="true" aria-label="Show beads from the last 24 hours">1d</button>
+    <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
+  </div>
 </section>
 
 <div class="lanes">

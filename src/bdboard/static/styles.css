@@ -534,14 +534,6 @@ pre { margin: 0; }
 .layout-board {
   flex-direction: column;
 }
-/* Board time-filter toolbar — right-aligned, same idiom as .history-toolbar. */
-.board-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 12px;
-  margin-bottom: 14px;
-}
 
 /* ============================================================
    Lanes. Each lane is a flex column so the title stays put and the
@@ -600,10 +592,10 @@ pre { margin: 0; }
 .epic-strip::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
 .epic-strip > * { flex-shrink: 0; }
 .epic-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 255px;
   background: var(--paper-3);
   border: 1px solid var(--rule);
   border-radius: 6px;
@@ -619,6 +611,12 @@ pre { margin: 0; }
 .epic-chip:focus-visible {
   outline: 2px solid var(--blue-100);
   outline-offset: 1px;
+}
+/* Line 1: marker + bead id on the left, rollup count pushed to the right. */
+.epic-chip-line1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 .epic-chip-marker {
   flex: 0 0 auto;
@@ -637,20 +635,19 @@ pre { margin: 0; }
   flex: 0 0 auto;
   white-space: nowrap;
 }
-.epic-chip-sep {
-  flex: 0 0 auto;
-  color: var(--ink-2);
-}
 .epic-chip-title {
-  flex: 0 1 auto;
   min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--ink);
 }
 .epic-chip-progress {
   flex: 0 0 auto;
+  margin-left: auto;
   font-family: var(--mono, var(--sans));
   font-size: 11px;
   font-weight: 700;
@@ -905,12 +902,14 @@ pre { margin: 0; }
 }
 
 /* Board-wide time filter — small pressable badges, WCAG AA compliant.
-   Lives in the right-aligned .board-toolbar above the lanes (the parent
-   handles the flex-end alignment, mirroring the History range toolbar). */
+   Inlined on the "Epics in flight" header row (bdboard-tght): the epic-lane is
+   a flex row [title | strip (flex:1) | filter], so flex:0 0 auto pins the
+   filter to the far right while the scrollable strip absorbs the slack. */
 .board-filters {
   display: flex;
   gap: 4px;
   align-items: center;
+  flex: 0 0 auto;
 }
 .filter-badge {
   font-family: var(--sans);
