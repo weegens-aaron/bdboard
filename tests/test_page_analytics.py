@@ -27,6 +27,8 @@ Covers:
 from __future__ import annotations
 
 import asyncio
+import json
+from pathlib import Path
 
 from starlette.requests import Request
 
@@ -65,33 +67,83 @@ def _call_memory() -> tuple[int, str]:
     return resp.status_code, resp.body.decode()
 
 
-# ----- registry: the documented extension point -----
+# ----- registry: the documented extension point + conditional registration -----
 
 
-def test_registry_has_history_as_first_view() -> None:
-    """History is the first (default) sub-view in the registry."""
-    assert analytics.ANALYTICS_VIEWS[0].key == "history"
+def _write_log(beads_dir: Path, kinds: list[str]) -> None:
+    """Write a minimal interactions.jsonl with one entry per kind."""
+    beads_dir.mkdir(parents=True, exist_ok=True)
+    lines = [
+        json.dumps({"id": f"int-{i}", "kind": k, "created_at": f"2026-01-{i + 1:02d}"})
+        for i, k in enumerate(kinds)
+    ]
+    (beads_dir / "interactions.jsonl").write_text("\n".join(lines), encoding="utf-8")
+
+
+def test_history_is_always_present_and_default() -> None:
+    """History is the always-on default sub-view (bdboard-8l60)."""
     assert analytics.DEFAULT_VIEW.key == "history"
+    assert analytics.HISTORY_VIEW.key == "history"
 
 
-def test_registry_has_interactions_as_second_view() -> None:
-    """Interactions is the second sub-view (migrated from the standalone
-    /interactions page, bdboard-vtd4) — proving the registry is the additive
-    extension point."""
-    keys = [v.key for v in analytics.ANALYTICS_VIEWS]
-    assert keys == ["history", "interactions"]
-    inter = analytics.resolve_view("interactions")
-    assert inter.label == "Interactions"
-    assert inter.partial == "partials/analytics_interactions.html"
+def test_build_views_excludes_interactions_when_log_missing(tmp_path) -> None:
+    """A missing interactions.jsonl => History only, no Interactions chip."""
+    views = analytics.build_views(tmp_path / ".beads")
+    assert [v.key for v in views] == ["history"]
+
+
+def test_build_views_excludes_interactions_when_empty(tmp_path) -> None:
+    """An empty interactions.jsonl => History only."""
+    beads = tmp_path / ".beads"
+    beads.mkdir()
+    (beads / "interactions.jsonl").write_text("", encoding="utf-8")
+    views = analytics.build_views(beads)
+    assert [v.key for v in views] == ["history"]
+
+
+def test_build_views_excludes_interactions_when_field_change_only(tmp_path) -> None:
+    """A 100%-field_change log (the common real-world case) => History only:
+    field_change is redundant with per-bead `bd history`, so it earns no
+    sub-view (bdboard-8l60)."""
+    beads = tmp_path / ".beads"
+    _write_log(beads, ["field_change", "field_change", "field_change"])
+    views = analytics.build_views(beads)
+    assert [v.key for v in views] == ["history"]
+    assert analytics.has_reward_bearing_interactions(beads) is False
+
+
+def test_build_views_includes_interactions_when_reward_bearing(tmp_path) -> None:
+    """Any reward-bearing kind (llm_call / tool_call / label) registers the
+    Interactions sub-view as the second entry, with its original partial."""
+    for kind in ("llm_call", "tool_call", "label"):
+        beads = tmp_path / kind / ".beads"
+        _write_log(beads, ["field_change", kind])
+        views = analytics.build_views(beads)
+        assert [v.key for v in views] == ["history", "interactions"]
+        inter = views[1]
+        assert inter.label == "Interactions"
+        assert inter.partial == "partials/analytics_interactions.html"
+        assert analytics.has_reward_bearing_interactions(beads) is True
 
 
 def test_resolve_view_defaults_on_unknown_or_missing() -> None:
-    """A missing/unknown ?view= degrades to the default sub-view (never 404s)."""
-    assert analytics.resolve_view(None) is analytics.DEFAULT_VIEW
-    assert analytics.resolve_view("") is analytics.DEFAULT_VIEW
-    assert analytics.resolve_view("does-not-exist") is analytics.DEFAULT_VIEW
+    """A missing/unknown ?view= degrades to the first registered view (never
+    404s)."""
+    views = (analytics.HISTORY_VIEW,)
+    assert analytics.resolve_view(None, views) is analytics.HISTORY_VIEW
+    assert analytics.resolve_view("", views) is analytics.HISTORY_VIEW
+    assert analytics.resolve_view("does-not-exist", views) is analytics.HISTORY_VIEW
     # Case-insensitive, trimmed.
-    assert analytics.resolve_view("  HISTORY ").key == "history"
+    assert analytics.resolve_view("  HISTORY ", views).key == "history"
+
+
+def test_resolve_view_stale_interactions_degrades_when_unregistered() -> None:
+    """A stale ?view=interactions degrades to History when Interactions is NOT
+    registered, but resolves cleanly when it is."""
+    history_only = (analytics.HISTORY_VIEW,)
+    assert analytics.resolve_view("interactions", history_only) is analytics.HISTORY_VIEW
+    with_interactions = (analytics.HISTORY_VIEW, analytics.INTERACTIONS_VIEW)
+    assert analytics.resolve_view("interactions", with_interactions).key == "interactions"
 
 
 # ----- /analytics full page -----
@@ -109,13 +161,16 @@ def test_analytics_page_renders_full_document() -> None:
     assert 'id="analytics-panel"' in body
 
 
-def test_analytics_switcher_is_registry_driven() -> None:
-    """Every registry entry renders one switcher tab with its label + deep
-    link, proving the switcher is data-driven (not hard-coded per view)."""
+def test_analytics_switcher_is_registry_driven(monkeypatch) -> None:
+    """Every registered sub-view renders one switcher tab with its label +
+    deep link, proving the switcher is data-driven (not hard-coded per view).
+    Forcing reward-bearing interactions registers both History + Interactions.
+    """
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
     _, body = _call_analytics()
 
     assert 'class="analytics-switcher"' in body
-    for v in analytics.ANALYTICS_VIEWS:
+    for v in (analytics.HISTORY_VIEW, analytics.INTERACTIONS_VIEW):
         assert f'href="/analytics?view={v.key}"' in body
         assert f">{v.label}</a>" in body
         # Switcher tabs swap just the panel and push the canonical URL.
@@ -136,9 +191,11 @@ def test_history_subview_renders_unchanged_content() -> None:
     assert 'id="history-stats"' in body
 
 
-def test_interactions_subview_renders_unchanged_content() -> None:
-    """Interactions renders inside Analytics as a sub-view (bdboard-vtd4),
-    reusing /api/interactions + its kind filter chips, unchanged in content."""
+def test_interactions_subview_renders_when_reward_bearing(monkeypatch) -> None:
+    """With reward-bearing interactions, the Interactions sub-view registers
+    and renders inside Analytics (bdboard-vtd4), reusing /api/interactions +
+    its kind filter chips, unchanged in content."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
     _, body = _call_analytics(view="interactions")
 
     # The Interactions sub-view shell owns the region and lazy-loads the SAME
@@ -150,10 +207,27 @@ def test_interactions_subview_renders_unchanged_content() -> None:
     assert 'href="/analytics?view=interactions"' in body
 
 
-def test_standalone_interactions_nav_entry_is_gone() -> None:
+def test_interactions_subview_absent_when_not_reward_bearing(monkeypatch) -> None:
+    """With an empty/missing/field_change-only log, the Interactions sub-view
+    is NOT registered: no switcher chip, no panel, and ?view=interactions
+    degrades to History (bdboard-8l60)."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: False)
+    _, body = _call_analytics(view="interactions")
+
+    # No Interactions switcher chip and no Interactions panel.
+    assert 'href="/analytics?view=interactions"' not in body
+    assert 'id="interactions-region"' not in body
+    # Degrades to the default History sub-view (no 404, no empty panel).
+    assert 'id="history-region"' in body
+    assert 'class="analytics-tab is-active"' in body
+
+
+def test_standalone_interactions_nav_entry_is_gone(monkeypatch) -> None:
     """The standalone Interactions PRIMARY nav entry is replaced by the
-    Analytics tab. 'Interactions' survives only as a switcher tab inside the
-    Analytics panel, never as a primary masthead nav link to /interactions."""
+    Analytics tab. When Interactions IS registered, 'Interactions' survives
+    only as a switcher tab inside the Analytics panel, never as a primary
+    masthead nav link to /interactions."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
     _, body = _call_analytics()
 
     # No primary nav link to the old /interactions page (it redirects now).

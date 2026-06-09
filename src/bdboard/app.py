@@ -595,12 +595,16 @@ async def page_analytics(request: Request, view: str | None = None) -> HTMLRespo
     bdboard-e47e). The sub-views are data-driven from the
     :mod:`bdboard.analytics` registry — adding one is a registry entry + its
     shell partial, with no change here (see analytics.py for the extension
-    point). History is the first sub-view, migrated from the former standalone
-    /history page; it reuses /api/history + partials/history.html unchanged.
+    point). The active set is built per-request from the workspace via
+    :func:`analytics.build_views`: History is always present (and the default),
+    while Interactions registers only when the workspace has reward-bearing
+    interactions (bdboard-8l60 conditional registration). History reuses
+    /api/history + partials/history.html unchanged.
 
     ``?view=`` selects the active sub-view and is reflected in the URL by the
     switcher (hx-push-url), so a sub-view is deep-linkable and back/forward
-    friendly; an unknown/missing value degrades to the default sub-view inside
+    friendly; an unknown/missing value — including a stale ?view=interactions
+    while Interactions is unregistered — degrades to the default sub-view inside
     :func:`analytics.resolve_view`. Extends base.html and renders the switcher
     + active sub-view shell server-side; each shell lazy-loads its own data
     region via HTMX so this route stays trivially cheap and never blocks on a
@@ -615,7 +619,8 @@ async def page_analytics(request: Request, view: str | None = None) -> HTMLRespo
             {"error": err, "workspace": str(_WORKSPACE)},
             status_code=500,
         )
-    active_view = analytics.resolve_view(view)
+    views = analytics.build_views(bd.beads_dir)
+    active_view = analytics.resolve_view(view, views)
     return TEMPLATES.TemplateResponse(
         request,
         "analytics.html",
@@ -623,7 +628,7 @@ async def page_analytics(request: Request, view: str | None = None) -> HTMLRespo
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
             "active": "analytics",
-            "views": analytics.ANALYTICS_VIEWS,
+            "views": views,
             "active_view": active_view,
         },
     )
@@ -641,12 +646,13 @@ async def api_analytics(request: Request, view: str | None = None) -> HTMLRespon
     ``?view=`` selects the sub-view; unknown/missing degrades to the default.
     Trivially cheap — the sub-view's own shell lazy-loads its data region.
     """
-    active_view = analytics.resolve_view(view)
+    views = analytics.build_views(bd.beads_dir)
+    active_view = analytics.resolve_view(view, views)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/analytics_panel.html",
         {
-            "views": analytics.ANALYTICS_VIEWS,
+            "views": views,
             "active_view": active_view,
         },
     )
@@ -704,12 +710,15 @@ async def page_history(request: Request) -> RedirectResponse:
 async def page_interactions(request: Request) -> RedirectResponse:
     """Redirect the former standalone Interactions page into the Analytics tab.
 
-    Interactions migrated to the second Analytics sub-view (bdboard-vtd4),
-    alongside History; this 307 redirect keeps old links, bookmarks, and the
+    Interactions migrated to the Analytics tab as a reward-bearing sub-view
+    (bdboard-vtd4); this 307 redirect keeps old links, bookmarks, and the
     (now-removed) primary-nav entry from breaking by pointing them at the
-    Interactions sub-view. 307 (temporary) preserves the method and avoids
-    caches pinning the redirect permanently in case the canonical path ever
-    changes again — symmetric with the /history redirect.
+    Interactions sub-view. When the workspace has no reward-bearing
+    interactions the sub-view is unregistered (bdboard-8l60), and the target
+    /analytics?view=interactions degrades gracefully to History rather than
+    404ing — so this redirect is always safe. 307 (temporary) preserves the
+    method and avoids caches pinning the redirect permanently in case the
+    canonical path ever changes again — symmetric with the /history redirect.
 
     The interaction log itself is unchanged: the sub-view shell reuses
     /api/interactions + partials/interactions.html (kind filter chips and all),
