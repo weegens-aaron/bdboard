@@ -15,7 +15,11 @@
 
    `active` ("board" | "analytics" | "memory") marks the current page: it both
    gets the .is-active styling hook and an aria-current="page" so assistive
-   tech announces the current location.
+   tech announces the current location. The internal active key for the
+   analytics surface stays "analytics"; only its DISPLAY label is dynamic
+   (bdboard-r64y) — analytics_nav_label() returns "History" when the page has a
+   single switcher-less sub-view and "Analytics" once Interactions
+   conditionally re-registers and the in-page switcher returns.
 
    Coordination is NOT a primary-nav tab (bdboard-xiwd reverted the
    /coordination tab bdboard-wr85 + its nav count badge bdboard-iz8h): the
@@ -31,7 +35,7 @@
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
   <a href="/analytics"
      class="mh-link{% if active == 'analytics' %} is-active{% endif %}"
-     {% if active == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
+     {% if active == 'analytics' %}aria-current="page"{% endif %}>{{ analytics_nav_label() }}</a>
   <a href="/memory"
      class="mh-link{% if active == 'memory' %} is-active{% endif %}"
      {% if active == 'memory' %}aria-current="page"{% endif %}>Memory</a>

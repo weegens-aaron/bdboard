@@ -49,10 +49,17 @@ def test_nav_has_no_coordination_link_or_badge() -> None:
 
 
 def test_nav_still_has_the_three_primary_tabs() -> None:
-    """Board / Analytics / Memory remain the primary nav tabs."""
+    """Board / Analytics / Memory remain the three primary nav tabs.
+
+    The analytics tab's DISPLAY label is now dynamic (bdboard-r64y):
+    analytics_nav_label() renders "History" when the page has a single
+    switcher-less sub-view and "Analytics" once Interactions re-registers. So
+    we assert on the stable href + the dynamic-label call, not a hard-coded
+    ">Analytics<" string.
+    """
     html = (TEMPLATES / "partials" / "nav.html").read_text(encoding="utf-8")
     assert 'href="/"' in html and ">Board<" in html
-    assert 'href="/analytics"' in html and ">Analytics<" in html
+    assert 'href="/analytics"' in html and "analytics_nav_label()" in html
     assert 'href="/memory"' in html and ">Memory<" in html
 
 

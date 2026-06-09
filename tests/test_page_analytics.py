@@ -155,10 +155,45 @@ def test_analytics_page_renders_full_document() -> None:
     assert status == 200
     # Extends base.html -> full HTML document, not a bare partial.
     assert "<!doctype html>" in body.lower()
-    assert "<title>Analytics" in body
+    # Single-view (field_change-only / empty log) => the page titles itself
+    # "History", not "Analytics" (bdboard-r64y dynamic label).
+    assert "<title>History" in body
     assert 'class="masthead"' in body
     # The panel host that the switcher swaps into.
     assert 'id="analytics-panel"' in body
+
+
+def test_single_subview_skips_the_switcher_and_labels_history(monkeypatch) -> None:
+    """With only History registered (the common field_change-only case), the
+    page skips the switcher tab row entirely and labels itself History, so an
+    Analytics tab opening to a lone History sub-view is no longer two labels
+    for one page (bdboard-r64y)."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: False)
+    _, body = _call_analytics()
+
+    # No switcher tab row at all when there's a single sub-view.
+    assert 'class="analytics-switcher"' not in body
+    assert 'class="analytics-tab' not in body
+    # The sub-view content still renders directly.
+    assert 'id="history-region"' in body
+    # Dynamic label: the primary nav tab + page title read "History".
+    assert "<title>History" in body
+    masthead, _sep, _panel = body.partition('id="analytics-panel"')
+    assert ">History</a>" in masthead  # nav tab label
+
+
+def test_switcher_returns_when_interactions_reregisters(monkeypatch) -> None:
+    """The moment a second sub-view registers (reward-bearing Interactions),
+    the switcher tab row returns AND the nav/page label flips back to
+    Analytics (bdboard-r64y)."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
+    _, body = _call_analytics()
+
+    assert 'class="analytics-switcher"' in body
+    assert 'class="analytics-tab' in body
+    assert "<title>Analytics" in body
+    masthead, _sep, _panel = body.partition('class="analytics-switcher"')
+    assert ">Analytics</a>" in masthead  # nav tab label flips back
 
 
 def test_analytics_switcher_is_registry_driven(monkeypatch) -> None:
@@ -217,9 +252,11 @@ def test_interactions_subview_absent_when_not_reward_bearing(monkeypatch) -> Non
     # No Interactions switcher chip and no Interactions panel.
     assert 'href="/analytics?view=interactions"' not in body
     assert 'id="interactions-region"' not in body
-    # Degrades to the default History sub-view (no 404, no empty panel).
+    # Degrades to the default History sub-view (no 404, no empty panel). With a
+    # single registered sub-view the switcher row is skipped entirely
+    # (bdboard-r64y), so the content renders directly with no tab chrome.
     assert 'id="history-region"' in body
-    assert 'class="analytics-tab is-active"' in body
+    assert 'class="analytics-switcher"' not in body
 
 
 def test_standalone_interactions_nav_entry_is_gone(monkeypatch) -> None:
@@ -238,9 +275,11 @@ def test_standalone_interactions_nav_entry_is_gone(monkeypatch) -> None:
     assert 'href="/analytics?view=interactions"' in body
 
 
-def test_selected_subview_reflected_in_url_active_state() -> None:
+def test_selected_subview_reflected_in_url_active_state(monkeypatch) -> None:
     """The active sub-view is marked aria-current + .is-active so the URL the
-    switcher pushes matches the highlighted tab (deep-link friendly)."""
+    switcher pushes matches the highlighted tab (deep-link friendly). The
+    switcher only exists with >1 sub-view, so force Interactions to register."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
     _, body = _call_analytics(view="history")
 
     assert (
@@ -255,9 +294,10 @@ def test_unknown_view_degrades_to_default() -> None:
     panel."""
     _, body = _call_analytics(view="bogus")
 
-    # Default (history) sub-view content is present.
+    # Default (history) sub-view content is present. Single-view here, so the
+    # switcher row is skipped (bdboard-r64y) — the content renders directly.
     assert 'id="history-region"' in body
-    assert 'class="analytics-tab is-active"' in body
+    assert 'class="analytics-switcher"' not in body
 
 
 def test_subview_lazy_loads_and_live_refreshes() -> None:
@@ -271,9 +311,11 @@ def test_subview_lazy_loads_and_live_refreshes() -> None:
 # ----- /api/analytics panel fragment -----
 
 
-def test_api_analytics_returns_panel_fragment() -> None:
+def test_api_analytics_returns_panel_fragment(monkeypatch) -> None:
     """The fragment endpoint returns the switcher + active sub-view (the same
-    partial the page embeds), NOT a full document."""
+    partial the page embeds), NOT a full document. The switcher only renders
+    with >1 sub-view (bdboard-r64y), so force Interactions to register."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
     status, body = _call_api_analytics(view="history")
 
     assert status == 200
@@ -285,8 +327,10 @@ def test_api_analytics_returns_panel_fragment() -> None:
 def test_api_analytics_unknown_view_degrades_to_default() -> None:
     _, body = _call_api_analytics(view="nope")
 
+    # Single-view fragment: degrades to History, rendered directly (no switcher
+    # tab row when there's a lone sub-view, bdboard-r64y).
     assert 'id="history-region"' in body
-    assert 'class="analytics-tab is-active"' in body
+    assert 'class="analytics-switcher"' not in body
 
 
 # ----- nav active-state across surfaces -----
@@ -302,21 +346,24 @@ def test_analytics_page_nav_entry_active() -> None:
 
 
 def test_history_nav_entry_is_gone() -> None:
-    """The standalone History PRIMARY nav entry is replaced by Analytics.
+    """There is no standalone /history PRIMARY nav link — History lives inside
+    the Analytics surface.
 
-    The 'History' label still appears — but only as a SWITCHER tab inside the
-    Analytics panel, never as a primary masthead nav link to /history."""
+    In the single-sub-view case the Analytics surface re-labels its primary nav
+    tab "History" (bdboard-r64y), but it is still the /analytics tab (the
+    standalone /history page only redirects). So the masthead must carry a
+    History-labelled tab pointing at /analytics, and NO link to /history.
+    """
     _, body = _call_analytics()
 
     # No primary nav link to the old /history page (it redirects now).
     assert 'href="/history"' not in body
-    assert ">Analytics</a>" in body
-    # 'History' survives only as a switcher tab inside the Analytics panel,
-    # never as a primary masthead nav link. Everything BEFORE the switcher is
-    # masthead chrome and must not contain a History nav entry.
-    masthead, _sep, _panel = body.partition('class="analytics-switcher"')
-    assert ">History</a>" not in masthead
-    assert 'href="/analytics?view=history"' in body
+    # The analytics tab is present and (single-view) reads "History".
+    assert 'href="/analytics"' in body
+    masthead, _sep, _panel = body.partition('id="analytics-panel"')
+    assert ">History</a>" in masthead
+    # No standalone History switcher deep-link in single-view (no switcher).
+    assert 'href="/analytics?view=history"' not in body
 
 
 def test_dashboard_renders_analytics_nav_entry() -> None:

@@ -237,6 +237,30 @@ TEMPLATES.env.filters["decode_label"] = _decode_label
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).
 TEMPLATES.env.globals["asset_v"] = str(int(time.time()))
 
+
+def _analytics_nav_label() -> str:
+    """Display label for the Analytics primary-nav tab (bdboard-r64y).
+
+    The page hosts a single switcher-less History sub-view in the common case
+    (a field_change-only / empty interactions log => Interactions stays
+    unregistered, bdboard-8l60), so an "Analytics" tab opening to a lone
+    "History" view was two labels for one page. The label is therefore
+    DERIVED from the live sub-view registry — "History" when there is a single
+    registered sub-view, "Analytics" when Interactions conditionally
+    re-registers and the in-page switcher returns. Computed per-render (the
+    nav is shared across Board / Memory / Analytics) off the same
+    :func:`analytics.build_views` that drives the switcher, so the tab label
+    and the switcher can never disagree. Defensive: any failure degrades to
+    "History" (the always-present default).
+    """
+    try:
+        return "Analytics" if len(analytics.build_views(bd.beads_dir)) > 1 else "History"
+    except Exception:
+        return "History"
+
+
+TEMPLATES.env.globals["analytics_nav_label"] = _analytics_nav_label
+
 # ----- CSRF protection -----
 # bdboard introduces its first write paths with the memory-curate feature.
 # CSRF posture: a per-process token generated at startup, included in all
