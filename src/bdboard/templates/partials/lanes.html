@@ -1,7 +1,40 @@
 {% set lane_titles = {"deferred": "Deferred", "pinned": "Pinned", "gate": "Gates (waiting)", "swarm": "Swarms", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
 
+{# Epics-in-flight lane (bdboard-px6d): label-above-cards + collapsible.
+   Row 1 (.lane-label-row) carries the disclosure button (caret + label +
+   count) on the left and the board-wide time-filter radiogroup pinned right;
+   row 2 (.lane-cards-region) is the collapsible region holding the epic-cards
+   strip. The disclosure is a real <button> (aria-expanded + aria-controls,
+   keyboard-operable for free) inside the heading so the label keeps its
+   single accessible name; base.html's wireLaneCollapse() binds it, toggles
+   aria-expanded + .is-collapsed + the region's hidden attr, and persists
+   per-lane collapse state in localStorage across reloads + SSE refreshes. #}
 <section class="epic-lane" aria-label="Epics in flight">
-  <h2 class="epic-lane-title">Epics in flight <span class="lane-count">{{ epic_lane|length }}</span></h2>
+  <div class="lane-label-row">
+    <h2 class="epic-lane-title">
+      <button type="button" class="lane-disclosure" data-lane-key="epics"
+              aria-expanded="true" aria-controls="epic-lane-cards">
+        <span class="lane-caret" aria-hidden="true">&#9656;</span>
+        <span class="lane-name">Epics in flight</span>
+        <span class="lane-count">{{ epic_lane|length }}</span>
+      </button>
+    </h2>
+    {# Board-wide time filter — pinned to the far right of the label row
+       (bdboard-tght inlined it on this header row; bdboard-px6d kept it on
+       row 1 above the cards). It used to be a separate static .board-toolbar
+       in dashboard.html, but that shell renders BEFORE /api/lanes hydrates
+       and has no epic_lane context, so the live label/count must live here.
+       The radiogroup re-renders on each /api/lanes refresh; base.html's
+       htmx:afterSettle handler re-runs wireFilterBadges() (which re-binds the
+       fresh element and restores aria-checked from sessionStorage), keeping
+       the keyboard + aria state intact across refreshes. #}
+    <div class="board-filters" role="radiogroup" aria-label="Time window filter" id="board-time-filter">
+      <button class="filter-badge" data-filter="12h" role="radio" aria-checked="false" aria-label="Show beads from the last 12 hours">12h</button>
+      <button class="filter-badge filter-badge-active" data-filter="1d" role="radio" aria-checked="true" aria-label="Show beads from the last 24 hours">1d</button>
+      <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
+    </div>
+  </div>
+  <div class="lane-cards-region" id="epic-lane-cards">
   <ul class="epic-strip" role="list">
     {% for e in epic_lane %}
     <li class="epic-chip"
@@ -30,18 +63,6 @@
     <li class="lane-empty muted">(no active epics)</li>
     {% endfor %}
   </ul>
-  {# Board-wide time filter — inlined on the SAME row as the "Epics in flight"
-     label (bdboard-tght). It used to be a separate static .board-toolbar in
-     dashboard.html, but that shell renders BEFORE /api/lanes hydrates and has
-     no epic_lane context, so the live label/count must live here. The
-     radiogroup re-renders on each /api/lanes refresh; base.html's
-     htmx:afterSettle handler re-runs wireFilterBadges() (which re-binds the
-     fresh element and restores aria-checked from sessionStorage), keeping the
-     keyboard + aria state intact across refreshes. #}
-  <div class="board-filters" role="radiogroup" aria-label="Time window filter" id="board-time-filter">
-    <button class="filter-badge" data-filter="12h" role="radio" aria-checked="false" aria-label="Show beads from the last 12 hours">12h</button>
-    <button class="filter-badge filter-badge-active" data-filter="1d" role="radio" aria-checked="true" aria-label="Show beads from the last 24 hours">1d</button>
-    <button class="filter-badge" data-filter="3d" role="radio" aria-checked="false" aria-label="Show beads from the last 3 days">3d</button>
   </div>
 </section>
 

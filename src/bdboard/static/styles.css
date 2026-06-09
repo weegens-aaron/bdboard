@@ -525,10 +525,66 @@ pre { margin: 0; }
   border-bottom: 1px solid var(--rule-2);
   margin-bottom: 14px;
   padding-bottom: 10px;
+  /* bdboard-px6d: label ABOVE cards — a two-row vertical stack. Row 1 is the
+     .lane-label-row (disclosure + count [+ time-filter for the epic lane]);
+     row 2 is the collapsible .lane-cards-region holding the cards strip. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+/* Row 1: label/disclosure on the left, time-filter pinned far right. */
+.lane-label-row {
   display: flex;
   align-items: center;
   gap: 14px;
   min-width: 0;
+}
+.lane-label-row .epic-lane-title { flex: 0 0 auto; }
+.lane-label-row .board-filters { margin-left: auto; }
+/* Row 2: the collapsible region. `hidden` (set by wireLaneCollapse) removes it
+   from layout + the a11y tree when the lane is collapsed. */
+.lane-cards-region { min-width: 0; }
+.lane-cards-region[hidden] { display: none; }
+/* Disclosure control: a real <button> carrying caret + label + count. It
+   inherits the uppercase .epic-lane-title typography (it lives inside the h2)
+   but strips native button chrome so it reads as the lane label, not a
+   pill-button. The rotating caret (not a swapped glyph) keeps one stable
+   accessible name across expand/collapse. */
+.lane-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 4px 2px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+.lane-disclosure:focus-visible {
+  outline: 2px solid var(--blue-100);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.lane-caret {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--ink-2);
+  /* Expanded points down (▾-ish): rotate the right-pointing ▸ 90° CW. */
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+.lane-disclosure[aria-expanded="false"] .lane-caret {
+  /* Collapsed points right (▸): no rotation. */
+  transform: rotate(0deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lane-caret { transition: none; }
 }
 .epic-lane-title {
   display: inline-flex;
@@ -564,7 +620,11 @@ pre { margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 3px;
-  max-width: 255px;
+  /* bdboard-px6d: a single shared FIXED width so every card across BOTH the
+     epics strip and the coordination strip is uniform (replaces bdboard-tght's
+     flexible max-width: 255px). .epic-strip > * already sets flex-shrink: 0,
+     so this width holds inside the horizontally-scrolling strip. */
+  width: 248px;
   background: var(--paper-3);
   border: 1px solid var(--rule);
   border-radius: 6px;

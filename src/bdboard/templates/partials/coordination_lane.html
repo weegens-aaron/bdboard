@@ -24,10 +24,18 @@
 {% set gate_count = gates | length if not gates_error else 0 %}
 {% set coord_count = gate_count + (slots | length) %}
 <section class="epic-lane coordination-lane" aria-label="Coordination">
-  <h2 class="epic-lane-title">
-    Coordination <span class="lane-count">{{ coord_count }}</span>
-    {% if gates_error %}<span class="coordination-error-flag" title="Couldn’t load gates" aria-hidden="true">!</span>{% endif %}
-  </h2>
+  <div class="lane-label-row">
+    <h2 class="epic-lane-title">
+      <button type="button" class="lane-disclosure" data-lane-key="coordination"
+              aria-expanded="true" aria-controls="coordination-lane-cards">
+        <span class="lane-caret" aria-hidden="true">&#9656;</span>
+        <span class="lane-name">Coordination</span>
+        <span class="lane-count">{{ coord_count }}</span>
+        {% if gates_error %}<span class="coordination-error-flag" title="Couldn’t load gates" aria-hidden="true">!</span>{% endif %}
+      </button>
+    </h2>
+  </div>
+  <div class="lane-cards-region" id="coordination-lane-cards">
   <ul class="epic-strip" role="list">
     {% if gates_error %}
     <li class="lane-empty muted" role="status" aria-live="polite">{{ gates_error }}</li>
@@ -71,5 +79,6 @@
     </li>
     {% endfor %}
   </ul>
+  </div>
 </section>
 {% endif %}
