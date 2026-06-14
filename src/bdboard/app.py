@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import os
+import re
 import secrets
+import subprocess
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -14,12 +17,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Form, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from watchfiles import awatch
 
-from bdboard import derive, md
+from bdboard import analytics, derive, interactions, md
 from bdboard.bd import BdClient
 from bdboard.events import EventBus
 from bdboard.store import Store
@@ -88,6 +91,137 @@ def _dep_label(dep_type: str | None, direction: str) -> str:
     return inbound_label if is_inbound else outbound_label
 
 
+# Per-type glyphs mirroring the beads field-guide "anatomy" type signal
+# (chapter 1). bdboard previously rendered every type as identical uppercase
+# grey text (memory bdboard-anatomy-type-flat / audit FB-2), so a milestone,
+# gate, or coordination bead was indistinguishable from a chore at a glance.
+# The glyph is the at-a-glance type key; per-type COLOR (in styles.css
+# `.bead-type-glyph.type-<slug>`) only reinforces it, so meaning never depends
+# on colour alone (WCAG 1.4.1). Stored as Unicode escapes (not literal glyphs)
+# to keep the source ASCII-clean.
+#
+# Covers the 9 built-in types + the `event` pseudo-type (field guide), plus the
+# two internal container types `gate` and `molecule` that the audit flagged as
+# legibility black holes (FB-3 / FB-5 downstream). An unknown/custom type maps
+# to "" -> the badge renders the plain grey label with no glyph (no crash).
+_TYPE_GLYPHS: dict[str, str] = {
+    "task": "\u25cf",  # BLACK CIRCLE
+    "bug": "\u25b2",  # BLACK UP-POINTING TRIANGLE
+    "feature": "\u25a0",  # BLACK SQUARE
+    "chore": "\u25cb",  # WHITE CIRCLE
+    "epic": "\u25c6",  # BLACK DIAMOND
+    "decision": "\u25c7",  # WHITE DIAMOND
+    "spike": "\u2197",  # NORTH EAST ARROW
+    "story": "\u25b8",  # BLACK RIGHT-POINTING SMALL TRIANGLE
+    "milestone": "\u25ce",  # BULLSEYE
+    "event": "\u25c9",  # FISHEYE
+    "gate": "\u25a3",  # WHITE SQUARE CONTAINING BLACK SMALL SQUARE
+    "molecule": "\u25c8",  # WHITE DIAMOND CONTAINING BLACK SMALL DIAMOND
+}
+
+
+def _type_glyph(issue_type: str | None) -> str:
+    """Return the glyph for a bead type, or "" for unknown/custom types.
+
+    An empty string makes the badge fall back to the plain grey label with no
+    glyph, so a custom or future bd type never crashes the render.
+
+    Examples:
+        _type_glyph('task') -> the BLACK CIRCLE glyph
+        _type_glyph('Bug') -> the BLACK UP-POINTING TRIANGLE glyph (case-insensitive)
+        _type_glyph('custom-thing') -> ''
+        _type_glyph(None) -> ''
+    """
+    if not issue_type:
+        return ""
+    return _TYPE_GLYPHS.get(issue_type.strip().lower(), "")
+
+
+# Magic labels carry machine meaning beyond a freeform tag: bd / formula
+# tooling stamps prefixed labels as structured markers. Rendering them as
+# undifferentiated grey chips (audit FB-14) buries that meaning. We decode the
+# known markers into a category + value so the modal can style and label them
+# distinctly from ordinary tags. Unknown labels fall back to category "tag".
+#
+# prefix:value markers — map prefix -> (category slug, human kind label):
+#   dim:<axis>       a scoring / classification dimension on the bead
+#   gt:<slot>        a gate / merge-slot coordination marker
+#   provides:<cap>   a capability this bead provides (formula wiring)
+#   export:<artifact>an artifact this bead exports (formula wiring)
+_MAGIC_LABEL_PREFIXES: dict[str, tuple[str, str]] = {
+    "dim": ("dim", "dimension"),
+    "gt": ("gate", "gate"),
+    "provides": ("provides", "provides"),
+    "export": ("export", "export"),
+}
+
+# Bare (colon-less) magic labels: a whole-string flag, not a prefix:value pair.
+_MAGIC_LABEL_FLAGS: dict[str, tuple[str, str]] = {
+    "template": ("template", "template"),
+}
+
+
+def _decode_label(label: Any) -> dict[str, Any]:
+    """Decode a bd label into a structured chip descriptor.
+
+    Magic labels (prefix:value markers like dim:foo, gt:slot, provides:x,
+    export:y, plus bare flags like ``template``) carry machine meaning that a
+    plain grey chip hides (audit FB-14). This returns a dict the chip template
+    dispatches on::
+
+        {raw, category, prefix, value, kind_label}
+
+    - category:   slug for styling (``.chip-<category>``); "tag" for freeform.
+    - prefix:     the magic prefix ("dim") or "" for bare flags / plain tags.
+    - value:      the part after the colon (or the whole flag) — shown big.
+    - kind_label: a human label for the marker kind (small badge text).
+
+    A plain freeform tag decodes to category "tag" with the raw string as the
+    value and no prefix, so ordinary labels keep rendering as before.
+
+    Examples:
+        _decode_label('dim:wcag')   -> category 'dim',      value 'wcag'
+        _decode_label('gt:merge')   -> category 'gate',     value 'merge'
+        _decode_label('provides:x') -> category 'provides', value 'x'
+        _decode_label('template')   -> category 'template', value 'template'
+        _decode_label('anatomy')    -> category 'tag',      value 'anatomy'
+    """
+    raw = "" if label is None else str(label)
+    stripped = raw.strip()
+    # Bare flag labels (no colon): whole-string markers.
+    flag = _MAGIC_LABEL_FLAGS.get(stripped.lower())
+    if flag is not None:
+        category, kind_label = flag
+        return {
+            "raw": raw,
+            "category": category,
+            "prefix": "",
+            "value": stripped,
+            "kind_label": kind_label,
+        }
+    # prefix:value magic labels.
+    if ":" in stripped:
+        prefix, _, value = stripped.partition(":")
+        magic = _MAGIC_LABEL_PREFIXES.get(prefix.strip().lower())
+        if magic is not None:
+            category, kind_label = magic
+            return {
+                "raw": raw,
+                "category": category,
+                "prefix": prefix.strip(),
+                "value": value.strip(),
+                "kind_label": kind_label,
+            }
+    # Freeform tag: render as the classic label chip.
+    return {
+        "raw": raw,
+        "category": "tag",
+        "prefix": "",
+        "value": stripped,
+        "kind_label": "",
+    }
+
+
 TEMPLATES = Jinja2Templates(directory=str(_PKG_DIR / "templates"))
 TEMPLATES.env.filters["humanize_ts"] = derive.humanize_ts
 TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
@@ -96,6 +230,8 @@ TEMPLATES.env.filters["humanize_hours"] = derive.humanize_hours
 # and the renderer has html=False, so script-injection is not possible.
 TEMPLATES.env.filters["md"] = md.render
 TEMPLATES.env.filters["dep_label"] = _dep_label
+TEMPLATES.env.filters["type_glyph"] = _type_glyph
+TEMPLATES.env.filters["decode_label"] = _decode_label
 # Cache-bust query param for /static assets. Every server restart gets a
 # fresh value — means no more 'why is my CSS old?' moments during dev,
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).
@@ -124,6 +260,7 @@ TEMPLATES.env.globals["csrf_token"] = _CSRF_TOKEN
 # and we wrap getcwd() to fall back to $PWD when sandboxed.
 _WORKSPACE = Path(os.environ.get("BDBOARD_WORKSPACE") or _safe_cwd())
 _BD_BIN = os.environ.get("BDBOARD_BD_BIN", "bd")
+_DOLT_BIN = os.environ.get("BDBOARD_DOLT_BIN", "dolt")
 
 # Optional actor override for the audit trail on manual field edits. When unset
 # bd falls back to $BEADS_ACTOR / git user.name / $USER, so this is just a way
@@ -131,8 +268,50 @@ _BD_BIN = os.environ.get("BDBOARD_BD_BIN", "bd")
 # also be writing to the same workspace (auditability).
 _ACTOR = os.environ.get("BDBOARD_ACTOR") or None
 
-bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE)
+bd = BdClient(bd_bin=_BD_BIN, workspace=_WORKSPACE, dolt_bin=_DOLT_BIN)
 store = Store(bd)
+
+
+# git remote → https repo base URL, e.g.
+#   git@github.com:owner/repo.git              -> https://github.com/owner/repo
+#   https://github.com/owner/repo.git          -> https://github.com/owner/repo
+#   https://gec.../owner/repo                  -> https://gec.../owner/repo
+# Host-agnostic so an enterprise GitHub host (gecgithub01.walmart.com) builds
+# correct gate links too. Matches scheme://host/owner/repo OR scp-like
+# user@host:owner/repo; the trailing .git is stripped.
+_REMOTE_RE = re.compile(
+    r"^(?:(?:https?|ssh)://)?(?:[^@/]+@)?(?P<host>[^/:]+)[/:](?P<path>.+?)(?:\.git)?/?$"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _repo_base_url() -> str | None:
+    """Resolve the workspace's git ``origin`` as an https repo base URL.
+
+    Used to turn a ``gh:pr`` / ``gh:run`` gate's await-id into a clickable PR
+    / Actions-run link in the bead modal. Returns ``None`` when there's no
+    git remote (or git isn't available), so the gate condition degrades to
+    plain text rather than a broken link. Cached for the process lifetime
+    (the remote URL doesn't change under a running board) so it costs one
+    subprocess at most.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(_WORKSPACE), "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    remote = out.stdout.strip()
+    m = _REMOTE_RE.match(remote)
+    if not m:
+        return None
+    return f"https://{m.group('host')}/{m.group('path')}"
 
 
 def _validate_or_warn() -> str | None:
@@ -407,17 +586,87 @@ async def page_memory(request: Request) -> HTMLResponse:
     )
 
 
-@app.get("/history", response_class=HTMLResponse)
-async def page_history(request: Request) -> HTMLResponse:
-    """Full-page History view, symmetric with `/` and `/memory` (design §D4).
+@app.get("/analytics", response_class=HTMLResponse)
+async def page_analytics(request: Request, view: str | None = None) -> HTMLResponse:
+    """Full-page Analytics view (bdboard-ove7), symmetric with `/` and `/memory`.
 
-    Extends base.html and renders the masthead (with the History nav entry
-    active) plus the #history-region swap target; that region is filled by an
-    HTMX `load` fetch to /api/history and re-fetched on `refresh from:body`
-    (the existing SSE pipeline, design §D7), so this route stays trivially
-    cheap and never blocks on a bd subprocess. We surface the workspace
-    validation error here for parity with `/` and `/memory` so a broken
-    workspace fails visibly rather than rendering an empty history page.
+    Hosts multiple analytics/history sub-views behind one in-page switcher so
+    the primary nav stays flat as the analytics surface grows (epic
+    bdboard-e47e). The sub-views are data-driven from the
+    :mod:`bdboard.analytics` registry — adding one is a registry entry + its
+    shell partial, with no change here (see analytics.py for the extension
+    point). History is the first sub-view, migrated from the former standalone
+    /history page; it reuses /api/history + partials/history.html unchanged.
+
+    ``?view=`` selects the active sub-view and is reflected in the URL by the
+    switcher (hx-push-url), so a sub-view is deep-linkable and back/forward
+    friendly; an unknown/missing value degrades to the default sub-view inside
+    :func:`analytics.resolve_view`. Extends base.html and renders the switcher
+    + active sub-view shell server-side; each shell lazy-loads its own data
+    region via HTMX so this route stays trivially cheap and never blocks on a
+    bd subprocess. We surface the workspace validation error here for parity
+    with the other pages so a broken workspace fails visibly.
+    """
+    err = _validate_or_warn()
+    if err:
+        return TEMPLATES.TemplateResponse(
+            request,
+            "error.html",
+            {"error": err, "workspace": str(_WORKSPACE)},
+            status_code=500,
+        )
+    active_view = analytics.resolve_view(view)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "analytics.html",
+        {
+            "workspace": _WORKSPACE.name,
+            "workspace_path": str(_WORKSPACE),
+            "active": "analytics",
+            "views": analytics.ANALYTICS_VIEWS,
+            "active_view": active_view,
+        },
+    )
+
+
+@app.get("/api/analytics", response_class=HTMLResponse)
+async def api_analytics(request: Request, view: str | None = None) -> HTMLResponse:
+    """Render the Analytics panel fragment (switcher + active sub-view).
+
+    HTMX swap target for the in-page sub-view switcher (bdboard-ove7): each
+    switcher link hx-gets this endpoint and swaps the result into
+    #analytics-panel, so a switch re-renders the switcher's active state AND the
+    selected sub-view in one round-trip. Returns the SAME partial the full page
+    embeds (partials/analytics_panel.html), keeping the two render paths DRY.
+    ``?view=`` selects the sub-view; unknown/missing degrades to the default.
+    Trivially cheap — the sub-view's own shell lazy-loads its data region.
+    """
+    active_view = analytics.resolve_view(view)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/analytics_panel.html",
+        {
+            "views": analytics.ANALYTICS_VIEWS,
+            "active_view": active_view,
+        },
+    )
+
+
+@app.get("/coordination", response_class=HTMLResponse)
+async def page_coordination(request: Request) -> HTMLResponse:
+    """Full-page Coordination view (bdboard-wr85), symmetric with `/memory`.
+
+    Promotes the coordination panel (open gates + merge-slot mutexes) off the
+    board into its own primary-nav tab (epic bdboard-e47e). The board no longer
+    carries an inline #coordination region; this dedicated page renders the
+    SAME panel by HTMX-loading partials/gates_panel.html via /api/gates on load
+    + ``refresh from:body`` (so SSE live updates and modal drill-downs into
+    gate/slot beads keep working unchanged). It passes ``standalone=1`` so the
+    panel renders expanded and shows an explicit empty state when there is no
+    coordination state — instead of the board's render-nothing behaviour that
+    would leave a dedicated page blank. Extends base.html, stays trivially
+    cheap, and surfaces the workspace validation error for parity with the
+    other pages so a broken workspace fails visibly.
     """
     err = _validate_or_warn()
     if err:
@@ -429,11 +678,86 @@ async def page_history(request: Request) -> HTMLResponse:
         )
     return TEMPLATES.TemplateResponse(
         request,
-        "history.html",
+        "coordination.html",
         {
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
-            "active": "history",
+            "active": "coordination",
+        },
+    )
+
+
+@app.get("/history")
+async def page_history(request: Request) -> RedirectResponse:
+    """Redirect the former standalone History page into the Analytics tab.
+
+    History migrated to the first Analytics sub-view (bdboard-ove7); this 307
+    redirect keeps old links, bookmarks, and the (now-removed) nav entry from
+    breaking by pointing them at the History sub-view. 307 (temporary)
+    preserves the method and avoids caches pinning the redirect permanently in
+    case the canonical path ever changes again.
+    """
+    return RedirectResponse(url="/analytics?view=history", status_code=307)
+
+
+@app.get("/interactions")
+async def page_interactions(request: Request) -> RedirectResponse:
+    """Redirect the former standalone Interactions page into the Analytics tab.
+
+    Interactions migrated to the second Analytics sub-view (bdboard-vtd4),
+    alongside History; this 307 redirect keeps old links, bookmarks, and the
+    (now-removed) primary-nav entry from breaking by pointing them at the
+    Interactions sub-view. 307 (temporary) preserves the method and avoids
+    caches pinning the redirect permanently in case the canonical path ever
+    changes again — symmetric with the /history redirect.
+
+    The interaction log itself is unchanged: the sub-view shell reuses
+    /api/interactions + partials/interactions.html (kind filter chips and all),
+    so the cross-run swarm audit trail (.beads/interactions.jsonl) and the
+    per-bead `bd history` Audit/Lifecycle modal both behave exactly as before.
+    """
+    return RedirectResponse(url="/analytics?view=interactions", status_code=307)
+
+
+@app.get("/api/interactions", response_class=HTMLResponse)
+async def api_interactions(request: Request, kind: str = "") -> HTMLResponse:
+    """Render the interaction-log list region (HTMX swap target).
+
+    Reads ``.beads/interactions.jsonl`` newest-first, optionally filtered by
+    ``kind`` (llm_call / tool_call / label / field_change / any future kind),
+    and clamps to the most recent ``DEFAULT_LIMIT`` entries so an unbounded
+    append-only log can't bloat the DOM. Kind chips + their counts are derived
+    from the FULL log (not the filtered slice) so the chip row is stable as you
+    switch filters.
+
+    Graceful degradation: a missing file yields an empty list and an explicit
+    "no log yet" empty state (``log_exists=False``); a present-but-filtered-
+    empty result shows a "nothing of this kind" message instead. Reading is
+    fault-tolerant (bad lines skipped) so this never 500s the partial swap.
+    """
+    beads_dir = bd.beads_dir
+    log_exists = interactions.log_path(beads_dir).exists()
+    all_entries = interactions.read_interactions(beads_dir)
+    counts = interactions.kind_counts(all_entries)
+    selected = (kind or "").strip().lower()
+    filtered = interactions.filter_by_kind(all_entries, selected)
+    total_filtered = len(filtered)
+    limit = interactions.DEFAULT_LIMIT
+    truncated = total_filtered > limit
+    items = filtered[:limit]
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/interactions.html",
+        {
+            "items": items,
+            "counts": counts,
+            "total": len(all_entries),
+            "total_filtered": total_filtered,
+            "shown": len(items),
+            "truncated": truncated,
+            "limit": limit,
+            "selected": selected or "all",
+            "log_exists": log_exists,
         },
     )
 
@@ -455,13 +779,18 @@ async def api_lanes(request: Request) -> HTMLResponse:
     after SSE refresh when the full snapshot is available.
     """
     beads = await store.snapshot_active()
-    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads))
+    # Pass the cached id universe (active + already-loaded closed) so the
+    # graph-hygiene classifier can tell a dangling edge from an edge whose
+    # target is merely closed-and-unfetched (audit FB-6 / bdboard-dzu2).
+    known_ids = store.cached_known_ids()
+    epic_lane = derive.epic_lane(await _hydrate_epic_dependencies(beads), known_ids)
+    await _attach_epic_rollups(epic_lane)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/lanes.html",
         {
             "epic_lane": epic_lane,
-            "lanes": derive.lanes(beads),
+            "lanes": derive.lanes(beads, known_ids),
             "activity": derive.activity(beads),
         },
     )
@@ -490,6 +819,106 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
             "closed": closed_beads,
         },
     )
+
+
+@app.get("/api/gates", response_class=HTMLResponse)
+async def api_gates(request: Request, standalone: bool = False) -> HTMLResponse:
+    """Render the gates / coordination panel (HTMX swap target).
+
+    Surfaces the two coordination primitives bd exposes but bdboard previously
+    ignored (audit FB-9):
+      - Open async-coordination GATES via ``bd gate list --json``, each
+        interpreted into a labelled await condition (a PR/run link, a timer
+        deadline, or a manual-only flag) by :func:`derive.gate_condition` — so
+        the panel reads as 'Open Gates (N)' with conditions, not raw scalars.
+      - MERGE-SLOT mutexes (``gt:slot`` beads): held/available + the
+        priority-ordered waiter queue, via :func:`derive.merge_slot_view`.
+
+    Degrades gracefully (AC3): a ``bd gate list`` failure renders an inline
+    message for the gates section rather than 500-ing the whole partial, and
+    the merge-slot section is best-effort (a failed slot read is simply
+    omitted) — symmetric with /api/formulas and /api/memory.
+
+    ``standalone`` is set by the dedicated /coordination page (bdboard-wr85):
+    when true the panel is rendered expanded (it is the page's primary focus,
+    not a collapsed secondary board element) and an explicit empty state is
+    shown when there is no coordination state, instead of the board's
+    render-nothing behaviour that would leave the page blank.
+    """
+    gates, gates_error, slots = await _collect_coordination()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/gates_panel.html",
+        {
+            "gates": gates,
+            "gates_error": gates_error,
+            "slots": slots,
+            "standalone": standalone,
+        },
+    )
+
+
+async def _collect_coordination() -> tuple[list[dict[str, Any]], str | None, list[dict[str, Any]]]:
+    """Gather the live coordination state once, shared by every consumer.
+
+    Returns ``(gates, gates_error, slots)`` where:
+
+    - ``gates`` is the open-gate list (each entry shaped for
+      partials/gates_panel.html: id/title/priority + interpreted condition),
+    - ``gates_error`` is a friendly message when ``bd gate list`` failed (the
+      gates list is then empty), and
+    - ``slots`` is the list of merge-slot views (held/available + waiter
+      queue).
+
+    This is the SINGLE source of truth for coordination state so the
+    /coordination panel and the nav count badge (bdboard-iz8h) can never drift
+    — both derive from the exact same gates/slots structures. Degrades
+    gracefully (AC3): a gate-list failure surfaces ``gates_error`` rather than
+    raising, and a failed slot read falls back to the list bead.
+    """
+    repo_url = _repo_base_url()
+    gates: list[dict[str, Any]] = []
+    gates_error: str | None = None
+    try:
+        raw_gates = await bd.list_gates()
+    except RuntimeError as err:
+        log.warning("bd gate list failed: %s", err)
+        gates_error = "Couldn\u2019t load gates right now. Please try again in a moment."
+    else:
+        for g in raw_gates:
+            gates.append(
+                {
+                    "id": g.get("id"),
+                    "title": g.get("title"),
+                    "priority": g.get("priority"),
+                    "condition": derive.gate_condition(g, repo_url=repo_url),
+                }
+            )
+
+    # Merge-slots: detect gt:slot beads in the active snapshot (the label IS
+    # carried by `bd list`), then read each via show_long to recover the
+    # metadata.holder/waiters bd omits from the list payload. Best-effort: a
+    # failed slot read falls back to the list bead, never blocking the panel.
+    slots: list[dict[str, Any]] = []
+    try:
+        active = await store.snapshot_active()
+    except Exception as err:  # noqa: BLE001 - degrade, never 500 the panel
+        log.warning("snapshot_active failed for gates panel: %s", err)
+        active = []
+    for bead in active:
+        if not derive.is_merge_slot(bead):
+            continue
+        bead_id = bead.get("id")
+        full = None
+        if bead_id:
+            full, _err = await bd.show_long(bead_id)
+        source = full or bead
+        view = derive.merge_slot_view(source)
+        if view is not None:
+            view["title"] = source.get("title")
+            slots.append(view)
+
+    return gates, gates_error, slots
 
 
 @app.get("/api/history", response_class=HTMLResponse)
@@ -831,7 +1260,7 @@ async def api_formula_form(request: Request, name: str) -> HTMLResponse:
     single file read. We do NOT use the list payload's ``description`` (it is
     truncated), ``formula show --json`` (omits variables) nor the ``vars``
     count (always 0). See the bd CLI formula gotchas documented in
-    docs/design/.
+    notes/design/.
 
     One field per variable: ``description`` is the label/help, ``default`` is
     the prefilled value, and no-default variables are marked ``required`` so
@@ -963,6 +1392,12 @@ async def api_formula_pour(
             f'<p class="formula-error" role="alert">Pour failed: {err}</p>',
             status_code=500,
         )
+    # bd warns on stderr (exit 0) when a phase:"vapor" formula — authored as
+    # ephemeral (wisp) — is poured as persistent, git-synced beads. pour_formula
+    # captures that warning under a synthetic key; pop it off bd's payload here
+    # so it doesn't leak into _pour_counts, and surface a wisp notice below. The
+    # pour itself succeeded, so this NEVER swallows the result (bdboard-6nl8).
+    wisp_warning = result.pop("_wisp_warning", "")
     # Rename the grouping node to '<formula> <id>' so repeat pours are
     # distinguishable. Best-effort: a rename failure must NOT lose the (atomic,
     # successful) pour — the beads are already on the board, just under the bare
@@ -1005,6 +1440,7 @@ async def api_formula_pour(
             "created": visible_count,
             "rename_warning": rename_warning,
             "fully_materialized": fully_materialized,
+            "wisp_warning": wisp_warning,
         },
     )
 
@@ -1186,6 +1622,87 @@ async def api_counts(request: Request) -> HTMLResponse:
     )
 
 
+@app.get("/api/coordination/count", response_class=HTMLResponse)
+async def api_coordination_count(request: Request) -> HTMLResponse:
+    """Render the Coordination nav-tab count badge (HTMX swap target).
+
+    The badge (bdboard-iz8h) tells a user there is coordination state worth
+    looking at WITHOUT opening the tab. It lives in partials/nav.html on every
+    page and hydrates after paint via HTMX (load + refresh from:body), so it
+    rides the same SSE refresh pipeline as the rest of the board and never
+    blocks first paint on a bd subprocess.
+
+    The count is derived from the EXACT same gates/slots source as the
+    /coordination page (:func:`_collect_coordination`), so the badge can't
+    drift from the page (AC: "derived from the same source"). Counting rule
+    lives in :func:`derive.coordination_count`: every open gate plus any
+    held/contended merge slot.
+
+    Degrades gracefully: if the gate list errored, that section contributes 0
+    rather than 500-ing the badge — a missing badge is strictly better than a
+    broken nav. partials/coordination_badge.html renders nothing when the
+    count is 0, so a quiet board shows no badge at all.
+    """
+    gates, _gates_error, slots = await _collect_coordination()
+    count = derive.coordination_count(gates, slots)
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/coordination_badge.html",
+        {"count": count},
+    )
+
+
+@app.get("/api/staleness", response_class=HTMLResponse)
+async def api_staleness(request: Request) -> HTMLResponse:
+    """Render the stale-data banner (HTMX poll target).
+
+    The board serves the last-good snapshot when ``bd list`` fails, which
+    previously left a SUSTAINED outage invisible (a log line only). A frozen
+    board polls this cheap, no-I/O endpoint; once refreshes have failed
+    STALE_FAILURE_THRESHOLD times in a row the banner renders, otherwise the
+    region collapses to nothing (bdboard-75rq).
+
+    A single transient failure stays below threshold so the banner never
+    flashes. The ``last_success`` stamp is pre-formatted to local HH:MM here
+    (no template-side date filter exists) for the "last updated" copy.
+    """
+    state = store.staleness()
+    last_success_label = (
+        state.last_success.astimezone().strftime("%H:%M")
+        if state.last_success is not None
+        else None
+    )
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/stale_banner.html",
+        {
+            "staleness": state,
+            "last_success_label": last_success_label,
+        },
+    )
+
+
+@app.get("/api/dolt-sync", response_class=HTMLResponse)
+async def api_dolt_sync(request: Request) -> HTMLResponse:
+    """Render the Dolt local-vs-remote sync badge (HTMX poll target).
+
+    bdboard reads the LOCAL dolt store and never consults the remote, so
+    un-pushed local writes (ahead) and a teammate's pushed-but-un-pulled
+    writes (behind) are otherwise invisible — the board reads fresh while it's
+    silently stale-vs-origin. This polls :meth:`BdClient.dolt_sync_status`,
+    which NEVER raises (it degrades to ``unknown``), so the badge can't 500
+    the masthead even when no remote is configured or ``dolt`` is absent.
+    Rendered empty on a clean/unknown/no-remote-not-worth-flagging board so
+    the region stays quiet on the happy path.
+    """
+    sync = await bd.dolt_sync_status()
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/dolt_sync_badge.html",
+        {"sync": sync},
+    )
+
+
 # ----- bead detail -----
 
 
@@ -1215,6 +1732,24 @@ async def api_bead(request: Request, bead_id: str) -> HTMLResponse:
             ),
             status_code=404,
         )
+    # Gate beads: interpret the raw await_type/await_id/timeout fields into a
+    # single labelled condition row (a PR/run link, a timer deadline, or a
+    # manual-only flag) so the modal frames the gate as the pending WAIT it is
+    # — not as undifferentiated key:value scalars (audit FB-3). The raw fields
+    # are still rendered too (the anatomy invariant: bdboard drops no bd
+    # field); this just adds an interpreted row above them.
+    cond = derive.gate_condition(bead, repo_url=_repo_base_url())
+    if cond is not None:
+        bead = {**bead, "gate_condition": cond}
+    # Merge-slot beads (label gt:slot): interpret status + metadata.holder/
+    # waiters into a held/available + waiter-queue mutex affordance so the
+    # modal frames the slot as the coordination primitive it is — not as a raw
+    # `metadata` JSON blob (audit FB-9 / field_row.html json dump). The raw
+    # metadata row is still rendered too (anatomy invariant: drop no field);
+    # this just adds an interpreted row above it.
+    slot = derive.merge_slot_view(bead)
+    if slot is not None:
+        bead = {**bead, "merge_slot": slot}
     return TEMPLATES.TemplateResponse(
         request,
         "partials/bead_modal.html",
@@ -1266,6 +1801,41 @@ async def api_bead_raw(bead_id: str) -> JSONResponse:
     return JSONResponse(full)
 
 
+@app.get("/api/epic/{epic_id}/swarm", response_class=HTMLResponse)
+async def api_epic_swarm(request: Request, epic_id: str) -> HTMLResponse:
+    """Render the swarm-coordination panel for an epic (audit FB-10).
+
+    Lazily loaded into the bead modal when an epic opens. Shells the two
+    on-demand-only swarm reads concurrently — ``bd swarm status`` (the
+    Completed/Active/Ready/Blocked cohorts + progress %) and ``bd swarm
+    validate`` (the swarmable verdict, max parallelism and the Wave model) —
+    and merges them via :func:`derive.swarm_view`.
+
+    Degrades gracefully (symmetric with /api/gates): either bd call may fail
+    independently; the panel renders whatever succeeded and notes the missing
+    half rather than 500-ing the modal. If BOTH fail the panel emits a single
+    inline retry message.
+    """
+    status_res, validate_res = await asyncio.gather(
+        bd.swarm_status(epic_id),
+        bd.swarm_validate(epic_id),
+        return_exceptions=True,
+    )
+    status = None if isinstance(status_res, BaseException) else status_res
+    validate = None if isinstance(validate_res, BaseException) else validate_res
+    if isinstance(status_res, BaseException):
+        log.warning("bd swarm status for %s failed: %s", epic_id, status_res)
+    if isinstance(validate_res, BaseException):
+        log.warning("bd swarm validate for %s failed: %s", epic_id, validate_res)
+
+    view = derive.swarm_view(status, validate) if (status or validate) else None
+    return TEMPLATES.TemplateResponse(
+        request,
+        "partials/swarm_panel.html",
+        {"swarm": view, "epic_id": epic_id},
+    )
+
+
 # ----- helpers -----
 
 
@@ -1307,6 +1877,35 @@ async def _hydrate_epic_dependencies(
     return enriched
 
 
+async def _attach_epic_rollups(epic_lane: list[dict[str, Any]]) -> None:
+    """Stamp a child count/progress rollup onto each epic in the strip (FB-10).
+
+    Fans out ``bd mol progress <id>`` concurrently (one cheap ~0.7s call per
+    active epic) and grafts the shaped rollup onto each epic dict in place as
+    ``epic["rollup"]``. Mutates the list the route just built rather than
+    refetching.
+
+    Best-effort by design: a rollup that can't be computed (a childless epic,
+    a transient bd hiccup) is surfaced as a ``return_exceptions=True`` failure
+    and simply leaves ``rollup`` unset, so the badge is omitted instead of
+    breaking the board. The lanes path stays resilient even when bd is flaky.
+    """
+    targets = [e for e in epic_lane if e.get("id")]
+    if not targets:
+        return
+    results = await asyncio.gather(
+        *(bd.mol_progress(e["id"]) for e in targets),
+        return_exceptions=True,
+    )
+    for epic, result in zip(targets, results, strict=True):
+        if isinstance(result, BaseException):
+            log.debug("mol progress rollup for %s failed: %s", epic.get("id"), result)
+            continue
+        rollup = derive.epic_rollup(result)
+        if rollup is not None:
+            epic["rollup"] = rollup
+
+
 # Field display order in the modal: identity anchors first, then
 # content (what does this work entail?), then state/meta, then bulk
 # diagnostic fields at the bottom. Anything not listed is appended
@@ -1318,12 +1917,26 @@ _FIELD_ORDER = [
     # ─ content: what is this work? ─
     "description",
     "acceptance_criteria",
+    # design: markdown-bearing (registry editor="md"), emitted by bd show
+    # --long, and especially load-bearing on decision/ADR beads. It belongs
+    # in the content group next to acceptance_criteria; without an explicit
+    # slot it sorted to the alphabetical tail AND rendered unformatted
+    # (absent from _KIND_MARKDOWN). Audit FB-14.
+    "design",
     "deps",
     "dependencies",
     "dependents",
     "notes",
     # ─ state & meta ─
     "issue_type",
+    # gate await condition (synthetic, interpreted): only present on gate
+    # beads. Sits next to issue_type so a gate's WAIT condition reads right
+    # after its type. See derive.gate_condition / api_bead.
+    "gate_condition",
+    # merge-slot mutex state (synthetic, interpreted): only present on gt:slot
+    # beads. Sits next to issue_type so a slot's held/available state reads
+    # right after its type. See derive.merge_slot_view / api_bead.
+    "merge_slot",
     "status",
     "priority",
     "assignee",
@@ -1359,7 +1972,16 @@ _KIND_COMMENTS = {"comments"}
 # Fields whose string value is markdown prose. Rendered through md.render
 # and inserted via |safe in the template. close_reason and acceptance_criteria
 # are short prose that still benefit from inline link / emphasis support.
-_KIND_MARKDOWN = {"description", "notes", "close_reason", "acceptance_criteria"}
+_KIND_MARKDOWN = {
+    "description",
+    "notes",
+    "close_reason",
+    "acceptance_criteria",
+    # design is markdown prose (registry editor="md") — ADR/design rationale
+    # carries headings, lists, links. Render it through md.render like the
+    # other prose fields so it doesn't collapse to a plain-text wall. FB-14.
+    "design",
+}
 
 # Short scalar-ish metadata fields that benefit from a compact two-column
 # layout in the modal (less vertical churn, faster scanning).
@@ -1436,9 +2058,24 @@ class FieldSpec:
 
 # Priority is an integer enum P0..P4 in bd; expose the option *values* as
 # strings so the future <select> can label them "P0".."P4" while posting the
-# bare int. issue_type enum mirrors bd's built-in set (custom-config aside).
+# bare int. issue_type enum mirrors bd's full built-in set so the inline-edit
+# dropdown is NON-LOSSY: every built-in type (verified via `bd types --json`,
+# 9 core types) must be selectable, else editing a spike/story/milestone
+# silently couldn't preserve its own type (audit FB-14). Order matches
+# `bd types` output. Custom types (bd config set types.custom) are out of
+# scope here — same caveat as _TYPE_GLYPHS.
 _PRIORITY_OPTIONS = ("0", "1", "2", "3", "4")
-_ISSUE_TYPE_OPTIONS = ("bug", "feature", "task", "epic", "chore", "decision")
+_ISSUE_TYPE_OPTIONS = (
+    "task",
+    "bug",
+    "feature",
+    "chore",
+    "epic",
+    "decision",
+    "spike",
+    "story",
+    "milestone",
+)
 
 # The registry. Only the v1 whitelist (spike §5) is marked editable; every
 # other field bd emits is intentionally absent (=> read-only). Keep this the
@@ -1515,6 +2152,18 @@ def _bead_is_editable(bead: dict[str, Any]) -> bool:
 def _classify_field(key: str, val: Any) -> str:
     """Pick a render kind for a (key, value) pair. The template uses this
     to choose between chips / deps-list / paragraph / scalar / json."""
+    # The synthetic gate-condition row carries its own interpreted shape
+    # (summary + optional link / deadline / manual-only flag) and renders via
+    # a dedicated `gate` kind, never as raw json. Checked first so a dict
+    # value isn't swallowed by the generic json branch below.
+    if key == "gate_condition" and isinstance(val, dict):
+        return "gate"
+    # The synthetic merge-slot row carries an interpreted mutex shape
+    # (held/available + holder + waiter queue) and renders via a dedicated
+    # `merge_slot` kind, never as raw json. Checked before the generic json
+    # branch so a dict value isn't swallowed by it.
+    if key == "merge_slot" and isinstance(val, dict):
+        return "merge_slot"
     if val is None or val == [] or val == {} or val == "":
         return "empty"
     if key in _KIND_CHIPS and isinstance(val, list):

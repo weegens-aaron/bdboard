@@ -38,8 +38,26 @@
     {% if f.kind == "empty" %}
       <span class="muted">—</span>
     {% elif f.kind == "chips" %}
+      {# Labels/tags. Magic labels (dim:, gt:, provides:, export:, template)
+         are decoded server-side via the decode_label filter into a structured
+         {category, prefix, value, kind_label} so they render as distinct,
+         legible markers instead of undifferentiated grey chips (audit FB-14).
+         A magic chip shows its prefix as a small badge + the value; the prefix
+         text (not just colour) carries the meaning, so meaning never depends
+         on colour alone (WCAG 1.4.1). Freeform tags decode to category "tag"
+         and render as the classic single-token chip. #}
       <ul class="chip-list">
-        {% for item in f.val %}<li class="chip chip-label">{{ item }}</li>{% endfor %}
+        {% for item in f.val %}
+          {% set lbl = item | decode_label %}
+          {% if lbl.category == "tag" %}
+            <li class="chip chip-tag">{{ lbl.value }}</li>
+          {% else %}
+            <li class="chip chip-magic chip-{{ lbl.category }}" title="{{ lbl.raw }}">
+              {% if lbl.prefix %}<span class="chip-prefix">{{ lbl.prefix }}</span>{% else %}<span class="chip-prefix">{{ lbl.kind_label }}</span>{% endif %}
+              <span class="chip-value">{{ lbl.value }}</span>
+            </li>
+          {% endif %}
+        {% endfor %}
       </ul>
     {% elif f.kind == "deps" %}
       <ul class="dep-list">
@@ -75,6 +93,60 @@
       <div class="field-para">{{ f.val }}</div>
     {% elif f.kind == "json" %}
       <pre class="field-json">{{ f.val | tojson(indent=2) }}</pre>
+    {% elif f.kind == "gate" %}
+      {# Interpreted gate await condition: a labelled WAIT, not raw scalars.
+         Renders a PR/run link (gh:pr/gh:run), an auto-resolve deadline
+         (timer), or a manual-only flag (human/bead). See derive.gate_condition. #}
+      <div class="gate-condition">
+        <div class="gate-condition-head">
+          <span class="gate-await-badge gate-await-{{ f.val.await_type | replace(':', '-') }}">{{ f.val.await_type }}</span>
+          <span class="gate-condition-summary">{{ f.val.summary }}</span>
+          {% if f.val.manual_only %}<span class="gate-manual-flag" title="Resolve with bd gate resolve">manual only</span>{% endif %}
+        </div>
+        {% if f.val.link %}
+        <a class="gate-condition-link" href="{{ f.val.link }}" target="_blank" rel="noopener noreferrer">
+          {{ f.val.link_text or f.val.link }} ↗
+        </a>
+        {% elif f.val.link_text %}
+        <span class="gate-condition-ref">{{ f.val.link_text }}</span>
+        {% endif %}
+        {% if f.val.deadline %}
+        <div class="gate-condition-deadline">
+          <span class="gate-deadline-label">deadline</span>
+          <time datetime="{{ f.val.deadline }}">{{ f.val.deadline }}</time>
+          {% if f.val.until %}<span class="gate-deadline-until">({{ f.val.until }})</span>{% endif %}
+        </div>
+        {% endif %}
+        {% if f.val.note %}<p class="gate-condition-note muted">{{ f.val.note }}</p>{% endif %}
+      </div>
+    {% elif f.kind == "merge_slot" %}
+      {# Interpreted merge-slot mutex: a held/available state + the
+         priority-ordered waiter queue, NOT a raw metadata.holder/waiters JSON
+         blob (audit FB-9). See derive.merge_slot_view. #}
+      <div class="merge-slot {% if f.val.held %}merge-slot-held{% else %}merge-slot-available{% endif %}">
+        <div class="merge-slot-head">
+          <span class="merge-slot-state-badge merge-slot-state-{{ f.val.state }}">
+            {% if f.val.held %}held{% else %}available{% endif %}
+          </span>
+          {% if f.val.held %}
+            <span class="merge-slot-holder">
+              held by <strong>{{ f.val.holder or "unknown" }}</strong>
+            </span>
+          {% else %}
+            <span class="merge-slot-holder muted">no holder — free to acquire</span>
+          {% endif %}
+        </div>
+        {% if f.val.waiters %}
+        <div class="merge-slot-queue">
+          <span class="merge-slot-queue-label">waiting ({{ f.val.waiter_count }})</span>
+          <ol class="merge-slot-waiters">
+            {% for w in f.val.waiters %}<li class="merge-slot-waiter">{{ w }}</li>{% endfor %}
+          </ol>
+        </div>
+        {% else %}
+        <p class="merge-slot-queue-empty muted">No waiters queued.</p>
+        {% endif %}
+      </div>
     {% else %}
       {{ f.val }}
     {% endif %}

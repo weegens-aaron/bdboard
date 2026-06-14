@@ -1,7 +1,11 @@
 {# Closed lane content — loaded separately after initial paint for faster
    time-to-first-paint. This partial is swapped into the .lane-closed
    placeholder by /api/lanes/closed. The lane chrome (title, filters) stays
-   in lanes.html; this is just the card list + count update. #}
+   in lanes.html; this is just the card list + count update.
+
+   Note: a window-note affordance ("Last N days · See History for older →",
+   bdboard-75rq) once sat under the lane title to disambiguate an empty lane.
+   It was removed in bdboard-qugp to reduce visual weight on the board. #}
 <h2 class="lane-title">
   <span class="lane-name">Closed</span>
   <span class="lane-count" data-closed-count="total">{{ closed|length }}</span>

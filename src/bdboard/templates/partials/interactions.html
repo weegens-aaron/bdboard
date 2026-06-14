@@ -1,0 +1,132 @@
+{# Interaction-log swap region — HTMX target for /api/interactions.
+
+   Pure render over the data app.api_interactions() hands in:
+     - kind filter chips (All + each kind present, with counts)
+     - newest-first list of interaction rows
+     - graceful empty states (no log file vs. nothing of the selected kind)
+
+   Reads the CROSS-RUN swarm audit trail (.beads/interactions.jsonl) — the
+   llm_call / tool_call / label reward entries (the SFT/RL "why did the agent
+   do that" signal). This is DISTINCT from the per-bead `bd history`
+   Audit/Lifecycle modal, which is unchanged.
+
+   Each chip re-fetches /api/interactions?kind=<k> and re-swaps this whole
+   region (#interactions-region lives on the full page), so the control surface
+   stays server-driven with zero client framework — mirroring the History
+   range control's idiom (same filter-badge component + aria-pressed). #}
+<div class="interactions-region-inner">
+  {# Kind filter chips — reuse the board/history filter-badge idiom for a11y +
+     visual consistency (same button semantics, aria-pressed marks the active
+     kind). "All" is always present; one chip per kind found in the log, with a
+     live count. Hidden entirely when there is no log to filter. #}
+  {% if log_exists and counts %}
+  <div class="interactions-toolbar">
+    <div class="interactions-kinds" role="group" aria-label="Filter interactions by kind">
+      <button
+        type="button"
+        class="filter-badge{% if selected == 'all' %} filter-badge-active{% endif %}"
+        aria-pressed="{{ 'true' if selected == 'all' else 'false' }}"
+        aria-label="Show interactions of all kinds"
+        hx-get="/api/interactions"
+        hx-target="#interactions-region"
+        hx-swap="innerHTML"
+      >All <span class="lane-count">{{ total }}</span></button>
+      {% for k, n in counts.items() %}
+      <button
+        type="button"
+        class="filter-badge{% if selected == k %} filter-badge-active{% endif %}"
+        aria-pressed="{{ 'true' if selected == k else 'false' }}"
+        aria-label="Show only {{ k }} interactions"
+        hx-get="/api/interactions?kind={{ k }}"
+        hx-target="#interactions-region"
+        hx-swap="innerHTML"
+      >{{ k }} <span class="lane-count">{{ n }}</span></button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Entry list, newest first. Each row is a self-contained record: a kind
+     badge, the relative timestamp, a one-line summary, the actor, and (when
+     present) a link to the bead it touched that opens the shared modal. The
+     full payload is in a <details> so the raw key/values are one click away
+     without cluttering the scan view. #}
+  {% if items %}
+  <section class="interactions-list-section" aria-label="Interaction entries">
+    {% if truncated %}
+    <p class="interactions-note muted" role="status">
+      Showing the {{ shown }} most recent of {{ total_filtered }} matching
+      entries (newest first). The interaction log is append-only and unbounded;
+      older entries live in <code>.beads/interactions.jsonl</code>.
+    </p>
+    {% endif %}
+    <ul class="interactions-list" role="list">
+      {% for e in items %}
+      <li class="interaction-row interaction-kind-{{ e.kind }}">
+        <div class="interaction-row-head">
+          <span class="interaction-kind-badge" data-kind="{{ e.kind }}">{{ e.kind }}</span>
+          {% if e.created_at %}
+          <span class="interaction-when" title="{{ e.created_at }}">{{ e.created_at | humanize_ts }}</span>
+          {% endif %}
+          {% if e.issue_id %}
+          {# Clicking the bead id opens the shared bead modal (reuse, don't
+             rebuild) — the same hx target the board/history cards use. #}
+          <button
+            type="button"
+            class="interaction-bead-link"
+            hx-get="/api/bead/{{ e.issue_id }}"
+            hx-target="#bead-modal"
+            hx-swap="innerHTML"
+            aria-label="Open bead {{ e.issue_id }}"
+          >{{ e.issue_id }}</button>
+          {% endif %}
+        </div>
+        {% if e.summary %}
+        <div class="interaction-summary">{{ e.summary }}</div>
+        {% endif %}
+        <div class="interaction-meta">
+          {% if e.actor %}<span class="interaction-actor">{{ e.actor }}</span>{% endif %}
+          {% if e.id %}<span class="interaction-id">{{ e.id }}</span>{% endif %}
+        </div>
+        {% if e.details %}
+        <details class="interaction-details">
+          <summary class="interaction-details-summary">Details</summary>
+          <dl class="interaction-details-list">
+            {% for key, val in e.details %}
+            <div class="interaction-detail">
+              <dt class="interaction-detail-key">{{ key }}</dt>
+              <dd class="interaction-detail-val">{{ val }}</dd>
+            </div>
+            {% endfor %}
+          </dl>
+        </details>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% elif not log_exists %}
+  {# Graceful degradation: no interactions.jsonl at all. A fresh workspace
+     simply hasn't recorded any swarm interactions yet — this is normal, not
+     an error. #}
+  <p class="interactions-empty muted" role="status">
+    No interaction log found yet.
+    <code>.beads/interactions.jsonl</code> appears once agents record
+    <code>llm_call</code> / <code>tool_call</code> / <code>label</code>
+    entries via <code>bd audit record</code>. This cross-run trail is separate
+    from a single bead's history (open any bead to see its per-bead audit).
+  </p>
+  {% else %}
+  {# Log exists but the selected kind filtered everything out. #}
+  <p class="interactions-empty muted" role="status">
+    {% if selected and selected != 'all' %}
+    No <code>{{ selected }}</code> interactions recorded yet —
+    <button type="button" class="link-button"
+            hx-get="/api/interactions"
+            hx-target="#interactions-region" hx-swap="innerHTML">show all kinds</button>.
+    {% else %}
+    The interaction log is empty.
+    {% endif %}
+  </p>
+  {% endif %}
+</div>

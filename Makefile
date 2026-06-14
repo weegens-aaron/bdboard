@@ -12,7 +12,7 @@ PY_INDEX_URL ?=
 PY_TRUSTED_HOST ?=
 PY_INDEX := $(if $(PY_INDEX_URL),--index-url $(PY_INDEX_URL))$(if $(PY_TRUSTED_HOST), --allow-insecure-host $(PY_TRUSTED_HOST))
 
-PHONY: help venv install dev run fmt fmt-check lint test clean dead-code duplication audit outdated code-health links
+PHONY: help venv install dev run fmt fmt-check lint test clean dead-code duplication audit outdated code-health links docs-site
 
 help:
 	@echo "Targets:"
@@ -29,6 +29,7 @@ help:
 	@echo "  audit       - pip-audit dependency CVE scan"
 	@echo "  outdated    - uv pip list --outdated (advisory, never fails)"
 	@echo "  links       - lychee broken-link sweep over all markdown (config: lychee.toml)"
+	@echo "  docs-site   - build the static HTML doc site(s) from FlowDoc markdown"
 	@echo "  code-health - run all mechanical code-health gates (CI parity)"
 	@echo "  clean       - rm caches and venv"
 
@@ -45,15 +46,15 @@ run:
 	.venv/bin/bdboard
 
 fmt:
-	uvx $(PY_INDEX) ruff format src/ tests/
+	uvx $(PY_INDEX) ruff format src/ tests/ tools/
 
 # Format gate: CI runs `ruff format --check` (fails on unformatted code) rather
 # than rewriting. `make fmt` rewrites; `make fmt-check` is the CI-parity check.
 fmt-check:
-	uvx $(PY_INDEX) ruff format --check src/ tests/
+	uvx $(PY_INDEX) ruff format --check src/ tests/ tools/
 
 lint:
-	uvx $(PY_INDEX) ruff check src/ tests/
+	uvx $(PY_INDEX) ruff check src/ tests/ tools/
 
 test:
 	.venv/bin/pytest -q
@@ -94,6 +95,12 @@ code-health: lint fmt-check dead-code test duplication audit
 links:
 	@command -v lychee >/dev/null 2>&1 || { echo "lychee not found — install with: brew install lychee"; exit 1; }
 	lychee --config lychee.toml './**/*.md'
+
+# Static HTML doc site: the portable build of the flowdoc-html formula.
+# Converts __docs/ -> docs/maintainer/ and _docs/ -> docs/user/ and runs the
+# build VERIFY gate (parity, link resolution, mermaid/callout rendering).
+docs-site:
+	.venv/bin/python tools/build_docs_site.py --target both
 
 clean:
 	rm -rf .venv __pycache__ src/bdboard/__pycache__ .ruff_cache build dist *.egg-info

@@ -44,7 +44,12 @@ def _call_index() -> tuple[int, str]:
 
 
 def _call_history() -> tuple[int, str]:
-    resp = asyncio.run(app_module.page_history(_request("/history")))
+    # History migrated into the Analytics tab (bdboard-ove7); the former
+    # standalone /history page is now the first Analytics sub-view. The History
+    # sub-view shell still owns #history-region + #history-stats and lazy-loads
+    # /api/history, so the snappy-transition guarantees are asserted here via
+    # the Analytics page rendering the History sub-view.
+    resp = asyncio.run(app_module.page_analytics(_request("/analytics"), view="history"))
     return resp.status_code, resp.body.decode()
 
 

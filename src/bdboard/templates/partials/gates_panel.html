@@ -1,0 +1,135 @@
+{# Gates / coordination panel (audit FB-9).
+
+   Two coordination primitives bd exposes that the board surfaces here:
+   - Open Gates: async wait conditions (bd gate list --json), each with its
+     interpreted await condition (PR/run link, timer deadline, manual-only).
+   - Merge slots: gt:slot mutex beads rendered as held/available + the
+     priority-ordered waiter queue (not raw metadata JSON).
+
+   Loaded via HTMX into #coordination on the dedicated /coordination page
+   (load + refresh from:body). The whole panel is hidden when there is no
+   coordination state so the same partial stays render-nothing safe wherever
+   it is embedded.
+
+   `standalone` is set by the /coordination page (bdboard-wr85): when true the
+   disclosure renders EXPANDED (the panel is the page's primary focus, not a
+   collapsed secondary element) and an explicit empty state is shown when
+   there is no coordination state, so the dedicated page is never blank. #}
+{% set has_content = gates or gates_error or slots %}
+{% if has_content %}
+{# Count of live coordination items for the collapsed summary header. Gates
+   contribute their length (0 when errored/empty); slots contribute theirs.
+   Shown as 'Coordination (N)' so the panel communicates state at a glance
+   while staying collapsed by default — it can sit idle for months, so it is a
+   secondary element, not a primary focus (bdboard-f7yp). #}
+{% set gate_count = gates | length if not gates_error else 0 %}
+{% set slot_count = slots | length %}
+{% set coord_count = gate_count + slot_count %}
+{# Native <details>/<summary> is the canonical accessible disclosure: it is
+   keyboard- and screen-reader-operable for free and conveys expanded/collapsed
+   state implicitly (no manual aria-expanded/JS needed). Collapsed by default. #}
+<details class="coordination-panel{% if standalone %} coordination-panel-standalone{% endif %}"{% if standalone %} open{% endif %}>
+  <summary class="coordination-summary" aria-label="Coordination: {{ coord_count }} item{{ '' if coord_count == 1 else 's' }} (gates and merge slots)">
+    <span class="coordination-summary-title">Coordination</span>
+    <span class="coordination-summary-count">{{ coord_count }}</span>
+    {% if gates_error %}<span class="coordination-summary-error muted">!</span>{% endif %}
+  </summary>
+  <div class="coordination-body" aria-labelledby="coordination-title">
+    <h2 id="coordination-title" class="sr-only">Coordination</h2>
+
+  {# ----- Open gates ----- #}
+  <div class="coordination-section coordination-gates">
+    <h3 class="coordination-subtitle">
+      Open Gates{% if not gates_error %} ({{ gates | length }}){% endif %}
+    </h3>
+    {% if gates_error %}
+      <p class="coordination-error muted" role="status" aria-live="polite">{{ gates_error }}</p>
+    {% elif not gates %}
+      <p class="coordination-empty muted">No open gates.</p>
+    {% else %}
+      <ul class="coordination-gate-list">
+        {% for g in gates %}
+        <li class="coordination-gate">
+          <a class="coordination-gate-id"
+             hx-get="/api/bead/{{ g.id }}"
+             hx-target="#bead-modal" hx-swap="innerHTML"
+             style="cursor:pointer">{{ g.id }}</a>
+          <span class="coordination-gate-title">{{ g.title }}</span>
+          {% if g.condition %}
+          <div class="gate-condition">
+            <div class="gate-condition-head">
+              <span class="gate-await-badge gate-await-{{ g.condition.await_type | replace(':', '-') }}">{{ g.condition.await_type }}</span>
+              <span class="gate-condition-summary">{{ g.condition.summary }}</span>
+              {% if g.condition.manual_only %}<span class="gate-manual-flag" title="Resolve with bd gate resolve">manual only</span>{% endif %}
+            </div>
+            {% if g.condition.link %}
+            <a class="gate-condition-link" href="{{ g.condition.link }}" target="_blank" rel="noopener noreferrer">
+              {{ g.condition.link_text or g.condition.link }} &#8599;
+            </a>
+            {% elif g.condition.link_text %}
+            <span class="gate-condition-ref">{{ g.condition.link_text }}</span>
+            {% endif %}
+            {% if g.condition.deadline %}
+            <div class="gate-condition-deadline">
+              <span class="gate-deadline-label">deadline</span>
+              <time datetime="{{ g.condition.deadline }}">{{ g.condition.deadline }}</time>
+              {% if g.condition.until %}<span class="gate-deadline-until">({{ g.condition.until }})</span>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+
+  {# ----- Merge slots ----- #}
+  {% if slots %}
+  <div class="coordination-section coordination-slots">
+    <h3 class="coordination-subtitle">Merge slots ({{ slots | length }})</h3>
+    <ul class="coordination-slot-list">
+      {% for s in slots %}
+      <li class="coordination-slot">
+        <a class="coordination-slot-id"
+           hx-get="/api/bead/{{ s.id }}"
+           hx-target="#bead-modal" hx-swap="innerHTML"
+           style="cursor:pointer">{{ s.id }}</a>
+        <div class="merge-slot {% if s.held %}merge-slot-held{% else %}merge-slot-available{% endif %}">
+          <div class="merge-slot-head">
+            <span class="merge-slot-state-badge merge-slot-state-{{ s.state }}">
+              {% if s.held %}held{% else %}available{% endif %}
+            </span>
+            {% if s.held %}
+              <span class="merge-slot-holder">held by <strong>{{ s.holder or "unknown" }}</strong></span>
+            {% else %}
+              <span class="merge-slot-holder muted">no holder &#8212; free to acquire</span>
+            {% endif %}
+          </div>
+          {% if s.waiters %}
+          <div class="merge-slot-queue">
+            <span class="merge-slot-queue-label">waiting ({{ s.waiter_count }})</span>
+            <ol class="merge-slot-waiters">
+              {% for w in s.waiters %}<li class="merge-slot-waiter">{{ w }}</li>{% endfor %}
+            </ol>
+          </div>
+          {% else %}
+          <p class="merge-slot-queue-empty muted">No waiters queued.</p>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  </div>
+</details>
+{% elif standalone %}
+{# Dedicated /coordination page with no gates/slots: show an explicit empty
+   state rather than the board's render-nothing behaviour, which would leave
+   the page blank (bdboard-wr85). #}
+<div class="coordination-empty-state" role="status" aria-live="polite">
+  <p class="coordination-empty-state-title">No coordination in flight</p>
+  <p class="coordination-empty-state-hint muted">There are no open gates or merge slots right now. They&rsquo;ll appear here when work spins up async waits or merge-slot mutexes.</p>
+</div>
+{% endif %}

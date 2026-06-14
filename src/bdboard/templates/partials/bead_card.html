@@ -26,12 +26,14 @@
   </div>
   <div class="bead-title">{{ b.title }}</div>
   <div class="bead-meta">
-    {% if b.assignee %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
+    {% if b.coordinator %}<span class="bead-coordinator" title="Swarm coordinator">&#9881; {{ b.coordinator }}</span>{% endif %}
+    {% if b.assignee and not b.coordinator %}<span class="bead-assignee">{{ b.assignee }}</span>{% endif %}
     {% if meta == "history" %}
     {% if b.close_reason %}<span class="history-close-reason">{{ b.close_reason }}</span>{% endif %}
     {% else %}
-    {% if b.issue_type %}<span class="bead-type">{{ b.issue_type }}</span>{% endif %}
+    {% if b.issue_type %}{% with type_value = b.issue_type %}{% include "partials/bead_type_badge.html" %}{% endwith %}{% endif %}
     {% if b.dependency_count %}<span class="bead-dep">&#9939; {{ b.dependency_count }}</span>{% endif %}
+    {% include "partials/bead_hygiene_badges.html" %}
     {% endif %}
   </div>
 </li>

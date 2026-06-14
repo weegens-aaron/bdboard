@@ -5,7 +5,7 @@ its badge but the masthead #counts strip kept showing the unfiltered totals, so
 the header and the visible lanes disagreed about the active window.
 
 The board time filter is a *purely client-side* control (it shows/hides
-already-fetched cards; see docs/catalog/board-time-filter.md), so the fix lives
+already-fetched cards; see notes/catalog/board-time-filter.md), so the fix lives
 in the client: applyBoardFilter() now feeds the SAME visibleCount it writes into
 the Closed lane badge into the masthead CLOSED cell, keyed off a stable
 `data-count-status` hook on the counts cells. Reusing one number guarantees the

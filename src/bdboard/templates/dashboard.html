@@ -62,6 +62,9 @@
            hx-get="/api/lanes" hx-trigger="load, refresh from:body" hx-swap="innerHTML">
     {% include "partials/lanes_skeleton.html" %}
   </section>
+  {# Coordination (open gates + merge-slot mutexes) is no longer an inline
+     board region: it was promoted to its own primary-nav tab at /coordination
+     (bdboard-wr85). The board stays focused on the lanes. #}
 </main>
 
 {# Pour-formula dialog. A native <dialog> traps keyboard focus

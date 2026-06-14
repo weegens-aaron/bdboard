@@ -28,7 +28,11 @@ from css_test_utils import extract_style_property
 
 CSS_PATH = Path("src/bdboard/static/styles.css")
 TEMPLATES = Path("src/bdboard/templates")
-SURFACES = ("dashboard.html", "history.html", "memory.html")
+# History migrated into the Analytics tab (bdboard-ove7); analytics.html is the
+# full-page surface that now shares the two-row masthead structure. Coordination
+# was promoted off the board into its own /coordination tab (bdboard-wr85) and
+# shares the same masthead wiring.
+SURFACES = ("dashboard.html", "analytics.html", "memory.html", "coordination.html")
 
 
 def _css() -> str:
@@ -114,10 +118,12 @@ def test_counts_strip_is_not_inside_the_actions_group():
     """The counts/stats strip belongs on the TOP row with the brand, NOT inside
     the second-row actions group (bdboard-xgu).
 
-    Board has #counts; History has #history-stats. Both must sit outside
-    .masthead-actions. Memory has no counts strip, so it's skipped.
+    Board has #counts on its masthead. Memory and Analytics have no masthead
+    counts strip (Analytics' History sub-view owns its own stats host inside
+    the panel body, not the masthead — bdboard-ove7), so only the board is
+    checked here.
     """
-    checks = {"dashboard.html": 'id="counts"', "history.html": 'id="history-stats"'}
+    checks = {"dashboard.html": 'id="counts"'}
     for name, needle in checks.items():
         html = (TEMPLATES / name).read_text(encoding="utf-8")
         counts_idx = html.find(needle)

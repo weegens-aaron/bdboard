@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block body %}
+<header class="masthead">
+  {# TOP ROW brand alone. The page nav and theme toggle live on the second
+     row, symmetric with the Memory page. The Analytics masthead is
+     deliberately GENERIC (no per-view stats host): each sub-view owns its own
+     chrome inside its shell partial, so adding a sub-view never touches this
+     masthead (bdboard-ove7; History + Interactions both live here). #}
+  <div class="masthead-row">
+    <div class="masthead-brand">
+      <h1 class="title">Analytics</h1>
+    </div>
+  </div>
+  {# SECOND ROW page nav left, theme toggle right-aligned. #}
+  <div class="masthead-row masthead-nav-row">
+    {% include "partials/nav.html" %}
+    <div class="masthead-actions">
+      {% include "partials/theme_toggle.html" %}
+    </div>
+  </div>
+</header>
+
+<main class="layout layout-analytics">
+  {# Analytics panel host — the switcher + active sub-view (partials/
+     analytics_panel.html) are swapped into here as a UNIT. Switcher links
+     target this element (hx-target="#analytics-panel") so selecting a sub-view
+     re-renders the switcher's active state AND the sub-view in one swap, while
+     hx-push-url keeps the URL deep-linkable. Rendered server-side on first
+     paint so a hard load / deep link / Back-Forward restore shows the right
+     sub-view with zero client round-trip. #}
+  <div id="analytics-panel" class="analytics-panel">
+    {% include "partials/analytics_panel.html" %}
+  </div>
+</main>
+{% endblock %}

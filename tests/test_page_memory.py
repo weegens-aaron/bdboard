@@ -1,5 +1,5 @@
 """Route tests for GET /memory (the full-page memory view) and the shared
-masthead nav, per docs/design/bdboard-5p1/memory-view-design.md §3 D3, §5,
+masthead nav, per notes/design/bdboard-5p1/memory-view-design.md §3 D3, §5,
 §6 (bead C).
 
 We invoke the endpoint coroutine directly with a minimal ASGI Request (no

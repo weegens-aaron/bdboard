@@ -43,7 +43,7 @@
     {
       "id": "adr-coverage",
       "title": "ADR / decision-coverage check",
-      "description": "Cross-reference significant recent changes against docs/design ADRs. Flag decisions made in code/beads but never written down. Output: missing-ADR list.",
+      "description": "Cross-reference significant recent changes against notes/design ADRs. Flag decisions made in code/beads but never written down. Output: missing-ADR list.",
       "type": "task",
       "priority": 2,
       "labels": ["docs", "adr"],

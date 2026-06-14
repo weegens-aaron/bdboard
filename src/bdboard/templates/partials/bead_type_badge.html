@@ -1,0 +1,19 @@
+{# Shared per-type badge — single source of truth for the bead type signal on
+   both the board card (bead-meta) and the modal header. Mirrors the field
+   guide's anatomy glyph system (audit FB-2 / memory bdboard-anatomy-type-flat):
+   every type used to render as identical uppercase grey text, so a milestone /
+   gate / coordination bead looked just like a chore.
+
+   Caller passes `type_value` (the bead's issue_type string). The glyph carries
+   the at-a-glance type; the per-type color (.type-<slug> in styles.css) only
+   reinforces it, so meaning never depends on color alone (WCAG 1.4.1). An
+   unknown/custom type -> glyph filter returns "" -> we render the plain grey
+   label with no glyph (no crash). The glyph is aria-hidden because the visible
+   label already names the type for assistive tech. #}
+{%- if type_value -%}
+{%- set _glyph = type_value | type_glyph -%}
+<span class="bead-type type-{{ type_value | lower }}">
+  {%- if _glyph %}<span class="bead-type-glyph" aria-hidden="true">{{ _glyph }}</span>{% endif -%}
+  {{ type_value }}
+</span>
+{%- endif -%}

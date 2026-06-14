@@ -6,7 +6,7 @@ Why this test exists:
 path, not literal substrings. The original config used bare names like
 ``".git"``. Because ``.`` is the regex any-char metachar and the pattern was
 unanchored, ``".git"`` also matched the ``-git`` inside
-``docs/decisions/0003-beads-sync-via-dolt-git-refs.md`` and silently dropped
+``notes/decisions/0003-beads-sync-via-dolt-git-refs.md`` and silently dropped
 that file from the sweep -- a latent coverage hole (any future markdown whose
 path contained a matching substring like ``-git`` or ``xvenv`` would vanish
 from the link check with no error).
@@ -32,7 +32,7 @@ LYCHEE_TOML = REPO_ROOT / "lychee.toml"
 # The first is the exact file the original bug dropped; the others are
 # synthetic adversarial paths that an unanchored substring rule would catch.
 LEGITIMATE_MARKDOWN = [
-    "docs/decisions/0003-beads-sync-via-dolt-git-refs.md",
+    "notes/decisions/0003-beads-sync-via-dolt-git-refs.md",
     "docs/some-git-workflow.md",
     "docs/microvenv-notes.md",
     "src/node_modules_explained.md",

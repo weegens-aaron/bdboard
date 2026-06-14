@@ -292,3 +292,36 @@ def test_pour_formula_rejects_non_object_json(monkeypatch) -> None:
 
     with pytest.raises(RuntimeError, match="non-object"):
         asyncio.run(client.pour_formula("demo", {}))
+
+
+def test_pour_formula_captures_vapor_warning_on_success(monkeypatch) -> None:
+    """bdboard-6nl8: bd exits 0 but warns on stderr when a phase:'vapor'
+    formula is poured as persistent. We must read stderr on the SUCCESS path
+    and attach the warning under _wisp_warning without losing the result."""
+    result_json = {"new_epic_id": "bd-x-mol-z", "created": 3, "id_mapping": {}}
+    warning = '⚠ Formula "demo" recommends vapor phase (ephemeral)'
+    proc = _FakeProc(json.dumps(result_json).encode(), warning.encode(), 0)
+    _patch_subprocess(monkeypatch, proc)
+    client = BdClient()
+    client.invalidate_caches = lambda: None  # type: ignore
+
+    result = asyncio.run(client.pour_formula("demo", {}))
+
+    # The pour result is intact AND the wisp warning rides alongside it.
+    assert result["new_epic_id"] == "bd-x-mol-z"
+    assert result["created"] == 3
+    assert "recommends vapor phase" in result["_wisp_warning"]
+
+
+def test_pour_formula_no_warning_on_plain_success(monkeypatch) -> None:
+    """A normal (liquid) pour with empty/irrelevant stderr carries NO
+    _wisp_warning key — the warning surfaces only for vapor-phase formulas."""
+    result_json = {"new_epic_id": "bd-x-mol-z", "created": 3, "id_mapping": {}}
+    proc = _FakeProc(json.dumps(result_json).encode(), b"", 0)
+    _patch_subprocess(monkeypatch, proc)
+    client = BdClient()
+    client.invalidate_caches = lambda: None  # type: ignore
+
+    result = asyncio.run(client.pour_formula("demo", {}))
+
+    assert "_wisp_warning" not in result

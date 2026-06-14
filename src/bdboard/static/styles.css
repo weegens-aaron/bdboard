@@ -395,6 +395,37 @@ pre { margin: 0; }
   box-shadow: inset 0 -2px 0 var(--brand-blue);
 }
 
+/* Coordination count badge (bdboard-iz8h). A small mono pill that rides
+   alongside the Coordination nav link, mirroring .coordination-summary-count
+   so the badge and the page's own count read as the same object. The VISIBLE
+   number is the signal (not colour-only — clears WCAG 1.4.1); the pill shape +
+   the number's presence/absence carry the meaning. The slot is the empty
+   HTMX target that lives in the markup at all times; it collapses to nothing
+   until /api/coordination/count swaps a badge in (or stays empty at count 0),
+   so there is no reserved gap on a quiet board. */
+.mh-link-badge-slot {
+  display: inline-flex;
+  align-items: center;
+}
+.mh-link-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  /* Reset the nav link's small-caps treatment so the digits read as numerals,
+     not letter-spaced caps. */
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-2);
+  background: var(--wash, var(--rule));
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0 7px;
+  line-height: 17px;
+}
+
 /* Theme toggle — borrows .mh-link styling so it reads as the
    trailing cell of the contents bar, tied in with the same hairline
    border-left. It is a <button> outside <nav>: an action, not navigation.
@@ -532,22 +563,34 @@ pre { margin: 0; }
 .epic-lane {
   border-bottom: 1px solid var(--rule-2);
   margin-bottom: 14px;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 .epic-lane-title {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  font-family: var(--display);
-  font-size: 18px;
-  margin: 0 0 8px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex: 0 0 auto;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0;
 }
+.epic-lane-title .lane-count { font-size: 11px; }
 .epic-strip {
   list-style: none;
   margin: 0;
-  padding: 0 0 2px;
+  padding: 2px 0;
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -557,68 +600,236 @@ pre { margin: 0; }
 .epic-strip::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
 .epic-strip > * { flex-shrink: 0; }
 .epic-chip {
-  min-width: 250px;
-  max-width: 320px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 380px;
   background: var(--paper-3);
   border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 5px 12px;
   cursor: pointer;
+  font-size: 13px;
+  line-height: 1.3;
 }
 .epic-chip:hover {
   border-color: var(--blue-100);
   box-shadow: 0 1px 3px rgba(0, 83, 226, 0.15);
 }
-.epic-chip-head {
+.epic-chip:focus-visible {
+  outline: 2px solid var(--blue-100);
+  outline-offset: 1px;
+}
+.epic-chip-marker {
+  flex: 0 0 auto;
+  font-size: 10px;
+  line-height: 1;
+  align-self: center;
+  color: var(--ink-2);
+}
+.epic-chip-marker.p0 { color: var(--brand-red); }
+.epic-chip-marker.p1 { color: var(--brand-yellow); }
+.epic-chip-marker.p2 { color: var(--blue-100); }
+.epic-chip-marker.p3 { color: var(--ink-2); }
+.epic-chip-marker.p4,
+.epic-chip-marker.px { color: var(--muted); }
+.epic-chip .bead-id {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.epic-chip-sep {
+  flex: 0 0 auto;
+  color: var(--ink-2);
+}
+.epic-chip-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.epic-chip-progress {
+  flex: 0 0 auto;
+  font-family: var(--mono, var(--sans));
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* ----- Swarm coordination panel (audit FB-10) ----- */
+.swarm-panel { margin-top: 4px; }
+.swarm-error,
+.swarm-partial,
+.swarm-error-msg,
+.swarm-warning { font-size: 13px; margin: 4px 0; }
+.swarm-error-msg { color: var(--danger-fg); font-weight: 600; }
+.swarm-warning { color: var(--accent-2); font-weight: 600; }
+
+.swarm-progress { margin: 8px 0 12px; }
+.swarm-progress-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.swarm-progress-pct {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--brand-green);
+}
+.swarm-progress-label { font-size: 12px; }
+.swarm-progress-track {
+  height: 8px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.swarm-progress-fill {
+  height: 100%;
+  background: var(--brand-green);
+  border-radius: 999px;
+}
+
+.swarm-cohorts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.swarm-cohort {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--paper);
+}
+.swarm-cohort-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
-.epic-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.epic-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--sans);
+.swarm-cohort-label {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.swarm-cohort-count {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.swarm-cohort-completed { border-left: 3px solid var(--brand-green); }
+.swarm-cohort-active    { border-left: 3px solid var(--brand-blue); }
+.swarm-cohort-ready     { border-left: 3px solid var(--spark-140); }
+.swarm-cohort-blocked   { border-left: 3px solid var(--accent); }
+.swarm-cohort-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.swarm-cohort-item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
   border-radius: 3px;
-  border: 1px solid transparent;
+  padding: 1px 2px;
+}
+.swarm-cohort-item:hover { background: var(--paper-2); }
+.swarm-cohort-title,
+.swarm-wave-issue-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.swarm-cohort-empty { font-size: 12px; margin: 0; }
+
+.swarm-waves { margin-top: 6px; }
+.swarm-waves-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.swarm-waves-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.swarm-swarmable {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 3px;
   padding: 1px 6px;
 }
-.epic-status-icon { font-size: 12px; line-height: 1; }
-.epic-status.status-open {
+.swarm-swarmable-yes {
   background: var(--status-open-bg);
-  color: var(--status-open-fg);
-  border-color: var(--status-open-border);
+  color: var(--brand-green);
+  border: 1px solid var(--brand-green);
 }
-.epic-status.status-in_progress {
-  background: var(--status-in-progress-bg);
-  color: var(--status-in-progress-fg);
-  border-color: var(--status-in-progress-border);
-}
-.epic-status.status-blocked {
+.swarm-swarmable-no {
   background: var(--status-blocked-bg);
   color: var(--status-blocked-fg);
-  border-color: var(--status-blocked-border);
+  border: 1px solid var(--status-blocked-border);
 }
-.epic-status.status-deferred {
-  background: var(--status-deferred-bg);
-  color: var(--status-deferred-fg);
-  border-color: var(--status-deferred-border);
+.swarm-parallelism { font-size: 11px; }
+.swarm-wave-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.epic-status.status-unknown {
-  background: var(--status-unknown-bg);
-  color: var(--status-unknown-fg);
-  border-color: var(--status-unknown-border);
+.swarm-wave {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--brand-blue);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--paper);
 }
+.swarm-wave-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.swarm-wave-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.swarm-wave-size { font-size: 11px; }
+.swarm-wave-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.swarm-wave-issue {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+.swarm-wave-issue:hover { background: var(--paper-2); }
+.swarm-wave-empty,
+.swarm-cohort-empty { font-size: 12px; }
 
 .lanes {
   display: grid;
@@ -736,6 +947,23 @@ pre { margin: 0; }
 .lane-in_progress .lane-title { color: var(--brand-blue); }
 .lane-blocked   .lane-title { color: var(--accent); }
 .lane-deferred  .lane-title { color: var(--muted); }
+/* Pinned lane: infra / never-auto-close beads. Amber accent (and a matching
+   card left-rule) make a pinned bead read as a deliberate operational state,
+   visually distinct from the muted-grey Deferred lane (bdboard-m5bm). */
+.lane-pinned    .lane-title { color: var(--accent-2); }
+.lane-pinned    .bead-card  { border-left: 3px solid var(--accent-2); }
+/* Gate lane: async-coordination WAITS (gate beads). Violet accent + matching
+   card left-rule frame an open gate as a pending wait, visually distinct from
+   the amber Pinned lane and the red Blocked lane. A gate is NOT claimable
+   READY work — it waits on a PR/run/timer/manual condition (audit FB-3). */
+.lane-gate      .lane-title { color: var(--violet); }
+.lane-gate      .bead-card  { border-left: 3px solid var(--violet); }
+/* Swarm lane: running `mol_type=swarm` molecules — the only object carrying a
+   live swarm's existence + coordinator handle (audit FB-5). Brand-blue accent
+   + matching card left-rule frame it as active multi-agent coordination,
+   distinct from the violet Gate lane and the amber Pinned lane. */
+.lane-swarm     .lane-title { color: var(--brand-blue); }
+.lane-swarm     .bead-card  { border-left: 3px solid var(--brand-blue); }
 .lane-activity  .lane-title { color: var(--violet); }
 
 /* ============================================================
@@ -797,11 +1025,90 @@ pre { margin: 0; }
 .bead-assignee, .bead-type, .bead-dep {
   display: inline-block;
 }
+/* Swarm coordinator chip: the molecule's assignee surfaced as the swarm's
+   coordinator handle (audit FB-5). The  glyph carries the meaning so the
+   role is never conveyed by colour alone (WCAG 1.4.1); --ink-2 keeps the text
+   AA on the card surface. */
+.bead-coordinator {
+  display: inline-block;
+  font-weight: 600;
+  color: var(--ink-2);
+}
 .bead-type {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
   color: var(--ink-2);
+}
+/* Per-type glyph: the at-a-glance type signal from the beads field-guide
+   anatomy (audit FB-2 / memory bdboard-anatomy-type-flat). The GLYPH carries
+   the meaning; the per-type COLOR below only reinforces it, so the type is
+   never conveyed by colour alone (WCAG 1.4.1). The label keeps --ink-2 (AA on
+   the card surface); glyph colours are reused semantic tokens (theme-aware via
+   the dark-block re-points), each computed >= 3:1 on the card surface in BOTH
+   themes (WCAG 1.4.11 non-text contrast) — locked by test_type_glyph_contrast. */
+.bead-type-glyph {
+  margin-right: 4px;
+  font-weight: 700;
+  font-style: normal;
+  /* glyphs are geometric, not letters — don't uppercase/space them */
+  text-transform: none;
+  letter-spacing: 0;
+}
+.type-task .bead-type-glyph      { color: var(--brand-blue); }
+.type-bug .bead-type-glyph       { color: var(--brand-red); }
+.type-feature .bead-type-glyph   { color: var(--brand-green); }
+.type-chore .bead-type-glyph     { color: var(--muted); }
+.type-epic .bead-type-glyph      { color: var(--violet); }
+.type-decision .bead-type-glyph  { color: var(--warning-text); }
+.type-spike .bead-type-glyph     { color: var(--ink-2); }
+.type-story .bead-type-glyph     { color: var(--brand-blue-d); }
+.type-milestone .bead-type-glyph { color: var(--spark-140); }
+.type-event .bead-type-glyph     { color: var(--muted); }
+.type-gate .bead-type-glyph      { color: var(--warning-text); }
+.type-molecule .bead-type-glyph  { color: var(--violet); }
+
+/* ── Graph-hygiene badges (audit FB-6 / bdboard-dzu2) ──────────────────────
+   Three filled pill chips that surface otherwise-invisible graph defects on a
+   bead card / epic chip: a blocking-dependency DEADLOCK (cycle), a DANGLING
+   DEP (a blocks edge whose target isn't in the board), and an INCOMPLETE
+   template (missing required sections for the bead's type). Each pairs a glyph
+   with a VISIBLE text label so meaning never rides on colour alone (WCAG
+   1.4.1). The bg/fg pairs reuse the status tokens already proven AA (4.5:1)
+   in both themes by test_bead_status_contrast, so the badge text clears AA
+   wherever the status badges do. */
+.bead-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.bead-badge .badge-glyph {
+  font-weight: 700;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.badge-cycle {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-fg);
+  border: 1px solid var(--status-blocked-border);
+}
+.badge-dangling {
+  background: var(--status-deferred-bg);
+  color: var(--status-deferred-fg);
+  border: 1px solid var(--status-deferred-border);
+}
+.badge-incomplete {
+  background: var(--status-unknown-bg);
+  color: var(--status-unknown-fg);
+  border: 1px solid var(--status-unknown-border);
 }
 
 /* ============================================================
@@ -1415,6 +1722,19 @@ pre { margin: 0; }
   padding: 10px 12px;
   margin: 0;
 }
+/* Vapor-phase notice: a formula authored as ephemeral (wisp) that was poured
+   as persistent beads. Advisory amber, NOT a hard error — the pour succeeded.
+   Sits below the pour-ok/partial result as an additional line (bdboard-6nl8). */
+.formula-pour-warning {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--warning-text);
+  background: var(--paper-2);
+  border-left: 3px solid var(--warning-text);
+  border-radius: 0 4px 4px 0;
+  padding: 10px 12px;
+  margin: 8px 0 0;
+}
 
 /* ============================================================
    Activity — the right-most swim lane. Same .lane / .lane-list
@@ -1644,6 +1964,279 @@ pre { margin: 0; }
   white-space: pre-wrap;
 }
 
+/* Gate await condition (modal `gate` field kind). Renders a gate's WAIT as a
+   labelled condition — a PR/run link, a timer deadline, or a manual-only flag
+   — instead of raw await_type/await_id scalars (audit FB-3). Violet rule ties
+   it to the Gate lane. Colours come from theme vars so dark mode just works. */
+.gate-condition {
+  border-left: 3px solid var(--violet);
+  background: var(--paper-2);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gate-condition-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.gate-await-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--paper-3);
+  color: var(--violet);
+  border: 1px solid var(--violet);
+}
+.gate-condition-summary {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.gate-manual-flag {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--status-deferred-bg);
+  color: var(--status-deferred-fg);
+  border: 1px solid var(--status-deferred-border);
+}
+.gate-condition-link {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--brand-blue-d);
+  text-decoration: underline;
+  width: fit-content;
+}
+.gate-condition-link:hover { text-decoration: none; }
+.gate-condition-ref {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.gate-condition-deadline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.gate-deadline-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.gate-deadline-until { color: var(--violet); font-weight: 600; }
+.gate-condition-note { margin: 0; font-size: 12px; }
+
+/* Merge-slot mutex affordance (modal `merge_slot` field kind + coordination
+   panel). Renders the gt:slot bead's held/available state + the priority-
+   ordered waiter queue instead of a raw metadata.holder/waiters JSON blob
+   (audit FB-9). Colours come from theme status vars so dark mode just works
+   and the state badge reuses the board's open/in-progress semantics. */
+.merge-slot {
+  border-left: 3px solid var(--violet);
+  background: var(--paper-2);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.merge-slot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.merge-slot-state-badge {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.merge-slot-state-held {
+  background: var(--status-in-progress-bg);
+  color: var(--status-in-progress-fg);
+}
+.merge-slot-state-available {
+  background: var(--status-open-bg);
+  color: var(--status-open-fg);
+}
+.merge-slot-holder { font-size: 13px; color: var(--ink-2); }
+.merge-slot-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.merge-slot-queue-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.merge-slot-waiters {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.merge-slot-waiter { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.merge-slot-queue-empty { margin: 0; font-size: 12px; }
+
+/* Coordination panel: open gates + merge-slots, hydrated into #coordination.
+   Promoted off the board into its own /coordination tab (bdboard-wr85). On the
+   board it WAS a collapsed-by-default native <details> secondary element
+   (bdboard-f7yp); on the dedicated page it is the primary focus, so the
+   .coordination-panel-standalone modifier renders it expanded and de-mutes the
+   summary. Only present when there is coordination state — otherwise the
+   standalone page shows an explicit .coordination-empty-state instead. */
+.coordination-panel {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  margin-top: 16px;
+}
+/* The clickable disclosure header — compact, muted, secondary. Native
+   <summary> handles keyboard + SR expand/collapse semantics for free. */
+.coordination-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  list-style-position: inside;
+}
+.coordination-summary:hover { color: var(--ink-2); }
+.coordination-summary:focus-visible {
+  outline: 2px solid var(--brand-blue-d);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+.coordination-summary-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+  background: var(--wash, var(--rule));
+  border-radius: 10px;
+  padding: 0 7px;
+  line-height: 18px;
+}
+.coordination-summary-error {
+  font-weight: 700;
+  color: var(--danger, var(--ink-2));
+}
+/* Revealed body — padded under the summary, separated by a hairline. */
+.coordination-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--rule);
+}
+.coordination-section { display: flex; flex-direction: column; gap: 8px; }
+.coordination-subtitle {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0;
+}
+.coordination-gate-list,
+.coordination-slot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.coordination-gate,
+.coordination-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.coordination-gate-id,
+.coordination-slot-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-blue-d);
+  text-decoration: underline;
+  width: fit-content;
+}
+.coordination-gate-id:hover,
+.coordination-slot-id:hover { text-decoration: none; }
+.coordination-gate-title { font-size: 13px; color: var(--ink-2); }
+.coordination-empty,
+.coordination-error { margin: 0; font-size: 12px; }
+
+/* Dedicated /coordination page (bdboard-wr85). The page is the panel's primary
+   focus, so stack the region and let it breathe rather than sitting BELOW the
+   lanes as a secondary board element. */
+.layout-coordination {
+  flex-direction: column;
+}
+/* Standalone modifier: render the disclosure expanded (the route also emits
+   the `open` attribute) and de-mute the summary so it reads as a section
+   heading, not a collapsed secondary affordance. */
+.coordination-panel-standalone {
+  margin-top: 0;
+}
+.coordination-panel-standalone .coordination-summary {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+/* Explicit empty state shown on the dedicated page when there are no gates or
+   merge slots — so the page is never blank. */
+.coordination-empty-state {
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  padding: 28px 22px;
+  text-align: center;
+}
+.coordination-empty-state-title {
+  margin: 0 0 6px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.coordination-empty-state-hint {
+  margin: 0 auto;
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* Field renderers — chips for labels, dep-list for deps, para for prose. */
 .chip-list {
   list-style: none;
@@ -1653,7 +2246,8 @@ pre { margin: 0; }
   flex-wrap: wrap;
   gap: 4px;
 }
-.chip-label {
+/* Freeform tag chip — the classic single-token label. */
+.chip-tag {
   font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
@@ -1662,6 +2256,61 @@ pre { margin: 0; }
   background: var(--brand-blue-l);
   color: var(--brand-blue-d);
   border: 1px solid rgba(0, 113, 220, 0.2);
+}
+/* Magic labels (dim:, gt:, provides:, export:, template) — decoded into a
+   prefix badge + value so they read as structured machine markers, not
+   freeform tags (audit FB-14). Per-category hue (theme-safe via existing
+   status tokens) reinforces the kind; the prefix TEXT carries the meaning so
+   colour is never the only signal (WCAG 1.4.1). */
+.chip-magic {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--rule-2);
+}
+.chip-magic .chip-prefix {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  padding: 2px 6px;
+  color: var(--on-brand);
+  background: var(--muted);
+}
+.chip-magic .chip-value {
+  font-family: var(--mono);
+  padding: 2px 8px;
+  color: var(--ink);
+  background: var(--paper-3);
+}
+/* Per-category accent: the prefix badge gets the category hue, the value
+   sits on a neutral fill so the marker reads prefix=meaning + value=payload.
+   Each pairs a theme-aware fill with text that meets AA on it. */
+.chip-dim .chip-prefix {
+  background: var(--status-deferred-fg);
+  color: var(--status-deferred-bg);
+}
+.chip-gate .chip-prefix {
+  background: var(--status-blocked-fg);
+  color: var(--status-blocked-bg);
+}
+.chip-provides .chip-prefix {
+  background: var(--status-closed-fg);
+  color: var(--status-closed-bg);
+}
+.chip-export .chip-prefix {
+  background: var(--brand-blue);
+  color: var(--on-brand);
+}
+.chip-template .chip-prefix {
+  background: var(--violet);
+  color: var(--paper-3);
 }
 .dep-list {
   list-style: none;
@@ -2030,6 +2679,54 @@ pre { margin: 0; }
   text-decoration: none;
 }
 .footer-link:hover { color: var(--brand-blue); text-decoration: underline; }
+
+/* ============================================================
+   Dolt local-vs-remote sync badge (bdboard-lwiv). Sits beside the SSE
+   "live" pill in the footer but means something different: it surfaces
+   un-pushed (ahead) / behind / no-remote drift the board would otherwise
+   hide. Empty region collapses (synced / unknown paths render nothing).
+   All colours flow through theme tokens so dark mode is free. Contrast of
+   the fg tokens on their soft fills clears WCAG 2.2 AA for the 12px text.
+   ============================================================ */
+.sync-region:empty { display: none; }
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid transparent;
+  cursor: default;
+}
+.sync-badge-icon { font-weight: 700; }
+/* Ahead = local writes not yet pushed (amber: action needed, not an error). */
+.sync-badge-ahead {
+  color: var(--warning-text);
+  background: var(--spark-10);
+  border-color: var(--spark-100);
+}
+/* Behind = stale vs origin; same severity, distinguished by arrow + label. */
+.sync-badge-behind {
+  color: var(--info);
+  background: var(--brand-blue-l);
+  border-color: #9ab8ff;
+}
+/* Diverged = both directions; danger tone, this needs a pull-then-push. */
+.sync-badge-diverged {
+  color: var(--danger-fg);
+  background: var(--danger-bg);
+  border-color: var(--danger-fg);
+}
+/* No remote = neutral/muted: informational, nothing is wrong yet. */
+.sync-badge-noremote {
+  color: var(--ink-2);
+  background: var(--code-chip-bg);
+  border-color: var(--muted-2);
+}
 
 /* Live indicator — small pulsing dot proves polling is alive. */
 .live-dot {
@@ -2725,6 +3422,18 @@ pre { margin: 0; }
 }
 .skeleton-row { width: 100%; height: 44px; }
 
+/* Interactions region skeleton — a chip-row placeholder + a stack of entry
+   rows, mirroring partials/interactions.html so the swap is shift-free. */
+.interactions-skeleton { display: flex; flex-direction: column; gap: 14px; }
+.interactions-list-skeleton {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Memory list skeleton scaffold. */
 .memory-skeleton { display: flex; flex-direction: column; gap: 12px; }
 
@@ -2769,4 +3478,283 @@ pre { margin: 0; }
     animation: none;
     background-image: none;
   }
+}
+
+/* ============================================================
+   Stale-data banner (bdboard-75rq). A SUSTAINED bd-list refresh failure
+   freezes the board on the last-good snapshot; this page-level advisory
+   surfaces that outage (previously a log line only). Amber, not red: the
+   data is stale, not wrong. Mirrors the proven AA combo used by the memory
+   dialog warning (--ink on --spark-10 with a --spark-100 accent rule).
+   ============================================================ */
+.stale-region:empty { display: none; }
+.stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 16px;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--spark-10);
+  border-bottom: 2px solid var(--spark-100);
+}
+.stale-banner-icon {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  /* CSS-drawn warning triangle so the cue isn't colour-only AND carries no
+     emoji (project rule). The fill uses --warning-text for an amber glyph. */
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 11px solid var(--warning-text);
+}
+.stale-banner-text { font-weight: 600; }
+
+/* ============================================================
+   Interactions sub-view — the CROSS-RUN swarm interaction log
+   (.beads/interactions.jsonl: llm_call / tool_call / label
+   reward entries). Now the SECOND Analytics sub-view
+   (bdboard-vtd4): the region sits inside .layout-analytics /
+   .analytics-panel (which own padding, scroll, and centering),
+   so there is no dedicated page-layout rule. Reuses the
+   filter-badge + lane-count idioms so the surface stays
+   visually consistent with the board and History views.
+   Distinct from the per-bead bd-history modal. All colours flow
+   through theme tokens so dark mode is free.
+   ============================================================ */
+.interactions-region-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.interactions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+.interactions-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+/* Kind names read better un-lowercased (they carry an underscore). */
+.interactions-kinds .filter-badge { text-transform: none; }
+
+.interactions-note { font-size: 12px; margin: 0 0 4px; }
+
+.interactions-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.interactions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* One log entry. A hairline card with a kind-accented left rule so the
+   kind reads at a glance WITHOUT relying on colour alone — the text kind
+   badge is always present (WCAG 1.4.1). */
+.interaction-row {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule-2);
+  border-radius: 4px;
+  background: var(--paper-3);
+  padding: 10px 12px;
+}
+.interaction-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.interaction-kind-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-2);
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+.interaction-when {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.interaction-bead-link {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue-100);
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: auto;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.interaction-bead-link:hover { color: var(--brand-blue-d); }
+
+.interaction-summary {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.interaction-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.interaction-actor { font-weight: 600; }
+.interaction-id { font-family: var(--mono); }
+
+.interaction-details { margin-top: 8px; }
+.interaction-details-summary {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.interaction-details-summary:hover { color: var(--ink-2); }
+.interaction-details-list {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: minmax(90px, max-content) 1fr;
+  gap: 4px 12px;
+}
+.interaction-detail {
+  display: contents;
+}
+.interaction-detail-key {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.interaction-detail-val {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* Per-kind left-rule accents. The text badge is the primary signal; these
+   tints only REINFORCE it, so meaning never depends on colour alone. */
+.interaction-kind-llm_call   { border-left-color: var(--violet); }
+.interaction-kind-tool_call  { border-left-color: var(--brand-blue); }
+.interaction-kind-label      { border-left-color: var(--brand-green); }
+.interaction-kind-field_change { border-left-color: var(--rule-2); }
+
+.interactions-empty {
+  max-width: 640px;
+  margin: 12px auto;
+  text-align: center;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+/* ============================================================
+   Analytics tab (bdboard-ove7). The Analytics page hosts multiple
+   analytics/history sub-views behind one in-page switcher. The masthead nav
+   reads as PRIMARY navigation (.mh-link); this switcher reads as a SECONDARY,
+   in-page control beneath it. Sub-views are data-driven from analytics.py, so
+   this styling is generic to any number of tabs.
+   ============================================================ */
+.layout-analytics {
+  display: block;
+  overflow-y: auto;
+  padding: 18px 24px 32px;
+}
+.analytics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+/* Sub-view switcher — an underline tab row. A hairline baseline rule spans the
+   row; the active tab overlays it with a thicker brand-blue underline. Tabs
+   are real <a> links, so they keep link semantics + keyboard focus for free. */
+.analytics-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--rule);
+}
+.analytics-tab {
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);            /* inactive: de-emphasised (>=4.74:1) */
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 8px 2px;
+  margin-bottom: -1px;            /* sit the underline on the row's baseline */
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+/* Hover affordance is colour-only (muted -> ink) so it doesn't double-signal
+   with the active underline. */
+.analytics-tab:hover {
+  color: var(--ink);
+}
+.analytics-tab:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 3px;
+}
+/* Active sub-view = ink colour + bold weight + a brand-blue underline. THREE
+   non-colour cues (weight + underline on top of colour) clear WCAG 1.4.1. */
+.analytics-tab.is-active {
+  color: var(--ink);
+  font-weight: 800;
+  border-bottom: 2px solid var(--brand-blue);
+}
+/* The active sub-view body. Sub-views own their own internal chrome; this just
+   gives the panel room to breathe under the switcher. */
+.analytics-view {
+  display: block;
+}
+.analytics-subview {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+/* The History sub-view's stats strip, relocated from the old masthead host
+   into the sub-view body. Reuses the masthead-counts editorial chrome so the
+   typography/spacing match the board's counts strip. */
+.analytics-stats {
+  margin: 0;
 }

@@ -1,7 +1,7 @@
-{% set lane_titles = {"deferred": "Deferred", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
+{% set lane_titles = {"deferred": "Deferred", "pinned": "Pinned", "gate": "Gates (waiting)", "swarm": "Swarms", "ready": "Ready", "in_progress": "In Progress", "blocked": "Blocked"} %}
 
-<section class="epic-lane" aria-label="Epic lane">
-  <h2 class="epic-lane-title">Epics <span class="lane-count">{{ epic_lane|length }}</span></h2>
+<section class="epic-lane" aria-label="Epics in flight">
+  <h2 class="epic-lane-title">Epics in flight <span class="lane-count">{{ epic_lane|length }}</span></h2>
   <ul class="epic-strip" role="list">
     {% for e in epic_lane %}
     <li class="epic-chip"
@@ -9,20 +9,19 @@
         hx-target="#bead-modal"
         hx-swap="innerHTML"
         hx-disabled-elt="this">
-      <div class="epic-chip-head">
-        <span class="bead-id">{{ e.id }}</span>
-        {% if e.priority is not none %}
-        <span class="bead-priority p{{ e.priority }}">P{{ e.priority }}</span>
-        {% endif %}
-      </div>
-      <div class="bead-title">{{ e.title }}</div>
-      <div class="epic-meta">
-        <span class="epic-status status-{{ e.status_key }}" aria-label="Status: {{ e.status_label }}">
-          <span class="epic-status-icon" aria-hidden="true">{{ e.status_icon }}</span>
-          <span class="epic-status-text">{{ e.status_label }}</span>
-        </span>
-        {% if e.assignee %}<span class="bead-assignee">{{ e.assignee }}</span>{% endif %}
-      </div>
+      <span class="epic-chip-marker p{{ e.priority if e.priority is not none else 'x' }}" aria-hidden="true">&#9670;</span>
+      {% if e.priority is not none %}<span class="sr-only">Priority P{{ e.priority }}.</span>{% endif %}
+      <span class="bead-id">{{ e.id }}</span>
+      <span class="epic-chip-sep" aria-hidden="true">·</span>
+      <span class="epic-chip-title">{{ e.title }}</span>
+      {% if e.rollup %}
+      <span class="epic-chip-progress"
+            role="progressbar"
+            aria-valuenow="{{ e.rollup.percent }}"
+            aria-valuemin="0" aria-valuemax="100"
+            aria-label="Children complete: {{ e.rollup.completed }} of {{ e.rollup.total }} ({{ e.rollup.percent }} percent)"
+            title="{{ e.rollup.completed }} of {{ e.rollup.total }} children complete{% if e.rollup.in_progress %} ({{ e.rollup.in_progress }} in progress){% endif %}">{{ e.rollup.completed }}/{{ e.rollup.total }}</span>
+      {% endif %}
     </li>
     {% else %}
     <li class="lane-empty muted">(no active epics)</li>
@@ -31,8 +30,16 @@
 </section>
 
 <div class="lanes">
-  {# Active lanes: rendered immediately from active-only snapshot #}
-  {% for key in ["deferred", "blocked", "ready", "in_progress"] %}
+  {# Active lanes: rendered immediately from active-only snapshot. The Pinned
+     lane (infra / never-auto-close beads), the Gate lane (pending async-
+     coordination waits), and the Swarm lane (running `mol_type=swarm`
+     molecules) only appear when they have cards, so the common all-empty case
+     doesn't carry a permanent dead column — and their masthead counts, which
+     are likewise only emitted when >0, stay in agreement with the lane
+     (bdboard-m5bm). The Gate lane frames an open gate as a WAIT, not
+     claimable READY work (audit FB-3); the Swarm lane surfaces a running
+     swarm with its coordinator (audit FB-5). #}
+  {% for key in ((['pinned'] if lanes['pinned'] else []) + (['gate'] if lanes['gate'] else []) + (['swarm'] if lanes['swarm'] else []) + ['deferred', 'blocked', 'ready', 'in_progress']) %}
   <div class="lane lane-{{ key }}">
     <h2 class="lane-title">
       <span class="lane-name">{{ lane_titles[key] }}</span>

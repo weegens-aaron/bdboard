@@ -1,0 +1,36 @@
+{# Analytics panel — the in-page sub-view switcher + the active sub-view
+   (bdboard-ove7). This is the INNER content of #analytics-panel; both the full
+   page (analytics.html) and the /api/analytics fragment endpoint render this
+   same partial, so a switch re-renders the switcher (for active-state) AND the
+   sub-view in ONE swap.
+
+   Data-driven: the switcher is built from src/bdboard/analytics.py's
+   ANALYTICS_VIEWS registry (`views`), and the active sub-view is included by
+   its registry `partial` path (`active_view.partial`). Adding a sub-view is a
+   registry entry + its partial — this template never changes (see analytics.py
+   for the documented extension point).
+
+   Switcher links are REAL <a href> (deep-linkable, back/forward + no-JS
+   friendly) ENHANCED with HTMX: a click swaps just this panel
+   (hx-target="#analytics-panel") and pushes the canonical URL
+   (hx-push-url="true") so the address bar, history, and bookmarks all reflect
+   the selected sub-view. On hard navigation / history-restore the same URL
+   returns the full page, so deep links and Back/Forward work with or without
+   HTMX. #}
+<nav class="analytics-switcher" aria-label="Analytics views">
+  {% for v in views %}
+  <a
+    href="/analytics?view={{ v.key }}"
+    class="analytics-tab{% if v.key == active_view.key %} is-active{% endif %}"
+    {% if v.key == active_view.key %}aria-current="page"{% endif %}
+    hx-get="/api/analytics?view={{ v.key }}"
+    hx-target="#analytics-panel"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+  >{{ v.label }}</a>
+  {% endfor %}
+</nav>
+
+<div class="analytics-view" id="analytics-view">
+  {% include active_view.partial %}
+</div>

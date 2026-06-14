@@ -47,7 +47,7 @@ cp -rf source dest          # NOT: cp -r source dest
 
 These are hard-won lessons. Each was learned the painful way. Run `bd memories` at session start for the full list of operational gotchas; the rules below are the ones serious enough to live here permanently.
 
-- **Don't write local session summaries.** Never create `COMPLETION_SUMMARY_*.md`, `VERIFICATION_*.md`, `NOTES_*.md`, or similar files anywhere in the repo unless the user **explicitly asks for one**. The bead is the canonical record — capture verification, evidence, snapshots, contrast calculations, and reasoning via `bd update <id> --append-notes "..."`. Root-level (and stray `docs/`) summary files are agent panic-litter and will be deleted.
+- **Don't write local session summaries.** Never create `COMPLETION_SUMMARY_*.md`, `VERIFICATION_*.md`, `NOTES_*.md`, or similar files anywhere in the repo unless the user **explicitly asks for one**. The bead is the canonical record — capture verification, evidence, snapshots, contrast calculations, and reasoning via `bd update <id> --append-notes "..."`. Root-level (and stray `notes/`) summary files are agent panic-litter and will be deleted.
 - **Don't close beads.** The LLM judge pipeline is the only legitimate closer. If you believe a bead is complete, leave it `in_progress` and document evidence in `--append-notes`. Closing yourself bypasses verification and tends to trigger fallback behaviors (like writing summary files) that pollute the repo. The user may explicitly authorize you to close a specific bead per-request; that authorization does not extend to others.
 - **Don't run `bd edit`.** It opens `$EDITOR` and hangs the agent indefinitely. Use `bd update --description / --notes / --append-notes / --design` for content edits, and `bd update --claim / --status` for state changes.
 - **Don't trust `--dry-run` with `bd create --graph`.** It is silently ignored (bd 1.0.3) and issues are created anyway. Validate plans by hand-reading the JSON and running `jq . plan.json` before applying.
@@ -99,19 +99,19 @@ Then fix the bug as part of this bead's work (scope expansion), finish the origi
 When filing or working ANY bead (bug, task, feature, spike, decision, chore, etc.) that has attached evidence — screenshots, mockups, logs, traces, repro recordings, diagrams, design exports, data dumps:
 
 1. Create (or identify) the bead first — you need the bead ID for the directory name.
-2. `mkdir -p docs/<type>/<bead-id>/` where `<type>` matches the bead category:
-   - bugs → `docs/bugs/<bead-id>/`
-   - tasks / features / chores / spikes / decisions / stories → `docs/tasks/<bead-id>/`
+2. `mkdir -p notes/<type>/<bead-id>/` where `<type>` matches the bead category:
+   - bugs → `notes/bugs/<bead-id>/`
+   - tasks / features / chores / spikes / decisions / stories → `notes/tasks/<bead-id>/`
    (If your project already groups artifacts under a single dir, follow the existing convention — the invariant is one subdir per bead ID, never loose files.)
-3. Move artifacts into that dir using non-interactive flags: `mv -f <artifact> docs/<type>/<bead-id>/`
+3. Move artifacts into that dir using non-interactive flags: `mv -f <artifact> notes/<type>/<bead-id>/`
    - Rename cryptic/auto-generated filenames (e.g. `Screenshot 2026-... PM.png`) to something descriptive (`masthead-light.png`). Avoid spaces and non-breaking spaces in filenames — they break tooling and image loaders.
 4. Reference every artifact path explicitly in the bead's notes:
    ```bash
-   bd update <bead-id> --append-notes "Artifact: docs/<type>/<bead-id>/screenshot.png"
+   bd update <bead-id> --append-notes "Artifact: notes/<type>/<bead-id>/screenshot.png"
    ```
-5. `git add docs/<type>/<bead-id>/` and commit alongside the bead filing/update.
+5. `git add notes/<type>/<bead-id>/` and commit alongside the bead filing/update.
 
-Do NOT leave artifacts at the repo root, in `docs/`, or directly in `docs/bugs/` / `docs/tasks/` (i.e. NOT inside the category dir but outside a bead-ID subdir) — they get orphaned from their bead.
+Do NOT leave artifacts at the repo root, in `notes/`, or directly in `notes/bugs/` / `notes/tasks/` (i.e. NOT inside the category dir but outside a bead-ID subdir) — they get orphaned from their bead.
 
 ## Tool Conventions (summary)
 

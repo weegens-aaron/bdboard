@@ -1,0 +1,47 @@
+{# History sub-view shell for the Analytics tab (bdboard-ove7).
+
+   This is the FIRST Analytics sub-view, migrated from the former standalone
+   /history page. It is self-contained: it owns BOTH the stats host
+   (#history-stats) and the swap region (#history-region), so the Analytics
+   masthead stays generic (no per-view special case) while History's content
+   is unchanged — it still reuses /api/history + partials/history.html exactly
+   as before.
+
+   How the two surfaces stay in sync (unchanged from the old History page):
+   /api/history returns the charts/list into #history-region AND emits the
+   stats <dl> as an hx-swap-oob fragment targeting #history-stats by id. Since
+   OOB swaps resolve by element id anywhere in the DOM, the stats host living
+   here (rather than in the masthead) works identically. #}
+<section class="analytics-subview analytics-subview-history" aria-label="History">
+  {# Stats strip — symmetric with the board's masthead counts. Ships an
+     instant skeleton so the columns are reserved with shimmer placeholders
+     until the first /api/history OOB swap lands. aria-busy flags it loading;
+     the OOB <dl> that replaces it carries aria-busy="false" + aria-live. #}
+  <div class="masthead-counts analytics-stats" id="history-stats" aria-busy="true">
+    {% with cells = 6 %}{% include "partials/counts_skeleton.html" %}{% endwith %}
+  </div>
+
+  {# History region — the single HTMX swap target. partials/history.html
+     (loaded via /api/history) renders the range control, combined chart, and
+     paginated closed list into this element; every range button and pager
+     re-fetches /api/history with hx-target="#history-region".
+
+     Triggers:
+       - load              → fill on switch-in / first paint (default 30d).
+       - refresh from:body → SSE live-update, inheriting the board's pipeline
+         (base.html fires a synthetic `refresh` on <body> on any .beads/
+         change), so a bead closing while you watch appears live. #}
+  <section
+    id="history-region"
+    class="history-region"
+    aria-label="Bead history"
+    aria-busy="true"
+    hx-get="/api/history"
+    hx-trigger="load, refresh from:body"
+    hx-swap="innerHTML"
+  >
+    {# Instant skeleton so the sub-view never shows a blank region while the
+       first /api/history fetch is in flight. Replaced on the first swap. #}
+    {% include "partials/history_skeleton.html" %}
+  </section>
+</section>

@@ -1,0 +1,31 @@
+{# Shared graph-hygiene badge row (audit FB-6 / bdboard-dzu2). Surfaces three
+   otherwise-invisible problems on a bead so they stop reading as ordinary
+   Blocked / healthy work. Caller passes `b` (the bead dict) already decorated
+   by derive.hygiene.with_badges:
+     - b.hygiene_cycle           bool   — on a blocking dependency cycle
+     - b.hygiene_blocked_reason  str    — "missing" => a blocks target is absent
+                                          from the snapshot (a dangling edge);
+                                          "open" needs no badge (it's the plain
+                                          Blocked case, already lane-evident)
+     - b.hygiene_incomplete      list   — required template sections still missing
+
+   Each badge pairs a glyph (aria-hidden) with a visible text label, so meaning
+   is never carried by colour alone (WCAG 1.4.1). The glyph/label colours clear
+   WCAG 1.4.11 (3:1) on the card surface in both themes — see styles.css. #}
+{%- if b.hygiene_cycle %}
+<span class="bead-badge badge-cycle" title="On a dependency cycle — deadlocked"
+      aria-label="On a dependency cycle (deadlocked)">
+  <span class="badge-glyph" aria-hidden="true">&#8635;</span>DEADLOCK</span>
+{%- endif -%}
+{%- if b.hygiene_blocked_reason == "missing" %}
+<span class="bead-badge badge-dangling"
+      title="Blocked by a dependency that isn't in the board — dangling edge"
+      aria-label="Blocked by a missing dependency (dangling edge)">
+  <span class="badge-glyph" aria-hidden="true">&#9888;</span>DANGLING DEP</span>
+{%- endif -%}
+{%- if b.hygiene_incomplete %}
+<span class="bead-badge badge-incomplete"
+      title="Missing required section(s): {{ b.hygiene_incomplete | join(', ') }}"
+      aria-label="Incomplete template — missing {{ b.hygiene_incomplete | join(', ') }}">
+  <span class="badge-glyph" aria-hidden="true">&#9650;</span>INCOMPLETE</span>
+{%- endif -%}

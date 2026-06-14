@@ -6,14 +6,11 @@
 {% set lane_titles = {"deferred": "Deferred", "blocked": "Blocked", "ready": "Ready", "in_progress": "In Progress", "closed": "Closed"} %}
 
 <section class="epic-lane" aria-hidden="true">
-  <h2 class="epic-lane-title">Epics <span class="skeleton skeleton-text skeleton-count"></span></h2>
+  <h2 class="epic-lane-title">Epics in flight <span class="skeleton skeleton-text skeleton-count"></span></h2>
   <ul class="epic-strip" role="list">
     {% for _ in range(3) %}
     <li class="epic-chip skeleton-card">
-      <div class="epic-chip-head">
-        <span class="skeleton skeleton-text skeleton-id"></span>
-      </div>
-      <div class="skeleton skeleton-text skeleton-title-line"></div>
+      <span class="skeleton skeleton-text skeleton-title-line"></span>
     </li>
     {% endfor %}
   </ul>
