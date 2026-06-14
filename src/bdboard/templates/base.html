@@ -523,10 +523,69 @@
         applyBoardFilter(savedFilter);
       }
 
+      // ----- Collapsible lanes (bdboard-px6d) -----
+      // Each lane (Epics in flight, Coordination) has a disclosure <button>
+      // (.lane-disclosure) whose aria-controls points at its cards region.
+      // Collapsing hides the cards region and persists the choice. Collapse is
+      // a stickier preference than the time window, so it lives in localStorage
+      // (mirroring the theme / rows-per-page idiom), keyed per lane, wrapped in
+      // try/catch so a locked-down storage env can't break the board.
+      const LANE_COLLAPSE_KEY_PREFIX = 'bdboard-lane-collapsed:';
+
+      function laneIsCollapsed(key) {
+        try {
+          return localStorage.getItem(LANE_COLLAPSE_KEY_PREFIX + key) === '1';
+        } catch (e) { return false; }
+      }
+      function persistLaneCollapsed(key, collapsed) {
+        try {
+          localStorage.setItem(LANE_COLLAPSE_KEY_PREFIX + key, collapsed ? '1' : '0');
+        } catch (e) {}
+      }
+      function applyLaneCollapse(btn, collapsed) {
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        const section = btn.closest('.epic-lane');
+        if (section) section.classList.toggle('is-collapsed', collapsed);
+        const regionId = btn.getAttribute('aria-controls');
+        const region = regionId && document.getElementById(regionId);
+        if (region) {
+          if (collapsed) region.setAttribute('hidden', '');
+          else region.removeAttribute('hidden');
+        }
+      }
+
+      // Bind + restore collapse state for every lane disclosure on the page.
+      // Idempotent: re-runnable after each HTMX swap (the epic strip rides
+      // /api/lanes and the coordination strip rides /api/gates, so both
+      // re-render independently on SSE refresh). Buttons carry data-wired so
+      // we don't double-bind survivors, but we always re-apply the persisted
+      // state to freshly-swapped buttons.
+      function wireLaneCollapse() {
+        document.querySelectorAll('.lane-disclosure').forEach(btn => {
+          const key = btn.getAttribute('data-lane-key');
+          if (!key) return;
+          applyLaneCollapse(btn, laneIsCollapsed(key));
+          if (btn.hasAttribute('data-wired')) return;
+          btn.setAttribute('data-wired', 'true');
+          // A native <button> handles Enter/Space -> click for free, so a
+          // single click listener covers mouse + keyboard activation.
+          btn.addEventListener('click', () => {
+            const collapsed = btn.getAttribute('aria-expanded') !== 'false';
+            applyLaneCollapse(btn, collapsed);
+            persistLaneCollapsed(key, collapsed);
+          });
+        });
+      }
+
       // Wire up filter badges after SSE-triggered lane refresh.
       // The board filter lives in the masthead (wired once on DOMContentLoaded),
       // but we need to re-apply the filter when lane content refreshes.
       document.addEventListener('htmx:afterSettle', (e) => {
+        // Lane collapse is cheap + idempotent and both strips (epics via
+        // /api/lanes, coordination via /api/gates) re-render independently on
+        // SSE refresh, so re-bind + re-apply persisted collapse state after
+        // every settle (bdboard-px6d).
+        wireLaneCollapse();
         // Only re-apply filter when the lanes region or closed lane refreshes
         const target = e.detail.target;
         if (!target) return;
@@ -546,6 +605,7 @@
       // Wire up filter badges on initial page load
       document.addEventListener('DOMContentLoaded', () => {
         wireFilterBadges();
+        wireLaneCollapse();
       });
 
       // SSE live-update wiring. Server pushes a 'beads_changed' event

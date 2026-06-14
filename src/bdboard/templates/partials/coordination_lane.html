@@ -1,0 +1,84 @@
+{# Coordination strip (bdboard-xiwd).
+
+   A SECOND epic-lane-style horizontal strip on the board surfacing the two bd
+   coordination primitives as chips — open async-coordination GATES and
+   merge-slot mutexes. This reverts the dedicated /coordination tab
+   (bdboard-wr85) and its nav count badge (bdboard-iz8h): the underlying
+   gate/slot derivation (derive/gates.py) and the /api/gates route are
+   unchanged — only the placement/presentation moved back onto the board.
+
+   Hydrated into the #coordination region in partials/lanes.html via HTMX
+   (load + refresh from:body), so it rides the same SSE refresh pipeline as
+   the lanes and stays live. Renders NOTHING when there is no coordination
+   state (hidden-when-empty), matching the board's other only-when-present
+   strips (Pinned / Gate / Swarm lanes) so a board that never uses gates or
+   slots is visually unchanged.
+
+   Reuses the .epic-lane / .epic-chip idiom (bdboard-tght) for visual
+   symmetry with the "Epics in flight" strip above it. Each chip opens the
+   bead modal (#bead-modal) exactly like an epic chip, so gate/slot
+   drill-downs keep working. A `bd gate list` failure surfaces an inline
+   message in the strip rather than 500-ing the partial (AC3). #}
+{% set has_content = gates or gates_error or slots %}
+{% if has_content %}
+{% set gate_count = gates | length if not gates_error else 0 %}
+{% set coord_count = gate_count + (slots | length) %}
+<section class="epic-lane coordination-lane" aria-label="Coordination">
+  <div class="lane-label-row">
+    <h2 class="epic-lane-title">
+      <button type="button" class="lane-disclosure" data-lane-key="coordination"
+              aria-expanded="true" aria-controls="coordination-lane-cards">
+        <span class="lane-caret" aria-hidden="true">&#9656;</span>
+        <span class="lane-name">Coordination</span>
+        <span class="lane-count">{{ coord_count }}</span>
+        {% if gates_error %}<span class="coordination-error-flag" title="Couldn’t load gates" aria-hidden="true">!</span>{% endif %}
+      </button>
+    </h2>
+  </div>
+  <div class="lane-cards-region" id="coordination-lane-cards">
+  <ul class="epic-strip" role="list">
+    {% if gates_error %}
+    <li class="lane-empty muted" role="status" aria-live="polite">{{ gates_error }}</li>
+    {% endif %}
+
+    {# ----- Open gates ----- #}
+    {% for g in gates %}
+    <li class="epic-chip coordination-chip"
+        hx-get="/api/bead/{{ g.id }}"
+        hx-target="#bead-modal"
+        hx-swap="innerHTML"
+        hx-disabled-elt="this">
+      <span class="epic-chip-line1">
+        <span class="epic-chip-marker p{{ g.priority if g.priority is not none else 'x' }}" aria-hidden="true">&#9670;</span>
+        {% if g.priority is not none %}<span class="sr-only">Priority P{{ g.priority }}.</span>{% endif %}
+        <span class="bead-id">{{ g.id }}</span>
+        {% if g.condition %}
+        <span class="coordination-chip-badge gate-await-badge gate-await-{{ g.condition.await_type | replace(':', '-') }}">{{ g.condition.await_type }}</span>
+        {% endif %}
+      </span>
+      <span class="epic-chip-title">{{ g.title }}</span>
+    </li>
+    {% endfor %}
+
+    {# ----- Merge slots ----- #}
+    {% for s in slots %}
+    <li class="epic-chip coordination-chip"
+        hx-get="/api/bead/{{ s.id }}"
+        hx-target="#bead-modal"
+        hx-swap="innerHTML"
+        hx-disabled-elt="this">
+      <span class="epic-chip-line1">
+        <span class="bead-id">{{ s.id }}</span>
+        <span class="coordination-chip-badge merge-slot-state-badge merge-slot-state-{{ s.state }}">
+          {% if s.held %}held{% else %}available{% endif %}
+        </span>
+      </span>
+      <span class="epic-chip-title">
+        {% if s.held %}held by {{ s.holder or "unknown" }}{% elif s.waiter_count %}{{ s.waiter_count }} waiting{% else %}free to acquire{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  </div>
+</section>
+{% endif %}

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from bdboard.derive.feed import activity, counts
 from bdboard.derive.gates import (
-    coordination_count,
     gate_condition,
     is_gate,
     is_merge_slot,
@@ -116,7 +115,6 @@ __all__ = [
     "gate_condition",
     "is_merge_slot",
     "merge_slot_view",
-    "coordination_count",
     # lane derivations
     "epic_lane",
     "lanes",

@@ -237,6 +237,30 @@ TEMPLATES.env.filters["decode_label"] = _decode_label
 # and zero cost in prod (HTTP caches see a new URL only on redeploy).
 TEMPLATES.env.globals["asset_v"] = str(int(time.time()))
 
+
+def _analytics_nav_label() -> str:
+    """Display label for the Analytics primary-nav tab (bdboard-r64y).
+
+    The page hosts a single switcher-less History sub-view in the common case
+    (a field_change-only / empty interactions log => Interactions stays
+    unregistered, bdboard-8l60), so an "Analytics" tab opening to a lone
+    "History" view was two labels for one page. The label is therefore
+    DERIVED from the live sub-view registry — "History" when there is a single
+    registered sub-view, "Analytics" when Interactions conditionally
+    re-registers and the in-page switcher returns. Computed per-render (the
+    nav is shared across Board / Memory / Analytics) off the same
+    :func:`analytics.build_views` that drives the switcher, so the tab label
+    and the switcher can never disagree. Defensive: any failure degrades to
+    "History" (the always-present default).
+    """
+    try:
+        return "Analytics" if len(analytics.build_views(bd.beads_dir)) > 1 else "History"
+    except Exception:
+        return "History"
+
+
+TEMPLATES.env.globals["analytics_nav_label"] = _analytics_nav_label
+
 # ----- CSRF protection -----
 # bdboard introduces its first write paths with the memory-curate feature.
 # CSRF posture: a per-process token generated at startup, included in all
@@ -595,12 +619,16 @@ async def page_analytics(request: Request, view: str | None = None) -> HTMLRespo
     bdboard-e47e). The sub-views are data-driven from the
     :mod:`bdboard.analytics` registry — adding one is a registry entry + its
     shell partial, with no change here (see analytics.py for the extension
-    point). History is the first sub-view, migrated from the former standalone
-    /history page; it reuses /api/history + partials/history.html unchanged.
+    point). The active set is built per-request from the workspace via
+    :func:`analytics.build_views`: History is always present (and the default),
+    while Interactions registers only when the workspace has reward-bearing
+    interactions (bdboard-8l60 conditional registration). History reuses
+    /api/history + partials/history.html unchanged.
 
     ``?view=`` selects the active sub-view and is reflected in the URL by the
     switcher (hx-push-url), so a sub-view is deep-linkable and back/forward
-    friendly; an unknown/missing value degrades to the default sub-view inside
+    friendly; an unknown/missing value — including a stale ?view=interactions
+    while Interactions is unregistered — degrades to the default sub-view inside
     :func:`analytics.resolve_view`. Extends base.html and renders the switcher
     + active sub-view shell server-side; each shell lazy-loads its own data
     region via HTMX so this route stays trivially cheap and never blocks on a
@@ -615,7 +643,8 @@ async def page_analytics(request: Request, view: str | None = None) -> HTMLRespo
             {"error": err, "workspace": str(_WORKSPACE)},
             status_code=500,
         )
-    active_view = analytics.resolve_view(view)
+    views = analytics.build_views(bd.beads_dir)
+    active_view = analytics.resolve_view(view, views)
     return TEMPLATES.TemplateResponse(
         request,
         "analytics.html",
@@ -623,7 +652,7 @@ async def page_analytics(request: Request, view: str | None = None) -> HTMLRespo
             "workspace": _WORKSPACE.name,
             "workspace_path": str(_WORKSPACE),
             "active": "analytics",
-            "views": analytics.ANALYTICS_VIEWS,
+            "views": views,
             "active_view": active_view,
         },
     )
@@ -641,48 +670,14 @@ async def api_analytics(request: Request, view: str | None = None) -> HTMLRespon
     ``?view=`` selects the sub-view; unknown/missing degrades to the default.
     Trivially cheap — the sub-view's own shell lazy-loads its data region.
     """
-    active_view = analytics.resolve_view(view)
+    views = analytics.build_views(bd.beads_dir)
+    active_view = analytics.resolve_view(view, views)
     return TEMPLATES.TemplateResponse(
         request,
         "partials/analytics_panel.html",
         {
-            "views": analytics.ANALYTICS_VIEWS,
+            "views": views,
             "active_view": active_view,
-        },
-    )
-
-
-@app.get("/coordination", response_class=HTMLResponse)
-async def page_coordination(request: Request) -> HTMLResponse:
-    """Full-page Coordination view (bdboard-wr85), symmetric with `/memory`.
-
-    Promotes the coordination panel (open gates + merge-slot mutexes) off the
-    board into its own primary-nav tab (epic bdboard-e47e). The board no longer
-    carries an inline #coordination region; this dedicated page renders the
-    SAME panel by HTMX-loading partials/gates_panel.html via /api/gates on load
-    + ``refresh from:body`` (so SSE live updates and modal drill-downs into
-    gate/slot beads keep working unchanged). It passes ``standalone=1`` so the
-    panel renders expanded and shows an explicit empty state when there is no
-    coordination state — instead of the board's render-nothing behaviour that
-    would leave a dedicated page blank. Extends base.html, stays trivially
-    cheap, and surfaces the workspace validation error for parity with the
-    other pages so a broken workspace fails visibly.
-    """
-    err = _validate_or_warn()
-    if err:
-        return TEMPLATES.TemplateResponse(
-            request,
-            "error.html",
-            {"error": err, "workspace": str(_WORKSPACE)},
-            status_code=500,
-        )
-    return TEMPLATES.TemplateResponse(
-        request,
-        "coordination.html",
-        {
-            "workspace": _WORKSPACE.name,
-            "workspace_path": str(_WORKSPACE),
-            "active": "coordination",
         },
     )
 
@@ -704,12 +699,15 @@ async def page_history(request: Request) -> RedirectResponse:
 async def page_interactions(request: Request) -> RedirectResponse:
     """Redirect the former standalone Interactions page into the Analytics tab.
 
-    Interactions migrated to the second Analytics sub-view (bdboard-vtd4),
-    alongside History; this 307 redirect keeps old links, bookmarks, and the
+    Interactions migrated to the Analytics tab as a reward-bearing sub-view
+    (bdboard-vtd4); this 307 redirect keeps old links, bookmarks, and the
     (now-removed) primary-nav entry from breaking by pointing them at the
-    Interactions sub-view. 307 (temporary) preserves the method and avoids
-    caches pinning the redirect permanently in case the canonical path ever
-    changes again — symmetric with the /history redirect.
+    Interactions sub-view. When the workspace has no reward-bearing
+    interactions the sub-view is unregistered (bdboard-8l60), and the target
+    /analytics?view=interactions degrades gracefully to History rather than
+    404ing — so this redirect is always safe. 307 (temporary) preserves the
+    method and avoids caches pinning the redirect permanently in case the
+    canonical path ever changes again — symmetric with the /history redirect.
 
     The interaction log itself is unchanged: the sub-view shell reuses
     /api/interactions + partials/interactions.html (kind filter chips and all),
@@ -822,38 +820,34 @@ async def api_lanes_closed(request: Request) -> HTMLResponse:
 
 
 @app.get("/api/gates", response_class=HTMLResponse)
-async def api_gates(request: Request, standalone: bool = False) -> HTMLResponse:
-    """Render the gates / coordination panel (HTMX swap target).
+async def api_gates(request: Request) -> HTMLResponse:
+    """Render the coordination strip (HTMX swap target).
 
     Surfaces the two coordination primitives bd exposes but bdboard previously
-    ignored (audit FB-9):
+    ignored (audit FB-9), presented as a second epic-lane-style strip on the
+    board (bdboard-xiwd — reverting the dedicated /coordination tab):
       - Open async-coordination GATES via ``bd gate list --json``, each
         interpreted into a labelled await condition (a PR/run link, a timer
         deadline, or a manual-only flag) by :func:`derive.gate_condition` — so
-        the panel reads as 'Open Gates (N)' with conditions, not raw scalars.
+        each gate chip carries its await type, not a raw scalar.
       - MERGE-SLOT mutexes (``gt:slot`` beads): held/available + the
         priority-ordered waiter queue, via :func:`derive.merge_slot_view`.
 
     Degrades gracefully (AC3): a ``bd gate list`` failure renders an inline
-    message for the gates section rather than 500-ing the whole partial, and
-    the merge-slot section is best-effort (a failed slot read is simply
-    omitted) — symmetric with /api/formulas and /api/memory.
-
-    ``standalone`` is set by the dedicated /coordination page (bdboard-wr85):
-    when true the panel is rendered expanded (it is the page's primary focus,
-    not a collapsed secondary board element) and an explicit empty state is
-    shown when there is no coordination state, instead of the board's
-    render-nothing behaviour that would leave the page blank.
+    message in the strip rather than 500-ing the whole partial, and the
+    merge-slot section is best-effort (a failed slot read is simply omitted) —
+    symmetric with /api/formulas and /api/memory. The strip renders nothing
+    when there is no coordination state (hidden-when-empty), matching the
+    board's other only-when-present strips.
     """
     gates, gates_error, slots = await _collect_coordination()
     return TEMPLATES.TemplateResponse(
         request,
-        "partials/gates_panel.html",
+        "partials/coordination_lane.html",
         {
             "gates": gates,
             "gates_error": gates_error,
             "slots": slots,
-            "standalone": standalone,
         },
     )
 
@@ -864,15 +858,15 @@ async def _collect_coordination() -> tuple[list[dict[str, Any]], str | None, lis
     Returns ``(gates, gates_error, slots)`` where:
 
     - ``gates`` is the open-gate list (each entry shaped for
-      partials/gates_panel.html: id/title/priority + interpreted condition),
+      partials/coordination_lane.html: id/title/priority + interpreted
+      condition),
     - ``gates_error`` is a friendly message when ``bd gate list`` failed (the
       gates list is then empty), and
     - ``slots`` is the list of merge-slot views (held/available + waiter
       queue).
 
-    This is the SINGLE source of truth for coordination state so the
-    /coordination panel and the nav count badge (bdboard-iz8h) can never drift
-    — both derive from the exact same gates/slots structures. Degrades
+    This is the SINGLE source of truth for coordination state so every
+    consumer derives from the exact same gates/slots structures. Degrades
     gracefully (AC3): a gate-list failure surfaces ``gates_error`` rather than
     raising, and a failed slot read falls back to the list bead.
     """
@@ -1619,36 +1613,6 @@ async def api_counts(request: Request) -> HTMLResponse:
         request,
         "partials/counts.html",
         {"counts": derive.counts(await store.snapshot())},
-    )
-
-
-@app.get("/api/coordination/count", response_class=HTMLResponse)
-async def api_coordination_count(request: Request) -> HTMLResponse:
-    """Render the Coordination nav-tab count badge (HTMX swap target).
-
-    The badge (bdboard-iz8h) tells a user there is coordination state worth
-    looking at WITHOUT opening the tab. It lives in partials/nav.html on every
-    page and hydrates after paint via HTMX (load + refresh from:body), so it
-    rides the same SSE refresh pipeline as the rest of the board and never
-    blocks first paint on a bd subprocess.
-
-    The count is derived from the EXACT same gates/slots source as the
-    /coordination page (:func:`_collect_coordination`), so the badge can't
-    drift from the page (AC: "derived from the same source"). Counting rule
-    lives in :func:`derive.coordination_count`: every open gate plus any
-    held/contended merge slot.
-
-    Degrades gracefully: if the gate list errored, that section contributes 0
-    rather than 500-ing the badge — a missing badge is strictly better than a
-    broken nav. partials/coordination_badge.html renders nothing when the
-    count is 0, so a quiet board shows no badge at all.
-    """
-    gates, _gates_error, slots = await _collect_coordination()
-    count = derive.coordination_count(gates, slots)
-    return TEMPLATES.TemplateResponse(
-        request,
-        "partials/coordination_badge.html",
-        {"count": count},
     )
 
 

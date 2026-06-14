@@ -1,12 +1,19 @@
-"""Route tests for GET /api/gates (the coordination panel partial, bdboard-50v5).
+"""Route tests for GET /api/gates (the coordination strip partial).
+
+Coordination renders as a SECOND epic-lane-style strip on the board
+(bdboard-xiwd, reverting the dedicated /coordination tab bdboard-wr85). The
+underlying gate/slot derivation and the /api/gates route are unchanged; only
+the presentation moved back onto the board as chips.
 
 We invoke the endpoint coroutine directly with a minimal ASGI Request and
 assert on the rendered HTML. bd.list_gates / bd.show_long and
 store.snapshot_active are stubbed so no real subprocess runs.
 
 Covers the bead's acceptance criteria:
-  - a gates panel lists open gates with their await condition
-  - a merge-slot renders held/available + the waiter queue (not raw JSON)
+  - the strip lists open gates as chips carrying their await type
+  - a merge-slot renders as a chip with its held/available state + holder
+  - chips open the bead modal (#bead-modal); the strip reuses the .epic-chip idiom
+  - the strip hides when there is no coordination state (hidden-when-empty)
   - bd verb failures degrade gracefully (inline message, not 500)
 """
 
@@ -65,8 +72,8 @@ def _call() -> tuple[int, str]:
 # ----- gates listing -----
 
 
-def test_lists_open_gate_with_condition(monkeypatch):
-    """AC1: a gates panel lists open gates with their await condition."""
+def test_lists_open_gate_as_chip_with_await_type(monkeypatch):
+    """AC1: the strip lists open gates as chips carrying their await type."""
     _stub(
         monkeypatch,
         repo_url="https://github.com/owner/repo",
@@ -85,26 +92,34 @@ def test_lists_open_gate_with_condition(monkeypatch):
     status, body = _call()
 
     assert status == 200
-    assert "Open Gates (1)" in body
+    # Rendered as a second epic-lane-style strip with a Coordination label.
+    assert "coordination-lane" in body
+    assert "Coordination" in body
+    # The gate is a chip reusing the epic-chip idiom.
+    assert "epic-chip" in body
     assert "gt-1" in body
-    # The interpreted condition (a PR link), not raw await scalars.
-    assert "https://github.com/owner/repo/pull/42" in body
-    assert "gate-condition" in body
+    # The interpreted await type rides the chip as a badge (not a raw scalar).
+    assert "gate-await-badge" in body
+    assert "gh:pr" in body
+    # Chips open the bead modal like the epic chips do.
+    assert 'hx-target="#bead-modal"' in body
+    assert 'hx-get="/api/bead/gt-1"' in body
 
 
-def test_empty_when_no_coordination_state(monkeypatch):
-    """A board with no gates and no merge-slots renders nothing (no chrome)."""
+def test_strip_hides_when_no_coordination_state(monkeypatch):
+    """A board with no gates and no merge-slots renders nothing (hidden)."""
     _stub(monkeypatch, gates=[], active=[])
     status, body = _call()
     assert status == 200
-    assert "coordination-panel" not in body
+    assert "coordination-lane" not in body
+    assert body.strip() == ""
 
 
 # ----- merge-slot affordance -----
 
 
-def test_merge_slot_held_renders_holder_and_queue(monkeypatch):
-    """AC2: a merge-slot renders held + holder + waiter queue, not raw JSON."""
+def test_merge_slot_held_renders_as_chip_with_holder(monkeypatch):
+    """AC2: a held merge-slot renders as a chip with its state + holder."""
     slot_list_bead = {"id": "x-merge-slot", "labels": ["gt:slot"], "status": "in_progress"}
     slot_full = {
         "id": "x-merge-slot",
@@ -123,11 +138,10 @@ def test_merge_slot_held_renders_holder_and_queue(monkeypatch):
     status, body = _call()
 
     assert status == 200
-    assert "Merge slots (1)" in body
+    assert "coordination-lane" in body
+    assert "x-merge-slot" in body
     assert "merge-slot-state-held" in body
-    assert "agent-7" in body
-    assert "agent-3" in body
-    assert "agent-9" in body
+    assert "held by agent-7" in body
     # Not a raw JSON dump of metadata.
     assert "field-json" not in body
 
@@ -154,6 +168,29 @@ def test_merge_slot_available_renders_free(monkeypatch):
     assert "free to acquire" in body
 
 
+def test_merge_slot_contended_shows_waiter_count(monkeypatch):
+    """An available-but-contended slot reports its waiter count on the chip."""
+    slot = {
+        "id": "x-merge-slot",
+        "title": "merge slot",
+        "labels": ["gt:slot"],
+        "status": "open",
+        "metadata": {"waiters": ["agent-3", "agent-9"]},
+    }
+    _stub(
+        monkeypatch,
+        gates=[],
+        active=[slot],
+        show_long_map={"x-merge-slot": slot},
+    )
+
+    status, body = _call()
+
+    assert status == 200
+    assert "merge-slot-state-available" in body
+    assert "2 waiting" in body
+
+
 # ----- graceful degradation -----
 
 
@@ -164,7 +201,9 @@ def test_gate_list_failure_degrades_inline_not_500(monkeypatch):
     status, body = _call()
 
     assert status == 200
-    assert "coordination-error" in body
+    # The strip still renders (so the error is visible) with an inline message.
+    assert "coordination-lane" in body
+    assert "coordination-error-flag" in body
     assert "try again" in body.lower()
 
 

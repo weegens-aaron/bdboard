@@ -395,37 +395,6 @@ pre { margin: 0; }
   box-shadow: inset 0 -2px 0 var(--brand-blue);
 }
 
-/* Coordination count badge (bdboard-iz8h). A small mono pill that rides
-   alongside the Coordination nav link, mirroring .coordination-summary-count
-   so the badge and the page's own count read as the same object. The VISIBLE
-   number is the signal (not colour-only — clears WCAG 1.4.1); the pill shape +
-   the number's presence/absence carry the meaning. The slot is the empty
-   HTMX target that lives in the markup at all times; it collapses to nothing
-   until /api/coordination/count swaps a badge in (or stays empty at count 0),
-   so there is no reserved gap on a quiet board. */
-.mh-link-badge-slot {
-  display: inline-flex;
-  align-items: center;
-}
-.mh-link-badge {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 700;
-  /* Reset the nav link's small-caps treatment so the digits read as numerals,
-     not letter-spaced caps. */
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--ink-2);
-  background: var(--wash, var(--rule));
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 0 7px;
-  line-height: 17px;
-}
-
 /* Theme toggle — borrows .mh-link styling so it reads as the
    trailing cell of the contents bar, tied in with the same hairline
    border-left. It is a <button> outside <nav>: an action, not navigation.
@@ -534,14 +503,6 @@ pre { margin: 0; }
 .layout-board {
   flex-direction: column;
 }
-/* Board time-filter toolbar — right-aligned, same idiom as .history-toolbar. */
-.board-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 12px;
-  margin-bottom: 14px;
-}
 
 /* ============================================================
    Lanes. Each lane is a flex column so the title stays put and the
@@ -564,10 +525,66 @@ pre { margin: 0; }
   border-bottom: 1px solid var(--rule-2);
   margin-bottom: 14px;
   padding-bottom: 10px;
+  /* bdboard-px6d: label ABOVE cards — a two-row vertical stack. Row 1 is the
+     .lane-label-row (disclosure + count [+ time-filter for the epic lane]);
+     row 2 is the collapsible .lane-cards-region holding the cards strip. */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+/* Row 1: label/disclosure on the left, time-filter pinned far right. */
+.lane-label-row {
   display: flex;
   align-items: center;
   gap: 14px;
   min-width: 0;
+}
+.lane-label-row .epic-lane-title { flex: 0 0 auto; }
+.lane-label-row .board-filters { margin-left: auto; }
+/* Row 2: the collapsible region. `hidden` (set by wireLaneCollapse) removes it
+   from layout + the a11y tree when the lane is collapsed. */
+.lane-cards-region { min-width: 0; }
+.lane-cards-region[hidden] { display: none; }
+/* Disclosure control: a real <button> carrying caret + label + count. It
+   inherits the uppercase .epic-lane-title typography (it lives inside the h2)
+   but strips native button chrome so it reads as the lane label, not a
+   pill-button. The rotating caret (not a swapped glyph) keeps one stable
+   accessible name across expand/collapse. */
+.lane-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 4px 2px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+.lane-disclosure:focus-visible {
+  outline: 2px solid var(--blue-100);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.lane-caret {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--ink-2);
+  /* Expanded points down (▾-ish): rotate the right-pointing ▸ 90° CW. */
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+.lane-disclosure[aria-expanded="false"] .lane-caret {
+  /* Collapsed points right (▸): no rotation. */
+  transform: rotate(0deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lane-caret { transition: none; }
 }
 .epic-lane-title {
   display: inline-flex;
@@ -600,10 +617,14 @@ pre { margin: 0; }
 .epic-strip::-webkit-scrollbar-thumb { background: var(--rule-2); border-radius: 3px; }
 .epic-strip > * { flex-shrink: 0; }
 .epic-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* bdboard-px6d: a single shared FIXED width so every card across BOTH the
+     epics strip and the coordination strip is uniform (replaces bdboard-tght's
+     flexible max-width: 255px). .epic-strip > * already sets flex-shrink: 0,
+     so this width holds inside the horizontally-scrolling strip. */
+  width: 248px;
   background: var(--paper-3);
   border: 1px solid var(--rule);
   border-radius: 6px;
@@ -619,6 +640,12 @@ pre { margin: 0; }
 .epic-chip:focus-visible {
   outline: 2px solid var(--blue-100);
   outline-offset: 1px;
+}
+/* Line 1: marker + bead id on the left, rollup count pushed to the right. */
+.epic-chip-line1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 .epic-chip-marker {
   flex: 0 0 auto;
@@ -637,20 +664,19 @@ pre { margin: 0; }
   flex: 0 0 auto;
   white-space: nowrap;
 }
-.epic-chip-sep {
-  flex: 0 0 auto;
-  color: var(--ink-2);
-}
 .epic-chip-title {
-  flex: 0 1 auto;
   min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--ink);
 }
 .epic-chip-progress {
   flex: 0 0 auto;
+  margin-left: auto;
   font-family: var(--mono, var(--sans));
   font-size: 11px;
   font-weight: 700;
@@ -695,7 +721,10 @@ pre { margin: 0; }
 
 .swarm-cohorts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* One-wide / stacked cohort blocks (bdboard-1wub): the Completed / Active /
+     Ready / Blocked blocks read better one per row in the narrow epic modal
+     than packed two-up. */
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -843,7 +872,35 @@ pre { margin: 0; }
   .lanes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
-  .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Single CONSISTENT orientation at narrow widths (bdboard-0m4i). The lane
+     count varies (6–9, since Pinned/Gate/Swarm only appear when populated),
+     so a 2-column grid left a ragged last row that read as a mix of
+     orientations — a half-and-half board. Collapsing to ONE full-width column
+     makes every lane uniform: 6 (wide) → 3 → 1 is a clean, monotonic reduction
+     with no breakpoint where some lanes sit beside others. Single-column also
+     satisfies WCAG 1.4.10 reflow (no horizontal scrolling for content). */
+  .lanes { grid-template-columns: 1fr; }
+
+  /* Stacked lanes need the PAGE to scroll, not each lane crammed into a sliver
+     of the viewport. Flip the board from the desktop model ("fixed viewport,
+     each lane scrolls internally") to a natural page scroll: the board region
+     scrolls, the lanes grid grows with its content, and each lane caps its
+     height so one long lane still scrolls internally rather than dwarfing the
+     rest. Each lane keeps its sticky title + internally-scrolling card list. */
+  .layout-board {
+    overflow-y: auto;
+    padding: 16px 16px;
+  }
+  .lanes-region {
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+  .lanes { flex: 0 0 auto; }
+  /* Scoped to .layout-board so this beats the base `.lane { max-height: 100% }`
+     rule that appears LATER in source order (equal specificity would otherwise
+     let the base win and uncap the lane). On the board a long lane still
+     scrolls internally; short lanes size to their content. */
+  .layout-board .lane { max-height: 80vh; }
 }
 
 .lane {
@@ -877,12 +934,14 @@ pre { margin: 0; }
 }
 
 /* Board-wide time filter — small pressable badges, WCAG AA compliant.
-   Lives in the right-aligned .board-toolbar above the lanes (the parent
-   handles the flex-end alignment, mirroring the History range toolbar). */
+   Inlined on the "Epics in flight" header row (bdboard-tght): the epic-lane is
+   a flex row [title | strip (flex:1) | filter], so flex:0 0 auto pins the
+   filter to the far right while the scrollable strip absorbs the slack. */
 .board-filters {
   display: flex;
   gap: 4px;
   align-items: center;
+  flex: 0 0 auto;
 }
 .filter-badge {
   font-family: var(--sans);
@@ -2101,140 +2160,36 @@ pre { margin: 0; }
 .merge-slot-waiter { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
 .merge-slot-queue-empty { margin: 0; font-size: 12px; }
 
-/* Coordination panel: open gates + merge-slots, hydrated into #coordination.
-   Promoted off the board into its own /coordination tab (bdboard-wr85). On the
-   board it WAS a collapsed-by-default native <details> secondary element
-   (bdboard-f7yp); on the dedicated page it is the primary focus, so the
-   .coordination-panel-standalone modifier renders it expanded and de-mutes the
-   summary. Only present when there is coordination state — otherwise the
-   standalone page shows an explicit .coordination-empty-state instead. */
-.coordination-panel {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: var(--paper);
-  margin-top: 16px;
+/* Coordination strip (bdboard-xiwd): a SECOND epic-lane-style strip rendered
+   directly below the "Epics in flight" strip on the board, surfacing open
+   gates + merge-slot mutexes as chips. Reverts the dedicated /coordination tab
+   (bdboard-wr85) + its nav count badge (bdboard-iz8h). It reuses the
+   .epic-lane / .epic-chip idiom wholesale (DRY) and only needs a couple of
+   strip-local tweaks: a top rule to separate it from the epics strip above,
+   the compact in-chip state badges, and the inline gate-list error flag. */
+.coordination-lane {
+  /* Sits below the epics strip (which already carries its own bottom rule),
+     so this strip needs no extra top border — just consistent spacing. */
+  border-bottom: 1px solid var(--rule-2);
 }
-/* The clickable disclosure header — compact, muted, secondary. Native
-   <summary> handles keyboard + SR expand/collapse semantics for free. */
-.coordination-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-family: var(--sans);
-  font-size: 11px;
+/* Compact state badge living on a chip's line 1 (gate await type or merge-slot
+   held/available). It reuses the modal's .gate-await-badge /
+   .merge-slot-state-badge colours; this only shrinks them to chip scale and
+   keeps them from stretching the baseline-aligned line. */
+.coordination-chip-badge {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 10px;
+  padding: 1px 6px;
+  align-self: center;
+  white-space: nowrap;
+}
+/* Inline gate-list error flag in the strip title (paired with the role=status
+   message chip in the strip body). Not colour-only — the "!" glyph + the
+   visible error message carry the meaning. */
+.coordination-error-flag {
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  list-style-position: inside;
-}
-.coordination-summary:hover { color: var(--ink-2); }
-.coordination-summary:focus-visible {
-  outline: 2px solid var(--brand-blue-d);
-  outline-offset: -2px;
-  border-radius: 6px;
-}
-.coordination-summary-count {
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink-2);
-  background: var(--wash, var(--rule));
-  border-radius: 10px;
-  padding: 0 7px;
-  line-height: 18px;
-}
-.coordination-summary-error {
-  font-weight: 700;
-  color: var(--danger, var(--ink-2));
-}
-/* Revealed body — padded under the summary, separated by a hairline. */
-.coordination-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 14px;
-  border-top: 1px solid var(--rule);
-}
-.coordination-section { display: flex; flex-direction: column; gap: 8px; }
-.coordination-subtitle {
-  font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin: 0;
-}
-.coordination-gate-list,
-.coordination-slot-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.coordination-gate,
-.coordination-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.coordination-gate-id,
-.coordination-slot-id {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--brand-blue-d);
-  text-decoration: underline;
-  width: fit-content;
-}
-.coordination-gate-id:hover,
-.coordination-slot-id:hover { text-decoration: none; }
-.coordination-gate-title { font-size: 13px; color: var(--ink-2); }
-.coordination-empty,
-.coordination-error { margin: 0; font-size: 12px; }
-
-/* Dedicated /coordination page (bdboard-wr85). The page is the panel's primary
-   focus, so stack the region and let it breathe rather than sitting BELOW the
-   lanes as a secondary board element. */
-.layout-coordination {
-  flex-direction: column;
-}
-/* Standalone modifier: render the disclosure expanded (the route also emits
-   the `open` attribute) and de-mute the summary so it reads as a section
-   heading, not a collapsed secondary affordance. */
-.coordination-panel-standalone {
-  margin-top: 0;
-}
-.coordination-panel-standalone .coordination-summary {
-  color: var(--ink-2);
-  font-size: 12px;
-}
-/* Explicit empty state shown on the dedicated page when there are no gates or
-   merge slots — so the page is never blank. */
-.coordination-empty-state {
-  border: 1px dashed var(--rule);
-  border-radius: 6px;
-  background: var(--paper);
-  padding: 28px 22px;
-  text-align: center;
-}
-.coordination-empty-state-title {
-  margin: 0 0 6px;
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink-2);
-}
-.coordination-empty-state-hint {
-  margin: 0 auto;
-  max-width: 46ch;
-  font-size: 13px;
-  line-height: 1.5;
+  color: var(--danger-fg, var(--ink-2));
 }
 
 /* Field renderers — chips for labels, dep-list for deps, para for prose. */

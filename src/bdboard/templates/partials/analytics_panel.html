@@ -16,7 +16,13 @@
    (hx-push-url="true") so the address bar, history, and bookmarks all reflect
    the selected sub-view. On hard navigation / history-restore the same URL
    returns the full page, so deep links and Back/Forward work with or without
-   HTMX. #}
+   HTMX. When only ONE sub-view is registered (the common case: a
+   field_change-only / empty interactions log keeps Interactions unregistered,
+   bdboard-8l60), the switcher tab row is SKIPPED entirely — a lone tab is
+   redundant with the page label, so we render the single sub-view directly
+   (bdboard-r64y). The switcher returns automatically the moment a second
+   sub-view registers (Interactions earns a reward-bearing kind). #}
+{% if views | length > 1 %}
 <nav class="analytics-switcher" aria-label="Analytics views">
   {% for v in views %}
   <a
@@ -30,6 +36,7 @@
   >{{ v.label }}</a>
   {% endfor %}
 </nav>
+{% endif %}
 
 <div class="analytics-view" id="analytics-view">
   {% include active_view.partial %}

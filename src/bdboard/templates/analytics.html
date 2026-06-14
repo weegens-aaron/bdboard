@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Analytics{% endblock %}
+{% block title %}{{ analytics_nav_label() }}{% endblock %}
 {% block body %}
 <header class="masthead">
   {# TOP ROW brand alone. The page nav and theme toggle live on the second
@@ -9,7 +9,7 @@
      masthead (bdboard-ove7; History + Interactions both live here). #}
   <div class="masthead-row">
     <div class="masthead-brand">
-      <h1 class="title">Analytics</h1>
+      <h1 class="title">{{ analytics_nav_label() }}</h1>
     </div>
   </div>
   {# SECOND ROW page nav left, theme toggle right-aligned. #}

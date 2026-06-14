@@ -27,6 +27,7 @@ import json
 
 from starlette.requests import Request
 
+from bdboard import analytics
 from bdboard import app as app_module
 
 
@@ -68,9 +69,14 @@ def test_interactions_redirects_into_analytics() -> None:
     assert resp.headers["location"] == "/analytics?view=interactions"
 
 
-def test_interactions_subview_lazy_loads_and_refreshes() -> None:
+def test_interactions_subview_lazy_loads_and_refreshes(monkeypatch) -> None:
     """Selecting the Interactions sub-view renders the region that lazy-loads
-    /api/interactions and live-updates via the shared SSE pipeline."""
+    /api/interactions and live-updates via the shared SSE pipeline.
+
+    Interactions is conditionally registered (bdboard-8l60): it only appears
+    when the workspace has reward-bearing interactions, so we force that here.
+    """
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: True)
     resp = asyncio.run(app_module.page_analytics(_request("/analytics"), view="interactions"))
     body = resp.body.decode()
     assert resp.status_code == 200
@@ -78,6 +84,21 @@ def test_interactions_subview_lazy_loads_and_refreshes() -> None:
     assert 'hx-get="/api/interactions"' in body
     # Reuses the SSE pipeline for live updates, like History/Memory.
     assert 'hx-trigger="load, refresh from:body"' in body
+
+
+def test_interactions_redirect_degrades_when_unregistered(monkeypatch) -> None:
+    """The /interactions 307 target is always safe: when Interactions is NOT
+    registered (empty/field_change-only log), /analytics?view=interactions
+    degrades to History rather than 404ing or rendering an empty panel
+    (bdboard-8l60)."""
+    monkeypatch.setattr(analytics, "has_reward_bearing_interactions", lambda _b: False)
+    resp = asyncio.run(app_module.page_analytics(_request("/analytics"), view="interactions"))
+    body = resp.body.decode()
+    assert resp.status_code == 200
+    assert 'id="interactions-region"' not in body
+    assert 'href="/analytics?view=interactions"' not in body
+    # Lands on the default History sub-view.
+    assert 'id="history-region"' in body
 
 
 def test_standalone_interactions_nav_item_is_gone() -> None:

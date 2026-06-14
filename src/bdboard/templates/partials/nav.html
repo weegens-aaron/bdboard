@@ -1,4 +1,4 @@
-{# Primary page navigation (Board / Coordination / Analytics / Memory).
+{# Primary page navigation (Board / Analytics / Memory).
 
    Two-row masthead: this nav ALWAYS lives on its own second
    masthead row, left-aligned, while the theme toggle + page actions (Pour
@@ -13,37 +13,29 @@
    page is signalled by THREE non-colour cues: ink colour + bold weight + an
    inset baseline rule (.mh-link.is-active).
 
-   `active` ("board" | "coordination" | "analytics" | "memory") marks the
-   current page: it both gets the .is-active styling hook and an
-   aria-current="page" so assistive tech announces the current location.
-   Coordination is its own tab (bdboard-wr85): the open-gates + merge-slot
-   panel was promoted off the board into the dedicated /coordination page.
-   NOTE: the former standalone History
-   and Interactions entries are now sub-views inside the Analytics tab
-   (bdboard-ove7 / bdboard-vtd4); /history and /interactions redirect to
-   /analytics?view=history and /analytics?view=interactions respectively. #}
+   `active` ("board" | "analytics" | "memory") marks the current page: it both
+   gets the .is-active styling hook and an aria-current="page" so assistive
+   tech announces the current location. The internal active key for the
+   analytics surface stays "analytics"; only its DISPLAY label is dynamic
+   (bdboard-r64y) — analytics_nav_label() returns "History" when the page has a
+   single switcher-less sub-view and "Analytics" once Interactions
+   conditionally re-registers and the in-page switcher returns.
+
+   Coordination is NOT a primary-nav tab (bdboard-xiwd reverted the
+   /coordination tab bdboard-wr85 + its nav count badge bdboard-iz8h): the
+   open-gates + merge-slot strip lives back on the board as a second
+   epic-lane-style strip (partials/coordination_lane.html, hydrated via
+   /api/gates). The former standalone History and Interactions entries are now
+   sub-views inside the Analytics tab (bdboard-ove7 / bdboard-vtd4); /history
+   and /interactions redirect to /analytics?view=history and
+   /analytics?view=interactions respectively. #}
 <nav class="masthead-nav" aria-label="Primary">
   <a href="/"
      class="mh-link{% if active == 'board' %} is-active{% endif %}"
      {% if active == 'board' %}aria-current="page"{% endif %}>Board</a>
-  <a href="/coordination"
-     class="mh-link{% if active == 'coordination' %} is-active{% endif %}"
-     {% if active == 'coordination' %}aria-current="page"{% endif %}>Coordination{#
-     Count badge (bdboard-iz8h): a tiny HTMX-hydrated slot that surfaces the
-     number of outstanding coordination items (open gates + held/contended
-     merge slots) so a user knows there's something to look at WITHOUT opening
-     the tab. Empty on first paint; /api/coordination/count fills it after
-     paint and on every SSE `refresh from:body`, mirroring the counts/gates
-     hydration pattern. aria-live="polite" announces changes; the partial
-     renders nothing (so this slot stays empty) when the count is 0. #}<span
-       class="mh-link-badge-slot"
-       aria-live="polite"
-       hx-get="/api/coordination/count"
-       hx-trigger="load, refresh from:body"
-       hx-swap="innerHTML"></span></a>
   <a href="/analytics"
      class="mh-link{% if active == 'analytics' %} is-active{% endif %}"
-     {% if active == 'analytics' %}aria-current="page"{% endif %}>Analytics</a>
+     {% if active == 'analytics' %}aria-current="page"{% endif %}>{{ analytics_nav_label() }}</a>
   <a href="/memory"
      class="mh-link{% if active == 'memory' %} is-active{% endif %}"
      {% if active == 'memory' %}aria-current="page"{% endif %}>Memory</a>
