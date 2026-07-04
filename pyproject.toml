@@ -13,12 +13,15 @@ dependencies = [
     "markdown-it-py>=3.0",
     "watchfiles>=0.21",
     "python-multipart>=0.0.7",
+]
+
+[dependency-groups]
+dev = [
     "pytest>=8.0",
 ]
 
 [project.scripts]
 bdboard = "bdboard.cli:main"
-pytest = "bdboard.pytest_shim:main"
 
 [build-system]
 requires = ["hatchling"]

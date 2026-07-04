@@ -37,7 +37,7 @@ venv:
 	uv venv
 
 install: venv
-	uv pip install $(PY_INDEX) -e .
+	uv sync $(PY_INDEX)
 
 dev:
 	.venv/bin/uvicorn bdboard.app:app --reload --port 7332
@@ -56,8 +56,11 @@ fmt-check:
 lint:
 	uvx $(PY_INDEX) ruff check src/ tests/ tools/
 
+# Invoke pytest via the shim module (plugin-autoload isolation) instead of a
+# `pytest` console script — exporting a script named `pytest` shadowed the real
+# pytest in every environment this package was installed into.
 test:
-	.venv/bin/pytest -q
+	.venv/bin/python -m bdboard.pytest_shim -q
 
 # --- Mechanical code-health gates (deterministic pass/fail; CI runs these) ---
 # Rationale (bdboard-ndm): formulas SPAWN work, they don't RUN checks. These
